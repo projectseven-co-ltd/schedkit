@@ -67,12 +67,15 @@ export default async function bookingsRoutes(fastify) {
     const start = parseISO(start_time);
     const end = addMinutes(start, eventType.duration_minutes);
 
-    // Conflict check
-    const conflict = await db.list(tables.bookings, {
-      where: `(user_id,eq,${user.Id})~and(status,eq,confirmed)~and(start_time,lt,${end.toISOString()})~and(end_time,gt,${start.toISOString()})`,
-      limit: 1,
+    // Conflict check — NocoDB doesn't support ISO datetimes in where filters, filter in JS
+    const existing = await db.find(tables.bookings, `(user_id,eq,${user.Id})~and(status,eq,confirmed)`);
+    const startMs = start.getTime(), endMs = end.getTime();
+    const conflict = (existing.list || []).some(b => {
+      const bStart = new Date(b.start_time).getTime();
+      const bEnd = new Date(b.end_time).getTime();
+      return bStart < endMs && bEnd > startMs;
     });
-    if (conflict.list?.length) {
+    if (conflict) {
       return reply.code(409).send({ error: 'Time slot no longer available' });
     }
 
