@@ -1,9 +1,9 @@
 // src/routes/availability.js
 
-import { db } from '../lib/noco.js';
-import { tables } from '../lib/tables.js';
-import { requireApiKey } from '../middleware/auth.js';
-import { getSlots } from '../lib/availability.js';
+import { db } from '../lib/noco.mjs';
+import { tables } from '../lib/tables.mjs';
+import { requireApiKey } from '../middleware/auth.mjs';
+import { getSlots } from '../lib/availability.mjs';
 
 export default async function availabilityRoutes(fastify) {
   // Get availability rules

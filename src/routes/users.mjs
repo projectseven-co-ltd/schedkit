@@ -1,7 +1,7 @@
 // src/routes/users.js — User management (admin-like, secured by master secret)
 
-import { db } from '../lib/noco.js';
-import { tables } from '../lib/tables.js';
+import { db } from '../lib/noco.mjs';
+import { tables } from '../lib/tables.mjs';
 import { nanoid } from 'nanoid';
 
 function requireSecret(req, reply, done) {

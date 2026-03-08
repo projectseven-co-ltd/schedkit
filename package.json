@@ -2,11 +2,9 @@
   "name": "p7-scheduler",
   "version": "0.1.0",
   "description": "Lightweight API-first scheduling service",
-  "type": "module",
-  "main": "src/index.js",
+  "main": "src/index.mjs",
   "scripts": {
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.mjs"
   },
   "dependencies": {
     "fastify": "^4.28.0",

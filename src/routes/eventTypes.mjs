@@ -1,8 +1,8 @@
 // src/routes/eventTypes.js
 
-import { db } from '../lib/noco.js';
-import { tables } from '../lib/tables.js';
-import { requireApiKey } from '../middleware/auth.js';
+import { db } from '../lib/noco.mjs';
+import { tables } from '../lib/tables.mjs';
+import { requireApiKey } from '../middleware/auth.mjs';
 
 export default async function eventTypesRoutes(fastify) {
   // List event types

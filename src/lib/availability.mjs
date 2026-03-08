@@ -2,8 +2,8 @@
 
 import { addMinutes, format, parseISO, getDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
-import { db } from './noco.js';
-import { tables } from './tables.js';
+import { db } from './noco.mjs';
+import { tables } from './tables.mjs';
 
 /**
  * Get available slots for an event type on a given date

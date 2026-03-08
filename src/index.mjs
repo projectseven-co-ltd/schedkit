@@ -1,13 +1,13 @@
 import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import { ensureSchema } from './lib/schema.js';
-import { meta } from './lib/noco.js';
-import { tables } from './lib/tables.js';
-import eventTypesRoutes from './routes/eventTypes.js';
-import availabilityRoutes from './routes/availability.js';
-import bookingsRoutes from './routes/bookings.js';
-import usersRoutes from './routes/users.js';
+import { ensureSchema } from './lib/schema.mjs';
+import { meta } from './lib/noco.mjs';
+import { tables } from './lib/tables.mjs';
+import eventTypesRoutes from './routes/eventTypes.mjs';
+import availabilityRoutes from './routes/availability.mjs';
+import bookingsRoutes from './routes/bookings.mjs';
+import usersRoutes from './routes/users.mjs';
 
 const fastify = Fastify({ logger: true });
 

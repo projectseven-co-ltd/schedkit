@@ -1,7 +1,7 @@
 // src/middleware/auth.js — API key authentication
 
-import { db } from '../lib/noco.js';
-import { tables } from '../lib/tables.js';
+import { db } from '../lib/noco.mjs';
+import { tables } from '../lib/tables.mjs';
 
 export async function requireApiKey(request, reply) {
   const key = request.headers['x-api-key'] || request.query.api_key;
