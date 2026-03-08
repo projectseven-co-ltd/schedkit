@@ -1244,8 +1244,8 @@ function openCreateOrgModal() {
     <div class="form-row"><label>Slug (optional)</label><input type="text" id="mo-org-slug" placeholder="acme-inc"></div>
     <div id="mo-org-err" class="form-error" style="display:none"></div>
     <div style="display:flex;gap:10px;margin-top:20px">
-      <button class="btn-primary" onclick="saveOrg()">Create</button>
-      <button class="btn-ghost" onclick="closeOrgModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOrg()">Create</button>
+      <button class="btn btn-ghost" onclick="closeOrgModal()">Cancel</button>
     </div>
   `);
 }
@@ -1273,8 +1273,8 @@ function openAddMemberModal(orgSlug) {
     </div>
     <div id="mo-mem-err" class="form-error" style="display:none"></div>
     <div style="display:flex;gap:10px;margin-top:20px">
-      <button class="btn-primary" onclick="saveOrgMember('${orgSlug}')">Add</button>
-      <button class="btn-ghost" onclick="closeOrgModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOrgMember('${orgSlug}')">Add</button>
+      <button class="btn btn-ghost" onclick="closeOrgModal()">Cancel</button>
     </div>
   `);
 }
@@ -1310,8 +1310,8 @@ function openCreateTeamModal(orgSlug) {
     </div>
     <div id="mo-team-err" class="form-error" style="display:none"></div>
     <div style="display:flex;gap:10px;margin-top:20px">
-      <button class="btn-primary" onclick="saveTeam('${orgSlug}')">Create</button>
-      <button class="btn-ghost" onclick="closeOrgModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTeam('${orgSlug}')">Create</button>
+      <button class="btn btn-ghost" onclick="closeOrgModal()">Cancel</button>
     </div>
   `);
 }
@@ -1367,7 +1367,7 @@ async function openManageTeamModal(orgSlug, teamSlug) {
     <button class="btn-sm" onclick="openCreateTeamETModal('${orgSlug}','${teamSlug}')">+ New Event Type</button>
 
     <div style="margin-top:20px">
-      <button class="btn-ghost" onclick="closeOrgModal()">Close</button>
+      <button class="btn btn-ghost" onclick="closeOrgModal()">Close</button>
     </div>
   `);
 }
@@ -1398,8 +1398,8 @@ function openCreateTeamETModal(orgSlug, teamSlug) {
     <div class="form-row"><label>Description (optional)</label><textarea id="mo-et-desc" style="min-height:60px"></textarea></div>
     <div id="mo-et-err" class="form-error" style="display:none"></div>
     <div style="display:flex;gap:10px;margin-top:20px">
-      <button class="btn-primary" onclick="saveTeamET('${orgSlug}','${teamSlug}')">Create</button>
-      <button class="btn-ghost" onclick="openManageTeamModal('${orgSlug}','${teamSlug}')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTeamET('${orgSlug}','${teamSlug}')">Create</button>
+      <button class="btn btn-ghost" onclick="openManageTeamModal('${orgSlug}','${teamSlug}')">Cancel</button>
     </div>
   `);
 }
