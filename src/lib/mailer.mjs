@@ -181,3 +181,53 @@ export async function sendRescheduleNotification({ attendee_name, attendee_email
     console.error('Mailjet error:', e.message);
   }
 }
+
+export async function sendCancellationEmail({ attendee_name, attendee_email, host_name, event_title, start_time, timezone, appointment_label }) {
+  const label = appointment_label || 'meeting';
+  const startLocal = new Date(start_time).toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: timezone,
+  });
+
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Arial,sans-serif;color:#e8e8ea;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0b;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#111114;border:1px solid #1e1e24;border-radius:10px;overflow:hidden;">
+        <tr><td style="padding:12px 28px;background:#0a0a0b;border-bottom:1px solid #1e1e24;">
+          <span style="font-family:monospace;color:#DFFF00;font-size:12px;letter-spacing:0.1em;">// schedkit</span>
+        </td></tr>
+        <tr><td style="padding:36px 28px 24px;">
+          <p style="font-size:13px;color:#ff5f5f;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;">Your ${label} has been cancelled</p>
+          <h1 style="margin:0 0 6px;font-size:22px;color:#e8e8ea;">${event_title}</h1>
+          <p style="margin:0 0 28px;font-size:14px;color:#5a5a6e;">with ${host_name}</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0b;border:1px solid #1e1e24;border-radius:8px;margin-bottom:28px;">
+            <tr><td style="padding:16px 20px;">
+              <p style="margin:0;font-size:11px;color:#5a5a6e;text-transform:uppercase;letter-spacing:0.05em;font-family:monospace;">Cancelled time</p>
+              <p style="margin:6px 0 0;font-size:15px;font-family:monospace;color:#5a5a6e;text-decoration:line-through;">${startLocal}</p>
+              <p style="margin:4px 0 0;font-size:12px;color:#5a5a6e;">${timezone}</p>
+            </td></tr>
+          </table>
+          <p style="margin:0;font-size:13px;color:#5a5a6e;line-height:1.6;">If you'd like to rebook, please reach out to ${host_name} directly.</p>
+        </td></tr>
+        <tr><td style="padding:16px 28px;background:#0a0a0b;border-top:1px solid #1e1e24;">
+          <p style="margin:0;font-size:11px;color:#5a5a6e;font-family:monospace;">Powered by SchedKit</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  try {
+    await mj.post('send', { version: 'v3.1' }).request({
+      Messages: [{
+        From: { Email: FROM_EMAIL, Name: FROM_NAME },
+        To: [{ Email: attendee_email, Name: attendee_name }],
+        Subject: `Cancelled: ${event_title} with ${host_name}`,
+        HTMLPart: html,
+      }],
+    });
+    console.log(`Cancellation email sent to ${attendee_email}`);
+  } catch(e) {
+    console.error('Mailjet cancel email error:', e.message);
+  }
+}

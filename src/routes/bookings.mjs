@@ -10,7 +10,7 @@ async function requireAuth(req, reply) {
 }
 import { addMinutes, parseISO } from 'date-fns';
 import { nanoid } from 'nanoid';
-import { sendBookingConfirmation } from '../lib/mailer.mjs';
+import { sendBookingConfirmation, sendCancellationEmail } from '../lib/mailer.mjs';
 
 async function fireWebhook(url, payload) {
   if (!url) return;
@@ -212,6 +212,7 @@ export default async function bookingsRoutes(fastify) {
   });
 
   // PUBLIC: Cancel booking (POST — API)
+  // API: Cancel booking by token (used by API clients)
   fastify.post('/cancel/:token', async (req, reply) => {
     const result = await db.find(tables.bookings, `(cancel_token,eq,${req.params.token})`);
     if (!result.list?.length) return reply.code(404).send({ error: 'Invalid token' });
@@ -219,7 +220,16 @@ export default async function bookingsRoutes(fastify) {
     if (booking.status === 'cancelled') return reply.code(400).send({ error: 'Already cancelled' });
     await db.update(tables.bookings, booking.Id, { status: 'cancelled' });
     const et = await db.get(tables.event_types, booking.event_type_id);
+    const user = await db.get(tables.users, booking.user_id);
     await fireWebhook(et?.webhook_url, { event: 'booking.cancelled', booking: { uid: booking.uid } });
+    try {
+      await sendCancellationEmail({
+        attendee_name: booking.attendee_name, attendee_email: booking.attendee_email,
+        host_name: user?.name || 'your host', event_title: et?.title || 'Meeting',
+        appointment_label: et?.appointment_label || 'meeting',
+        start_time: booking.start_time, timezone: booking.attendee_timezone || 'UTC',
+      });
+    } catch(e) { fastify.log.error('Cancel email failed:', e.message); }
     return { status: 'cancelled', uid: booking.uid };
   });
 
@@ -241,7 +251,16 @@ export default async function bookingsRoutes(fastify) {
     if (booking.status === 'cancelled') return reply.type('text/html').send(resultPage('⚠️', 'Already cancelled.', booking));
     await db.update(tables.bookings, booking.Id, { status: 'cancelled' });
     const et = await db.get(tables.event_types, booking.event_type_id);
+    const user = await db.get(tables.users, booking.user_id);
     await fireWebhook(et?.webhook_url, { event: 'booking.cancelled', booking: { uid: booking.uid } });
+    try {
+      await sendCancellationEmail({
+        attendee_name: booking.attendee_name, attendee_email: booking.attendee_email,
+        host_name: user?.name || 'your host', event_title: et?.title || 'Meeting',
+        appointment_label: et?.appointment_label || 'meeting',
+        start_time: booking.start_time, timezone: booking.attendee_timezone || 'UTC',
+      });
+    } catch(e) { fastify.log.error('Cancel email (confirm) failed:', e.message); }
     return reply.type('text/html').send(resultPage('✅', 'Your booking has been cancelled.', booking));
   });
 
