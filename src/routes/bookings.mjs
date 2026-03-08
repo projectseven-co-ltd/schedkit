@@ -129,7 +129,7 @@ export default async function bookingsRoutes(fastify) {
   // POST /book/:username/:event_slug
   fastify.post('/book/:username/:event_slug', async (req, reply) => {
     const { username, event_slug } = req.params;
-    const { start_time, attendee_name, attendee_email, attendee_timezone = 'UTC', notes } = req.body;
+    const { start_time, attendee_name, attendee_email, attendee_timezone = 'UTC', notes, custom_responses } = req.body;
 
     if (!start_time || !attendee_name || !attendee_email) {
       return reply.code(400).send({ error: 'start_time, attendee_name, attendee_email required' });
@@ -145,6 +145,18 @@ export default async function bookingsRoutes(fastify) {
     );
     if (!etResult.list?.length) return reply.code(404).send({ error: 'Event type not found' });
     const eventType = etResult.list[0];
+
+    // Validate required custom fields
+    if (eventType.custom_fields) {
+      let fields = [];
+      try { fields = JSON.parse(eventType.custom_fields); } catch {}
+      const responses = custom_responses || {};
+      for (const f of fields) {
+        if (f.required && !responses[f.id]?.toString().trim()) {
+          return reply.code(400).send({ error: `Field "${f.label}" is required` });
+        }
+      }
+    }
 
     const start = parseISO(start_time);
     const end = addMinutes(start, eventType.duration_minutes);
@@ -176,6 +188,7 @@ export default async function bookingsRoutes(fastify) {
       end_time: end.toISOString(),
       status: 'confirmed',
       notes: notes || '',
+      custom_responses: custom_responses ? JSON.stringify(custom_responses) : null,
       cancel_token,
       reschedule_token,
       created_at: new Date().toISOString(),

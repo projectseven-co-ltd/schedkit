@@ -307,6 +307,33 @@ function buildPage(username, eventSlug, { reschedule, name, email, tz } = {}) {
            <span><span class="icon">\${locIcon}</span>\${locLabel}</span>\`;
         document.title = RESCHEDULE_TOKEN ? \`Reschedule \${label}: \${eventType.title}\` : \`Book a \${label}: \${eventType.title}\`;
         document.getElementById('btn-confirm').textContent = RESCHEDULE_TOKEN ? \`Confirm Reschedule\` : \`Confirm \${label.charAt(0).toUpperCase() + label.slice(1)}\`;
+
+        // Render custom fields
+        if (eventType.custom_fields) {
+          let fields = [];
+          try { fields = JSON.parse(eventType.custom_fields); } catch {}
+          if (fields.length) {
+            const notesField = document.getElementById('f-notes').closest('.field');
+            fields.forEach(f => {
+              const div = document.createElement('div');
+              div.className = 'field';
+              div.dataset.customId = f.id;
+              const req = f.required ? ' <span style="color:var(--error)">*</span>' : ' <span style="color:var(--muted);font-size:11px">(optional)</span>';
+              let input = '';
+              if (f.type === 'textarea') {
+                input = \`<textarea id="cf-\${f.id}" placeholder="\${f.placeholder || ''}"></textarea>\`;
+              } else if (f.type === 'select') {
+                const opts = (f.options || []).map(o => \`<option value="\${o}">\${o}</option>\`).join('');
+                input = \`<select id="cf-\${f.id}"><option value="">Select...</option>\${opts}</select>\`;
+              } else {
+                const t = f.type === 'phone' ? 'tel' : f.type === 'number' ? 'number' : 'text';
+                input = \`<input type="\${t}" id="cf-\${f.id}" placeholder="\${f.placeholder || ''}">\`;
+              }
+              div.innerHTML = \`<label>\${f.label}\${req}</label>\${input}\`;
+              notesField.insertAdjacentElement('beforebegin', div);
+            });
+          }
+        }
       }
     } catch(e) {
       document.getElementById('event-host').textContent = 'Could not load event';
@@ -477,6 +504,20 @@ function buildPage(username, eventSlug, { reschedule, name, email, tz } = {}) {
     if (!name || !email) { showError('Name and email are required.'); return; }
     if (!/^[^@]+@[^@]+\\.[^@]+$/.test(email)) { showError('Please enter a valid email.'); return; }
 
+    // Collect & validate custom fields
+    const custom_responses = {};
+    if (eventType?.custom_fields) {
+      let fields = [];
+      try { fields = JSON.parse(eventType.custom_fields); } catch {}
+      for (const f of fields) {
+        const el = document.getElementById(\`cf-\${f.id}\`);
+        if (!el) continue;
+        const val = el.value.trim();
+        if (f.required && !val) { showError(\`"\${f.label}" is required.\`); return; }
+        custom_responses[f.id] = val;
+      }
+    }
+
     errEl.style.display = 'none';
     const btn = document.getElementById('btn-confirm');
     btn.disabled = true;
@@ -489,7 +530,7 @@ function buildPage(username, eventSlug, { reschedule, name, email, tz } = {}) {
 
       const body = RESCHEDULE_TOKEN
         ? { start_time: selectedSlot.start, attendee_timezone: timezone }
-        : { start_time: selectedSlot.start, attendee_name: name, attendee_email: email, attendee_timezone: timezone, notes };
+        : { start_time: selectedSlot.start, attendee_name: name, attendee_email: email, attendee_timezone: timezone, notes, custom_responses: Object.keys(custom_responses).length ? custom_responses : undefined };
 
       const res = await fetch(url, {
         method: 'POST',

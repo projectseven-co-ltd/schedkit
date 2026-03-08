@@ -374,6 +374,11 @@ tr:hover td{background:var(--surface2)}
       <label>Webhook URL <span style="color:var(--muted)">(optional)</span></label>
       <input type="url" id="et-webhook" placeholder="https://...">
     </div>
+    <div class="form-row">
+      <label>Custom Fields <span style="color:var(--muted)">(collected from attendees at booking)</span></label>
+      <div id="cf-builder" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+      <button type="button" class="btn btn-ghost" style="font-size:13px;padding:8px 14px" onclick="addCustomField()">+ Add field</button>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('et-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveEventType()">Save Event Type</button>
@@ -602,6 +607,7 @@ async function loadBookings() {
       <td>${dateStr}<br><span style="color:var(--muted);font-size:12px">${timeStr}</span></td>
       <td><span class="badge badge-${b.status}">${b.status}</span></td>
       <td style="color:var(--muted);font-size:12px">${esc(b.attendee_timezone || '')}</td>
+      <td style="color:var(--muted);font-size:12px;max-width:200px">${b.notes ? `<span title="${esc(b.notes)}">${esc(b.notes.slice(0,60))}${b.notes.length>60?'…':''}</span>` : ''}${b.custom_responses ? (() => { try { const r=JSON.parse(b.custom_responses); return Object.entries(r).map(([k,v])=>`<br><em style="color:var(--muted)">${esc(k)}:</em> ${esc(String(v))}`).join(''); } catch {return '';} })() : ''}</td>
       <td style="white-space:nowrap">${actions}</td>
     </tr>`;
   }).join('');
@@ -659,6 +665,10 @@ function openEventTypeModal(et) {
   document.getElementById('et-location-type').value = et?.location_type || '';
   document.getElementById('et-location').value = et?.location || '';
   document.getElementById('et-webhook').value = et?.webhook_url || '';
+  // Load custom fields builder
+  const fields = (() => { try { return JSON.parse(et?.custom_fields || '[]'); } catch { return []; } })();
+  document.getElementById('cf-builder').innerHTML = '';
+  fields.forEach(f => addCustomField(f));
   openModal('et-modal');
 }
 
@@ -681,6 +691,7 @@ async function saveEventType() {
     location_type: v('et-location-type') || null,
     location: v('et-location') || null,
     webhook_url: v('et-webhook') || null,
+    custom_fields: JSON.stringify(getCustomFields()),
   };
   if (!body.title || !body.slug || !body.duration_minutes) return toast('Title, slug, and duration required', 'err');
 
@@ -690,6 +701,55 @@ async function saveEventType() {
   if (res?.ok) {
     closeModal('et-modal'); toast('Saved!', 'ok'); await loadEventTypes();
   } else toast('Save failed', 'err');
+}
+
+function addCustomField(f = {}) {
+  const id = f.id || 'cf_' + Math.random().toString(36).slice(2,8);
+  const div = document.createElement('div');
+  div.className = 'cf-row';
+  div.dataset.cfId = id;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 100px 1fr auto;gap:8px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px';
+  div.innerHTML = `
+    <input type="text" class="cf-label" placeholder="Field label" value="${esc(f.label||'')}" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:13px">
+    <select class="cf-type" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:13px">
+      <option value="text" ${f.type==='text'?'selected':''}>Text</option>
+      <option value="textarea" ${f.type==='textarea'?'selected':''}>Long text</option>
+      <option value="phone" ${f.type==='phone'?'selected':''}>Phone</option>
+      <option value="number" ${f.type==='number'?'selected':''}>Number</option>
+      <option value="select" ${f.type==='select'?'selected':''}>Dropdown</option>
+    </select>
+    <input type="text" class="cf-options" placeholder="Options (comma-separated)" value="${esc((f.options||[]).join(', '))}" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:13px;display:${f.type==='select'?'block':'none'}">
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap">
+        <input type="checkbox" class="cf-required" ${f.required?'checked':''}> Required
+      </label>
+      <button type="button" onclick="this.closest('.cf-row').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 2px" title="Remove">✕</button>
+    </div>
+  `;
+  // Show/hide options input based on type
+  div.querySelector('.cf-type').addEventListener('change', e => {
+    div.querySelector('.cf-options').style.display = e.target.value === 'select' ? 'block' : 'none';
+  });
+  document.getElementById('cf-builder').appendChild(div);
+}
+
+function getCustomFields() {
+  return [...document.querySelectorAll('#cf-builder .cf-row')].map(row => {
+    const type = row.querySelector('.cf-type').value;
+    const field = {
+      id: row.dataset.cfId,
+      label: row.querySelector('.cf-label').value.trim(),
+      type,
+      required: row.querySelector('.cf-required').checked,
+    };
+    if (type === 'select') {
+      field.options = row.querySelector('.cf-options').value.split(',').map(s=>s.trim()).filter(Boolean);
+    }
+    if (row.querySelector('.cf-placeholder')) {
+      field.placeholder = row.querySelector('.cf-placeholder').value.trim();
+    }
+    return field;
+  }).filter(f => f.label);
 }
 
 async function deleteEventType(id) {
