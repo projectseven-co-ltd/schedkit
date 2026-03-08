@@ -656,6 +656,7 @@ tr:hover td{background:var(--surface2)}
 const API = '';
 let currentUser = null;
 let editingEventTypeId = null;
+let editingEventTypeSlug = null;
 let editingEventTypeTeamCtx = null; // { orgSlug, teamSlug } when editing a team event type
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const TIMEZONES = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : ['UTC','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','Europe/London','Europe/Paris'];
@@ -828,6 +829,7 @@ async function loadEventTypes() {
 
 function openEventTypeModal(et, teamCtx = null) {
   editingEventTypeId = et?.Id || null;
+  editingEventTypeSlug = et?.slug || null;
   editingEventTypeTeamCtx = teamCtx || null;
   const isTeam = !!teamCtx;
   const prefix = isTeam ? `Team Event Type — ${teamCtx.teamSlug}` : '';
@@ -881,7 +883,7 @@ async function saveEventType() {
   if (editingEventTypeTeamCtx) {
     const { orgSlug, teamSlug } = editingEventTypeTeamCtx;
     url = editingEventTypeId
-      ? `/v1/orgs/${orgSlug}/teams/${teamSlug}/event-types/${editingEventTypeId}`
+      ? `/v1/orgs/${orgSlug}/teams/${teamSlug}/event-types/${editingEventTypeSlug}`
       : `/v1/orgs/${orgSlug}/teams/${teamSlug}/event-types`;
     method = editingEventTypeId ? 'PATCH' : 'POST';
   } else {
