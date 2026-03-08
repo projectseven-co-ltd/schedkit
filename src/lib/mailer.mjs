@@ -101,3 +101,27 @@ export async function sendAccessRequest({ name, email, company, message }) {
     throw e;
   }
 }
+
+export async function sendMagicLink({ to, name, link }) {
+  try {
+    await mj.post('send', { version: 'v3.1' }).request({
+      Messages: [{
+        From: { Email: FROM_EMAIL, Name: FROM_NAME },
+        To: [{ Email: to, Name: name }],
+        Subject: 'Your SchedKit login link',
+        TextPart: `Hi ${name},\n\nClick this link to log in to your SchedKit dashboard:\n\n${link}\n\nThis link expires in 15 minutes and can only be used once.\n\nIf you didn't request this, you can safely ignore it.`,
+        HTMLPart: `<!DOCTYPE html><html><body style="background:#0a0a0b;color:#e8e8ea;font-family:sans-serif;padding:40px;max-width:500px;margin:0 auto">
+<h2 style="color:#DFFF00;font-family:monospace">SchedKit</h2>
+<p>Hi ${name},</p>
+<p>Click the button below to log in to your dashboard. This link expires in <strong>15 minutes</strong>.</p>
+<a href="${link}" style="display:inline-block;background:#DFFF00;color:#0a0a0b;padding:14px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin:20px 0">Log in to Dashboard →</a>
+<p style="color:#5a5a6e;font-size:13px">Or copy this URL: ${link}</p>
+<p style="color:#5a5a6e;font-size:12px">If you didn't request this, ignore this email.</p>
+</body></html>`,
+      }],
+    });
+  } catch(e) {
+    console.error('Magic link email error:', e.message);
+    throw e;
+  }
+}

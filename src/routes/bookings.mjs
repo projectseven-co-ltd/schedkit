@@ -3,6 +3,11 @@
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
+import { requireSession } from '../middleware/session.mjs';
+async function requireAuth(req, reply) {
+  if (req.headers['x-api-key']) return requireApiKey(req, reply);
+  return requireSession(req, reply);
+}
 import { addMinutes, parseISO } from 'date-fns';
 import { nanoid } from 'nanoid';
 import { sendBookingConfirmation } from '../lib/mailer.mjs';
@@ -24,7 +29,7 @@ async function fireWebhook(url, payload) {
 export default async function bookingsRoutes(fastify) {
   // List bookings (authed)
   fastify.get('/bookings', {
-    preHandler: requireApiKey,
+    preHandler: requireAuth,
     schema: {
       tags: ['Bookings'],
       summary: 'List bookings',
@@ -54,7 +59,7 @@ export default async function bookingsRoutes(fastify) {
 
   // Get single booking (authed)
   fastify.get('/bookings/:id', {
-    preHandler: requireApiKey,
+    preHandler: requireAuth,
     schema: {
       tags: ['Bookings'],
       summary: 'Get booking',

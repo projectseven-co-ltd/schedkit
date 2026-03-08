@@ -17,6 +17,7 @@ import bookingsRoutes from './routes/bookings.mjs';
 import usersRoutes from './routes/users.mjs';
 import bookingPageRoutes from './routes/bookingPage.mjs';
 import blackoutRoutes from './routes/blackout.mjs';
+import authRoutes from './routes/auth.mjs';
 
 const fastify = Fastify({ logger: true });
 
@@ -79,7 +80,18 @@ await fastify.register(eventTypesRoutes, { prefix: '/v1' });
 await fastify.register(availabilityRoutes, { prefix: '/v1' });
 await fastify.register(bookingsRoutes, { prefix: '/v1' });
 await fastify.register(blackoutRoutes, { prefix: '/v1' });
+await fastify.register(authRoutes, { prefix: '/v1' });
 await fastify.register(bookingPageRoutes);
+
+// Page routes (no prefix)
+fastify.get('/login', async (req, reply) => {
+  const { readFileSync } = await import('fs');
+  return reply.type('text/html').send(readFileSync(join(__dirname, '../public/login.html')));
+});
+fastify.get('/dashboard', async (req, reply) => {
+  const { readFileSync } = await import('fs');
+  return reply.type('text/html').send(readFileSync(join(__dirname, '../public/dashboard.html')));
+});
 
 // Health
 fastify.get('/health', {

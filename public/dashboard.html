@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SchedKit Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0b;--surface:#111114;--surface2:#16161a;--border:#1e1e24;
+  --accent:#DFFF00;--accent-dim:rgba(223,255,0,0.08);--accent-border:rgba(223,255,0,0.2);
+  --text:#e8e8ea;--muted:#5a5a6e;--red:#ff5f5f;--green:#4ade80;
+  --font-sans:'Space Grotesk',sans-serif;--font-mono:'Fira Code',monospace;
+  --sidebar:220px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-height:100vh;display:flex}
+
+/* SIDEBAR */
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;background:var(--surface);
+  border-right:1px solid var(--border);display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;height:100vh;z-index:50;
+}
+.sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.sidebar-logo a{font-family:var(--font-mono);color:var(--accent);font-size:16px;text-decoration:none}
+.sidebar-logo span{color:var(--muted)}
+.sidebar-nav{flex:1;padding:16px 10px;display:flex;flex-direction:column;gap:2px}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;
+  color:var(--muted);font-size:14px;cursor:pointer;transition:all .15s;border:none;
+  background:none;width:100%;text-align:left;text-decoration:none;
+}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.sidebar-footer{padding:16px 10px;border-top:1px solid var(--border)}
+.user-chip{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:var(--surface2)}
+.user-chip .avatar{width:30px;height:30px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--accent);font-weight:700;flex-shrink:0}
+.user-chip .info{flex:1;min-width:0}
+.user-chip .name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-chip .email{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logout-btn{font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 12px;margin-top:8px;width:100%;text-align:left;border-radius:6px;transition:color .15s}
+.logout-btn:hover{color:var(--red)}
+
+/* MAIN */
+.main{margin-left:var(--sidebar);flex:1;min-height:100vh;display:flex;flex-direction:column}
+.topbar{
+  padding:20px 32px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--surface);position:sticky;top:0;z-index:40;
+}
+.topbar h1{font-size:18px;font-weight:700}
+.content{padding:32px;flex:1}
+
+/* CARDS / SECTIONS */
+.section{display:none}
+.section.active{display:block}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.page-header h2{font-size:20px;font-weight:700}
+
+/* STAT CARDS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:32px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px}
+.stat-label{font-size:12px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)}
+.stat-value{font-size:28px;font-weight:700;color:var(--accent)}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{background:var(--surface2);padding:12px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+td{padding:13px 16px;font-size:14px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.badge{display:inline-block;padding:3px 9px;border-radius:100px;font-size:11px;font-weight:600;font-family:var(--font-mono)}
+.badge-confirmed{background:rgba(74,222,128,.1);color:var(--green)}
+.badge-cancelled{background:rgba(255,95,95,.1);color:var(--red)}
+.badge-rescheduled{background:rgba(223,255,0,.08);color:var(--accent)}
+.badge-active{background:rgba(74,222,128,.1);color:var(--green)}
+.badge-inactive{background:rgba(255,95,95,.1);color:var(--red)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s;text-decoration:none}
+.btn-primary{background:var(--accent);color:#0a0a0b}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--muted)}
+.btn-ghost:hover{border-color:var(--muted);color:var(--text)}
+.btn-danger{background:rgba(255,95,95,.1);border:1px solid rgba(255,95,95,.2);color:var(--red)}
+.btn-danger:hover{background:rgba(255,95,95,.2)}
+.btn:hover{opacity:.88}
+.btn:disabled{opacity:.4;cursor:default}
+
+/* FORMS / MODALS */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:20px}
+.form-row{margin-bottom:16px}
+.form-row label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+.form-row input,.form-row select,.form-row textarea{
+  width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+  padding:11px 13px;border-radius:8px;font-family:var(--font-sans);font-size:14px;transition:border-color .15s
+}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--accent)}
+.form-row textarea{resize:vertical;min-height:80px}
+.form-row select option{background:var(--surface)}
+.form-hint{font-size:11px;color:var(--muted);margin-top:4px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.modal-actions{display:flex;gap:10px;margin-top:24px;justify-content:flex-end}
+
+/* AVAILABILITY GRID */
+.avail-grid{display:flex;flex-direction:column;gap:12px}
+.avail-row{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+.avail-day{width:100px;font-size:14px;font-weight:600}
+.avail-toggle{position:relative;width:40px;height:22px;flex-shrink:0}
+.avail-toggle input{opacity:0;width:0;height:0}
+.avail-toggle .slider{position:absolute;inset:0;background:var(--border);border-radius:100px;cursor:pointer;transition:.2s}
+.avail-toggle input:checked+.slider{background:var(--accent)}
+.avail-toggle .slider::before{content:'';position:absolute;width:16px;height:16px;background:#0a0a0b;border-radius:50%;left:3px;bottom:3px;transition:.2s}
+.avail-toggle input:checked+.slider::before{transform:translateX(18px)}
+.avail-times{display:flex;align-items:center;gap:8px;flex:1}
+.avail-times input{width:100px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-family:var(--font-mono);font-size:13px}
+.avail-times span{color:var(--muted);font-size:13px}
+.avail-times input:disabled{opacity:.3}
+
+/* BLACKOUT */
+.blackout-list{display:flex;flex-direction:column;gap:8px}
+.blackout-item{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px}
+.blackout-info .date{font-size:14px;font-weight:600}
+.blackout-info .reason{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* EMPTY */
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-icon{font-size:36px;margin-bottom:12px}
+.empty p{font-size:14px}
+
+/* BOOKING LINK */
+.booking-link-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}
+.booking-link-box code{font-family:var(--font-mono);font-size:13px;color:var(--accent);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.copy-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;flex-shrink:0;transition:all .15s}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 20px;font-size:14px;z-index:200;transform:translateY(80px);opacity:0;transition:all .25s;pointer-events:none}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{border-color:var(--accent);color:var(--accent)}
+.toast.err{border-color:var(--red);color:var(--red)}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);font-family:var(--font-mono);font-size:13px}
+
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);transition:.2s}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .form-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><a href="/dashboard">sched<span>kit</span></a></div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" data-section="bookings">
+      <span class="nav-icon">📅</span> Bookings
+    </button>
+    <button class="nav-item" data-section="event-types">
+      <span class="nav-icon">⚡</span> Event Types
+    </button>
+    <button class="nav-item" data-section="availability">
+      <span class="nav-icon">🕐</span> Availability
+    </button>
+    <button class="nav-item" data-section="blackout">
+      <span class="nav-icon">🚫</span> Blackout Dates
+    </button>
+    <button class="nav-item" data-section="settings">
+      <span class="nav-icon">⚙️</span> Settings
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="avatar" id="user-avatar">?</div>
+      <div class="info">
+        <div class="name" id="user-name">Loading...</div>
+        <div class="email" id="user-email"></div>
+      </div>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign out</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <h1 id="page-title">Bookings</h1>
+    <div id="topbar-actions"></div>
+  </div>
+  <div class="content">
+
+    <!-- BOOKINGS -->
+    <div class="section active" id="section-bookings">
+      <div class="stats">
+        <div class="stat"><div class="stat-label">upcoming</div><div class="stat-value" id="stat-upcoming">—</div></div>
+        <div class="stat"><div class="stat-label">total</div><div class="stat-value" id="stat-total">—</div></div>
+        <div class="stat"><div class="stat-label">cancelled</div><div class="stat-value" id="stat-cancelled">—</div></div>
+      </div>
+      <div class="table-wrap" id="bookings-table">
+        <div class="loading">loading bookings...</div>
+      </div>
+    </div>
+
+    <!-- EVENT TYPES -->
+    <div class="section" id="section-event-types">
+      <div class="page-header">
+        <h2>Event Types</h2>
+        <button class="btn btn-primary" onclick="openEventTypeModal()">+ New Event Type</button>
+      </div>
+      <div id="event-types-list"><div class="loading">loading...</div></div>
+    </div>
+
+    <!-- AVAILABILITY -->
+    <div class="section" id="section-availability">
+      <div class="page-header">
+        <h2>Weekly Availability</h2>
+        <button class="btn btn-primary" id="save-avail-btn" onclick="saveAvailability()">Save Changes</button>
+      </div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:24px">Set the days and hours you're available for bookings. Times are in your account timezone.</p>
+      <div class="avail-grid" id="avail-grid"><div class="loading">loading...</div></div>
+    </div>
+
+    <!-- BLACKOUT -->
+    <div class="section" id="section-blackout">
+      <div class="page-header">
+        <h2>Blackout Dates</h2>
+        <button class="btn btn-primary" onclick="openBlackoutModal()">+ Add Blackout</button>
+      </div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:24px">Block out days or time ranges when you're unavailable. Attendees won't see slots during these periods.</p>
+      <div class="blackout-list" id="blackout-list"><div class="loading">loading...</div></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="section" id="section-settings">
+      <div class="page-header"><h2>Account Settings</h2></div>
+      <div style="max-width:480px">
+        <div class="table-wrap" style="padding:28px">
+          <div class="form-row">
+            <label>Name</label>
+            <input type="text" id="settings-name" placeholder="Your name">
+          </div>
+          <div class="form-row">
+            <label>Email</label>
+            <input type="email" id="settings-email" placeholder="you@example.com">
+          </div>
+          <div class="form-row">
+            <label>Timezone</label>
+            <select id="settings-timezone"></select>
+          </div>
+          <div class="form-row">
+            <label>Your booking URL</label>
+            <div class="booking-link-box">
+              <code id="settings-booking-url"></code>
+              <button class="copy-btn" onclick="copyBookingUrl()">Copy</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>API Key</label>
+            <div class="booking-link-box">
+              <code id="settings-api-key" style="color:var(--muted)">••••••••••••••••</code>
+              <button class="copy-btn" onclick="revealApiKey()">Show</button>
+            </div>
+            <div class="form-hint">Use this key to authenticate API requests</div>
+          </div>
+          <button class="btn btn-primary" onclick="saveSettings()" style="margin-top:8px">Save Settings</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- EVENT TYPE MODAL -->
+<div class="modal-overlay" id="et-modal">
+  <div class="modal">
+    <h3 id="et-modal-title">New Event Type</h3>
+    <div class="form-row">
+      <label>Title</label>
+      <input type="text" id="et-title" placeholder="30 Min Call">
+    </div>
+    <div class="form-row">
+      <label>Slug <span style="color:var(--muted)">(used in booking URL)</span></label>
+      <input type="text" id="et-slug" placeholder="30min">
+    </div>
+    <div class="form-row">
+      <label>Appointment Label <span style="color:var(--muted)">(what to call it)</span></label>
+      <input type="text" id="et-label" placeholder="meeting, appointment, inspection...">
+      <div class="form-hint">Shown to attendees — e.g. "Book an appointment" or "Schedule a session"</div>
+    </div>
+    <div class="form-row">
+      <label>Description</label>
+      <textarea id="et-desc" placeholder="Optional description shown on booking page"></textarea>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Duration (minutes)</label>
+        <input type="number" id="et-duration" value="30" min="5">
+      </div>
+      <div class="form-row">
+        <label>Min. notice (minutes)</label>
+        <input type="number" id="et-notice" value="0" min="0">
+        <div class="form-hint">0 = bookable any time</div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Buffer before (min)</label>
+        <input type="number" id="et-buffer-before" value="0" min="0">
+      </div>
+      <div class="form-row">
+        <label>Buffer after (min)</label>
+        <input type="number" id="et-buffer-after" value="0" min="0">
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Location type</label>
+        <select id="et-location-type">
+          <option value="">— select —</option>
+          <option value="video">Video</option>
+          <option value="phone">Phone</option>
+          <option value="in_person">In person</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Location detail</label>
+        <input type="text" id="et-location" placeholder="Zoom link, address...">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Webhook URL <span style="color:var(--muted)">(optional)</span></label>
+      <input type="url" id="et-webhook" placeholder="https://...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('et-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEventType()">Save Event Type</button>
+    </div>
+  </div>
+</div>
+
+<!-- BLACKOUT MODAL -->
+<div class="modal-overlay" id="blackout-modal">
+  <div class="modal">
+    <h3>Add Blackout Date</h3>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Start date</label>
+        <input type="date" id="bo-start">
+      </div>
+      <div class="form-row">
+        <label>End date <span style="color:var(--muted)">(optional)</span></label>
+        <input type="date" id="bo-end">
+        <div class="form-hint">Leave blank for single day</div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Start time <span style="color:var(--muted)">(optional)</span></label>
+        <input type="time" id="bo-start-time">
+        <div class="form-hint">Leave blank to block full day</div>
+      </div>
+      <div class="form-row">
+        <label>End time <span style="color:var(--muted)">(optional)</span></label>
+        <input type="time" id="bo-end-time">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Reason <span style="color:var(--muted)">(internal only)</span></label>
+      <input type="text" id="bo-reason" placeholder="Holiday, vacation, maintenance...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('blackout-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBlackout()">Add Blackout</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+let currentUser = null;
+let editingEventTypeId = null;
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const TIMEZONES = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : ['UTC','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','Europe/London','Europe/Paris'];
+
+// ── Init ──────────────────────────────────────────
+async function init() {
+  await loadUser();
+  await loadSection('bookings');
+  populateTimezones();
+}
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    credentials: 'include',
+  });
+  if (res.status === 401 || res.status === 403) { window.location.href = '/login'; return; }
+  return res;
+}
+
+async function loadUser() {
+  const res = await apiFetch('/v1/auth/me');
+  if (!res || !res.ok) { window.location.href = '/login'; return; }
+  currentUser = await res.json();
+  document.getElementById('user-name').textContent = currentUser.name;
+  document.getElementById('user-email').textContent = currentUser.email;
+  document.getElementById('user-avatar').textContent = currentUser.name?.[0]?.toUpperCase() || '?';
+  document.getElementById('settings-name').value = currentUser.name || '';
+  document.getElementById('settings-email').value = currentUser.email || '';
+  document.getElementById('settings-timezone').value = currentUser.timezone || 'UTC';
+  document.getElementById('settings-booking-url').textContent = `https://schedkit.net/book/${currentUser.slug}`;
+  document.getElementById('settings-api-key').dataset.key = currentUser.api_key;
+}
+
+// ── Navigation ────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const section = item.dataset.section;
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById('section-' + section).classList.add('active');
+    const titles = { bookings:'Bookings','event-types':'Event Types',availability:'Availability',blackout:'Blackout Dates',settings:'Settings' };
+    document.getElementById('page-title').textContent = titles[section] || section;
+    loadSection(section);
+  });
+});
+
+async function loadSection(name) {
+  if (name === 'bookings') await loadBookings();
+  if (name === 'event-types') await loadEventTypes();
+  if (name === 'availability') await loadAvailability();
+  if (name === 'blackout') await loadBlackout();
+}
+
+// ── Bookings ──────────────────────────────────────
+async function loadBookings() {
+  const res = await apiFetch('/v1/bookings?limit=100');
+  if (!res?.ok) return;
+  const { bookings, total } = await res.json();
+
+  const now = new Date();
+  const upcoming = bookings.filter(b => b.status === 'confirmed' && new Date(b.start_time) > now);
+  const cancelled = bookings.filter(b => b.status === 'cancelled');
+
+  document.getElementById('stat-upcoming').textContent = upcoming.length;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-cancelled').textContent = cancelled.length;
+
+  if (!bookings.length) {
+    document.getElementById('bookings-table').innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>No bookings yet. Share your booking link to get started.</p></div>`;
+    return;
+  }
+
+  const rows = bookings.map(b => {
+    const start = new Date(b.start_time);
+    const dateStr = start.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const timeStr = start.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    return `<tr>
+      <td><strong>${esc(b.attendee_name)}</strong><br><span style="color:var(--muted);font-size:12px">${esc(b.attendee_email)}</span></td>
+      <td>${dateStr}<br><span style="color:var(--muted);font-size:12px">${timeStr}</span></td>
+      <td><span class="badge badge-${b.status}">${b.status}</span></td>
+      <td style="color:var(--muted);font-size:12px">${esc(b.attendee_timezone || '')}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('bookings-table').innerHTML = `<table>
+    <thead><tr><th>Attendee</th><th>Date & Time</th><th>Status</th><th>Timezone</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ── Event Types ───────────────────────────────────
+async function loadEventTypes() {
+  const res = await apiFetch('/v1/event-types');
+  if (!res?.ok) return;
+  const { event_types } = await res.json();
+
+  if (!event_types.length) {
+    document.getElementById('event-types-list').innerHTML = `<div class="empty"><div class="empty-icon">⚡</div><p>No event types yet. Create one to start accepting bookings.</p></div>`;
+    return;
+  }
+
+  const cards = event_types.map(et => `
+    <div class="table-wrap" style="margin-bottom:12px;padding:20px 24px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+        <div>
+          <div style="font-weight:700;font-size:16px;margin-bottom:4px">${esc(et.title)}</div>
+          <div style="color:var(--muted);font-size:13px;margin-bottom:10px">${et.duration_minutes} min · label: ${esc(et.appointment_label || 'meeting')} · notice: ${et.min_notice_minutes || 0}min</div>
+          <div class="booking-link-box" style="max-width:460px">
+            <code>schedkit.net/book/${esc(currentUser?.slug || '')}/${esc(et.slug)}</code>
+            <button class="copy-btn" onclick="copyText('https://schedkit.net/book/${esc(currentUser?.slug || '')}/${esc(et.slug)}')">Copy</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn btn-ghost" onclick="openEventTypeModal(${JSON.stringify(et).replace(/"/g,'&quot;')})">Edit</button>
+          <button class="btn btn-danger" onclick="deleteEventType(${et.Id})">Delete</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('event-types-list').innerHTML = cards;
+}
+
+function openEventTypeModal(et) {
+  editingEventTypeId = et?.Id || null;
+  document.getElementById('et-modal-title').textContent = et ? 'Edit Event Type' : 'New Event Type';
+  document.getElementById('et-title').value = et?.title || '';
+  document.getElementById('et-slug').value = et?.slug || '';
+  document.getElementById('et-label').value = et?.appointment_label || '';
+  document.getElementById('et-desc').value = et?.description || '';
+  document.getElementById('et-duration').value = et?.duration_minutes || 30;
+  document.getElementById('et-notice').value = et?.min_notice_minutes || 0;
+  document.getElementById('et-buffer-before').value = et?.buffer_before || 0;
+  document.getElementById('et-buffer-after').value = et?.buffer_after || 0;
+  document.getElementById('et-location-type').value = et?.location_type || '';
+  document.getElementById('et-location').value = et?.location || '';
+  document.getElementById('et-webhook').value = et?.webhook_url || '';
+  openModal('et-modal');
+}
+
+// Auto-slug from title
+document.getElementById('et-title').addEventListener('input', e => {
+  if (!editingEventTypeId) {
+    document.getElementById('et-slug').value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  }
+});
+
+async function saveEventType() {
+  const body = {
+    title: v('et-title'), slug: v('et-slug'),
+    appointment_label: v('et-label') || 'meeting',
+    description: v('et-desc'),
+    duration_minutes: parseInt(v('et-duration')),
+    min_notice_minutes: parseInt(v('et-notice')) || 0,
+    buffer_before: parseInt(v('et-buffer-before')) || 0,
+    buffer_after: parseInt(v('et-buffer-after')) || 0,
+    location_type: v('et-location-type') || null,
+    location: v('et-location') || null,
+    webhook_url: v('et-webhook') || null,
+  };
+  if (!body.title || !body.slug || !body.duration_minutes) return toast('Title, slug, and duration required', 'err');
+
+  const url = editingEventTypeId ? `/v1/event-types/${editingEventTypeId}` : '/v1/event-types';
+  const method = editingEventTypeId ? 'PATCH' : 'POST';
+  const res = await apiFetch(url, { method, body: JSON.stringify(body) });
+  if (res?.ok) {
+    closeModal('et-modal'); toast('Saved!', 'ok'); await loadEventTypes();
+  } else toast('Save failed', 'err');
+}
+
+async function deleteEventType(id) {
+  if (!confirm('Delete this event type? This cannot be undone.')) return;
+  const res = await apiFetch(`/v1/event-types/${id}`, { method: 'DELETE' });
+  if (res?.ok) { toast('Deleted', 'ok'); await loadEventTypes(); }
+  else toast('Delete failed', 'err');
+}
+
+// ── Availability ──────────────────────────────────
+let availData = {};
+
+async function loadAvailability() {
+  const res = await apiFetch('/v1/availability');
+  if (!res?.ok) return;
+  const { availability } = await res.json();
+
+  // Build map: day_of_week → rule
+  availData = {};
+  for (const a of availability) availData[a.day_of_week] = a;
+
+  const grid = document.getElementById('avail-grid');
+  grid.innerHTML = DAYS.map((day, i) => {
+    const rule = availData[i];
+    const enabled = !!rule;
+    return `<div class="avail-row" id="avail-row-${i}">
+      <div class="avail-day">${day}</div>
+      <label class="avail-toggle">
+        <input type="checkbox" id="avail-enabled-${i}" ${enabled ? 'checked' : ''} onchange="toggleAvailDay(${i})">
+        <span class="slider"></span>
+      </label>
+      <div class="avail-times" id="avail-times-${i}" style="${enabled ? '' : 'opacity:.3;pointer-events:none'}">
+        <input type="time" id="avail-start-${i}" value="${rule?.start_time || '09:00'}" ${enabled ? '' : 'disabled'}>
+        <span>to</span>
+        <input type="time" id="avail-end-${i}" value="${rule?.end_time || '17:00'}" ${enabled ? '' : 'disabled'}>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleAvailDay(i) {
+  const enabled = document.getElementById(`avail-enabled-${i}`).checked;
+  const times = document.getElementById(`avail-times-${i}`);
+  times.style.opacity = enabled ? '1' : '.3';
+  times.style.pointerEvents = enabled ? '' : 'none';
+  document.getElementById(`avail-start-${i}`).disabled = !enabled;
+  document.getElementById(`avail-end-${i}`).disabled = !enabled;
+}
+
+async function saveAvailability() {
+  const btn = document.getElementById('save-avail-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  try {
+    for (let i = 0; i < 7; i++) {
+      const enabled = document.getElementById(`avail-enabled-${i}`).checked;
+      const existing = availData[i];
+
+      if (!enabled) {
+        if (existing) await apiFetch(`/v1/availability/${existing.Id}`, { method: 'DELETE' });
+        continue;
+      }
+
+      const start = document.getElementById(`avail-start-${i}`).value;
+      const end = document.getElementById(`avail-end-${i}`).value;
+      const body = { day_of_week: i, start_time: start, end_time: end, timezone: currentUser?.timezone || 'UTC' };
+
+      if (existing) {
+        await apiFetch(`/v1/availability/${existing.Id}`, { method: 'PATCH', body: JSON.stringify(body) });
+      } else {
+        await apiFetch('/v1/availability', { method: 'POST', body: JSON.stringify(body) });
+      }
+    }
+    toast('Availability saved!', 'ok');
+    await loadAvailability();
+  } catch { toast('Save failed', 'err'); }
+
+  btn.disabled = false; btn.textContent = 'Save Changes';
+}
+
+// ── Blackout ──────────────────────────────────────
+async function loadBlackout() {
+  const res = await apiFetch('/v1/blackout');
+  if (!res?.ok) return;
+  const { blackout } = await res.json();
+
+  if (!blackout.length) {
+    document.getElementById('blackout-list').innerHTML = `<div class="empty"><div class="empty-icon">✅</div><p>No blackout dates set. You're available on all scheduled days.</p></div>`;
+    return;
+  }
+
+  document.getElementById('blackout-list').innerHTML = blackout.map(b => {
+    const start = new Date(b.start_time);
+    const end = new Date(b.end_time);
+    const startStr = start.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const endStr = end.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const isFullDay = start.getHours() === 0 && end.getHours() === 23;
+    const dateLabel = startStr === endStr
+      ? (isFullDay ? startStr : `${startStr} · ${start.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} – ${end.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`)
+      : `${startStr} → ${endStr}`;
+    return `<div class="blackout-item">
+      <div class="blackout-info">
+        <div class="date">🚫 ${dateLabel}</div>
+        ${b.reason ? `<div class="reason">${esc(b.reason)}</div>` : ''}
+      </div>
+      <button class="btn btn-danger" onclick="deleteBlackout(${b.Id})">Remove</button>
+    </div>`;
+  }).join('');
+}
+
+function openBlackoutModal() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('bo-start').value = today;
+  document.getElementById('bo-end').value = '';
+  document.getElementById('bo-start-time').value = '';
+  document.getElementById('bo-end-time').value = '';
+  document.getElementById('bo-reason').value = '';
+  openModal('blackout-modal');
+}
+
+async function saveBlackout() {
+  const body = {
+    date: v('bo-start'),
+    end_date: v('bo-end') || undefined,
+    start_time: v('bo-start-time') || undefined,
+    end_time: v('bo-end-time') || undefined,
+    reason: v('bo-reason') || undefined,
+  };
+  if (!body.date) return toast('Start date required', 'err');
+  const res = await apiFetch('/v1/blackout', { method: 'POST', body: JSON.stringify(body) });
+  if (res?.ok) { closeModal('blackout-modal'); toast('Blackout added', 'ok'); await loadBlackout(); }
+  else toast('Failed to add blackout', 'err');
+}
+
+async function deleteBlackout(id) {
+  if (!confirm('Remove this blackout date?')) return;
+  const res = await apiFetch(`/v1/blackout/${id}`, { method: 'DELETE' });
+  if (res?.ok) { toast('Removed', 'ok'); await loadBlackout(); }
+  else toast('Failed', 'err');
+}
+
+// ── Settings ──────────────────────────────────────
+function populateTimezones() {
+  const sel = document.getElementById('settings-timezone');
+  TIMEZONES.forEach(tz => {
+    const opt = document.createElement('option');
+    opt.value = tz; opt.textContent = tz;
+    sel.appendChild(opt);
+  });
+  if (currentUser?.timezone) sel.value = currentUser.timezone;
+}
+
+async function saveSettings() {
+  const body = {
+    name: v('settings-name'),
+    email: v('settings-email'),
+    timezone: document.getElementById('settings-timezone').value,
+  };
+  const res = await apiFetch('/v1/auth/me', { method: 'PATCH', body: JSON.stringify(body) });
+  if (res?.ok) { toast('Settings saved!', 'ok'); await loadUser(); }
+  else toast('Save failed', 'err');
+}
+
+function revealApiKey() {
+  const el = document.getElementById('settings-api-key');
+  el.textContent = el.dataset.key;
+}
+
+function copyBookingUrl() {
+  copyText(`https://schedkit.net/book/${currentUser?.slug}`);
+}
+
+// ── Auth ──────────────────────────────────────────
+async function logout() {
+  await fetch('/v1/auth/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/login';
+}
+
+// ── Utils ─────────────────────────────────────────
+function v(id) { return document.getElementById(id)?.value?.trim() || ''; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function copyText(text) { navigator.clipboard.writeText(text).then(() => toast('Copied!', 'ok')); }
+function toast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast show ${type}`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+init();
+</script>
+</body>
+</html>

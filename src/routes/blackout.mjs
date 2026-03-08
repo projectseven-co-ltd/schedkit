@@ -1,12 +1,17 @@
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
+import { requireSession } from '../middleware/session.mjs';
+async function requireAuth(req, reply) {
+  if (req.headers['x-api-key']) return requireApiKey(req, reply);
+  return requireSession(req, reply);
+}
 
 export default async function blackoutRoutes(fastify) {
 
   // List blackout dates
   fastify.get('/blackout', {
-    preHandler: requireApiKey,
+    preHandler: requireAuth,
     schema: {
       tags: ['Blackout Dates'],
       summary: 'List blackout dates',
@@ -20,7 +25,7 @@ export default async function blackoutRoutes(fastify) {
 
   // Add blackout date
   fastify.post('/blackout', {
-    preHandler: requireApiKey,
+    preHandler: requireAuth,
     schema: {
       tags: ['Blackout Dates'],
       summary: 'Add a blackout date or range',
@@ -64,7 +69,7 @@ export default async function blackoutRoutes(fastify) {
 
   // Delete blackout date
   fastify.delete('/blackout/:id', {
-    preHandler: requireApiKey,
+    preHandler: requireAuth,
     schema: {
       tags: ['Blackout Dates'],
       summary: 'Remove a blackout date',

@@ -1,6 +1,11 @@
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
+import { requireSession } from '../middleware/session.mjs';
+async function requireAuth(req, reply) {
+  if (req.headers['x-api-key']) return requireApiKey(req, reply);
+  return requireSession(req, reply);
+}
 
 const eventTypeSchema = {
   type: 'object',
@@ -25,7 +30,7 @@ const eventTypeSchema = {
 export default async function eventTypesRoutes(fastify) {
 
   fastify.get('/event-types', {
-    preHandler: requireApiKey,
+    preHandler: requireAuth,
     schema: {
       tags: ['Event Types'],
       summary: 'List event types',
@@ -38,7 +43,7 @@ export default async function eventTypesRoutes(fastify) {
   });
 
   fastify.get('/event-types/:id', {
-    preHandler: requireApiKey,
+    preHandler: requireAuth,
     schema: {
       tags: ['Event Types'],
       summary: 'Get event type',
@@ -52,7 +57,7 @@ export default async function eventTypesRoutes(fastify) {
   });
 
   fastify.post('/event-types', {
-    preHandler: requireApiKey,
+    preHandler: requireAuth,
     schema: {
       tags: ['Event Types'],
       summary: 'Create event type',
@@ -103,7 +108,7 @@ export default async function eventTypesRoutes(fastify) {
   });
 
   fastify.patch('/event-types/:id', {
-    preHandler: requireApiKey,
+    preHandler: requireAuth,
     schema: {
       tags: ['Event Types'],
       summary: 'Update event type',
@@ -118,7 +123,7 @@ export default async function eventTypesRoutes(fastify) {
   });
 
   fastify.delete('/event-types/:id', {
-    preHandler: requireApiKey,
+    preHandler: requireAuth,
     schema: {
       tags: ['Event Types'],
       summary: 'Delete event type',

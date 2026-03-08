@@ -70,6 +70,25 @@ const TABLES = [
       { title: 'reason', uidt: 'SingleLineText' },
     ],
   },
+  {
+    name: 'magic_links',
+    columns: [
+      { title: 'token', uidt: 'SingleLineText' },
+      { title: 'user_id', uidt: 'SingleLineText' },
+      { title: 'expires_at', uidt: 'DateTime' },
+      { title: 'used', uidt: 'Checkbox' },
+      { title: 'created_at', uidt: 'DateTime' },
+    ],
+  },
+  {
+    name: 'sessions',
+    columns: [
+      { title: 'token', uidt: 'SingleLineText' },
+      { title: 'user_id', uidt: 'SingleLineText' },
+      { title: 'expires_at', uidt: 'DateTime' },
+      { title: 'created_at', uidt: 'DateTime' },
+    ],
+  },
 ];
 
 export async function ensureSchema() {
