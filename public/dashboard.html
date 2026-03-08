@@ -5,7 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SchedKit Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
+/* Flatpickr dark override */
+.flatpickr-calendar{background:#111114;border:1px solid #1e1e24;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.6);font-family:'Space Grotesk',sans-serif}
+.flatpickr-calendar.arrowTop::before,.flatpickr-calendar.arrowTop::after{display:none}
+.flatpickr-month{background:#111114;color:#e8e8ea;padding:8px 0}
+.flatpickr-current-month{color:#e8e8ea;font-size:14px}
+.flatpickr-current-month .numInputWrapper span{border-color:#1e1e24}
+.flatpickr-current-month input.cur-year{color:#e8e8ea}
+.flatpickr-current-month .flatpickr-monthDropdown-months{background:#111114;color:#e8e8ea}
+.flatpickr-prev-month,.flatpickr-next-month{color:#5a5a6e!important;fill:#5a5a6e!important}
+.flatpickr-prev-month:hover,.flatpickr-next-month:hover{color:#DFFF00!important;fill:#DFFF00!important}
+.flatpickr-weekday{background:#111114;color:#5a5a6e;font-size:11px}
+.flatpickr-day{color:#e8e8ea;border-radius:6px}
+.flatpickr-day:hover{background:#1e1e24;border-color:#1e1e24}
+.flatpickr-day.selected,.flatpickr-day.selected:hover{background:#DFFF00;border-color:#DFFF00;color:#0a0a0b;font-weight:700}
+.flatpickr-day.today{border-color:#5a5a6e}
+.flatpickr-day.today:hover{background:#1e1e24}
+.flatpickr-day.disabled,.flatpickr-day.prevMonthDay,.flatpickr-day.nextMonthDay{color:#2a2a36}
+.flatpickr-day.inRange{background:#1a1f0a;border-color:#1a1f0a}
+.flatpickr-day.startRange,.flatpickr-day.endRange{background:#DFFF00;border-color:#DFFF00;color:#0a0a0b}
+.numInputWrapper:hover{background:#1e1e24}
+.numInputWrapper span{border-color:#1e1e24}
+.numInputWrapper span:hover{background:#1e1e24}
+.flatpickr-time{border-top:1px solid #1e1e24;background:#111114}
+.flatpickr-time input{color:#e8e8ea;background:#111114}
+.flatpickr-time input:hover,.flatpickr-time input:focus{background:#1e1e24}
+.flatpickr-time .flatpickr-time-separator{color:#5a5a6e}
+.flatpickr-time .numInputWrapper span{border-color:#1e1e24}
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0a0a0b;--surface:#111114;--surface2:#16161a;--border:#1e1e24;
@@ -355,23 +384,23 @@ tr:hover td{background:var(--surface2)}
     <div class="form-grid">
       <div class="form-row">
         <label>Start date</label>
-        <input type="date" id="bo-start">
+        <input type="text" id="bo-start" placeholder="YYYY-MM-DD" readonly>
       </div>
       <div class="form-row">
         <label>End date <span style="color:var(--muted)">(optional)</span></label>
-        <input type="date" id="bo-end">
+        <input type="text" id="bo-end" placeholder="Optional end date" readonly>
         <div class="form-hint">Leave blank for single day</div>
       </div>
     </div>
     <div class="form-grid">
       <div class="form-row">
         <label>Start time <span style="color:var(--muted)">(optional)</span></label>
-        <input type="time" id="bo-start-time">
+        <input type="text" id="bo-start-time" placeholder="HH:MM" readonly>
         <div class="form-hint">Leave blank to block full day</div>
       </div>
       <div class="form-row">
         <label>End time <span style="color:var(--muted)">(optional)</span></label>
-        <input type="time" id="bo-end-time">
+        <input type="text" id="bo-end-time" placeholder="HH:MM" readonly>
       </div>
     </div>
     <div class="form-row">
@@ -387,6 +416,7 @@ tr:hover td{background:var(--surface2)}
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 const API = '';
 let currentUser = null;
@@ -671,12 +701,35 @@ async function loadBlackout() {
   }).join('');
 }
 
+let fpStart, fpEnd, fpStartTime, fpEndTime;
+
 function openBlackoutModal() {
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('bo-start').value = today;
-  document.getElementById('bo-end').value = '';
-  document.getElementById('bo-start-time').value = '';
-  document.getElementById('bo-end-time').value = '';
+
+  // Destroy previous instances
+  if (fpStart) fpStart.destroy();
+  if (fpEnd) fpEnd.destroy();
+  if (fpStartTime) fpStartTime.destroy();
+  if (fpEndTime) fpEndTime.destroy();
+
+  fpStart = flatpickr('#bo-start', {
+    defaultDate: today, dateFormat: 'Y-m-d',
+    minDate: 'today', disableMobile: true,
+    onChange: ([d]) => { if (fpEnd) fpEnd.set('minDate', d); },
+  });
+  fpEnd = flatpickr('#bo-end', {
+    dateFormat: 'Y-m-d', minDate: today,
+    placeholder: 'Optional end date', disableMobile: true,
+  });
+  fpStartTime = flatpickr('#bo-start-time', {
+    enableTime: true, noCalendar: true, dateFormat: 'H:i',
+    time_24hr: true, disableMobile: true,
+  });
+  fpEndTime = flatpickr('#bo-end-time', {
+    enableTime: true, noCalendar: true, dateFormat: 'H:i',
+    time_24hr: true, disableMobile: true,
+  });
+
   document.getElementById('bo-reason').value = '';
   openModal('blackout-modal');
 }
