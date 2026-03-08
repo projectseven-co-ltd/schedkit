@@ -72,6 +72,7 @@ function buildPage(username, eventSlug, { reschedule, name, email, tz } = {}) {
   .event-meta { display: flex; gap: 20px; margin-top: 10px; }
   .event-meta span { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
   .event-meta .icon { font-size: 14px; }
+  .event-desc { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
 
   /* Layout */
   .picker { display: flex; border-bottom: 1px solid var(--border); }
@@ -191,6 +192,7 @@ function buildPage(username, eventSlug, { reschedule, name, email, tz } = {}) {
     <div class="event-host" id="event-host">Loading...</div>
     <div class="event-title" id="event-title"></div>
     <div class="event-meta" id="event-meta"></div>
+    <div class="event-desc" id="event-desc" style="display:none"></div>
   </div>
 
   <!-- Step 1: Pick date + slot -->
@@ -307,6 +309,13 @@ function buildPage(username, eventSlug, { reschedule, name, email, tz } = {}) {
            <span><span class="icon">\${locIcon}</span>\${locLabel}</span>\`;
         document.title = RESCHEDULE_TOKEN ? \`Reschedule \${label}: \${eventType.title}\` : \`Book a \${label}: \${eventType.title}\`;
         document.getElementById('btn-confirm').textContent = RESCHEDULE_TOKEN ? \`Confirm Reschedule\` : \`Confirm \${label.charAt(0).toUpperCase() + label.slice(1)}\`;
+
+        // Description
+        const descEl = document.getElementById('event-desc');
+        if (eventType.description) {
+          descEl.textContent = eventType.description;
+          descEl.style.display = '';
+        }
 
         // Render custom fields
         if (eventType.custom_fields) {

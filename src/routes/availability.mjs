@@ -117,6 +117,7 @@ export default async function availabilityRoutes(fastify) {
         location_type: etResult.list[0].location_type || null,
         location: etResult.list[0].location || null,
         custom_fields: etResult.list[0].custom_fields || null,
+        description: etResult.list[0].description || null,
       },
       slots
     };
