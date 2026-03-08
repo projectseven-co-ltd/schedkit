@@ -128,19 +128,56 @@ export default async function bookingsRoutes(fastify) {
     });
   });
 
-  // PUBLIC: Cancel booking
+  // PUBLIC: Cancel booking (POST — API)
   fastify.post('/cancel/:token', async (req, reply) => {
     const result = await db.find(tables.bookings, `(cancel_token,eq,${req.params.token})`);
     if (!result.list?.length) return reply.code(404).send({ error: 'Invalid token' });
     const booking = result.list[0];
     if (booking.status === 'cancelled') return reply.code(400).send({ error: 'Already cancelled' });
-
     await db.update(tables.bookings, booking.Id, { status: 'cancelled' });
-
-    // Fire webhook
     const et = await db.get(tables.event_types, booking.event_type_id);
     await fireWebhook(et?.webhook_url, { event: 'booking.cancelled', booking: { uid: booking.uid } });
-
     return { status: 'cancelled', uid: booking.uid };
   });
+
+  // PUBLIC: Cancel booking (GET — email link click)
+  fastify.get('/cancel/:token', async (req, reply) => {
+    const result = await db.find(tables.bookings, `(cancel_token,eq,${req.params.token})`);
+    if (!result.list?.length) {
+      return reply.type('text/html').send(cancelPage('Invalid or expired cancellation link.', null, false));
+    }
+    const booking = result.list[0];
+    if (booking.status === 'cancelled') {
+      return reply.type('text/html').send(cancelPage('This booking has already been cancelled.', booking, false));
+    }
+    await db.update(tables.bookings, booking.Id, { status: 'cancelled' });
+    const et = await db.get(tables.event_types, booking.event_type_id);
+    await fireWebhook(et?.webhook_url, { event: 'booking.cancelled', booking: { uid: booking.uid } });
+    return reply.type('text/html').send(cancelPage('Your booking has been cancelled.', booking, true));
+  });
+}
+
+function cancelPage(message, booking, success) {
+  const icon = success ? '✅' : '⚠️';
+  const detail = booking ? `<p style="font-family:monospace;color:#DFFF00;margin:12px 0 0;font-size:13px;">Booking ID: ${booking.uid}</p>` : '';
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Booking Cancelled</title>
+<style>
+  body{margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Arial,sans-serif;color:#e8e8ea;display:flex;align-items:center;justify-content:center;min-height:100vh;}
+  .card{background:#111114;border:1px solid #1e1e24;border-radius:12px;padding:48px 40px;text-align:center;max-width:420px;width:90%;}
+  .icon{font-size:48px;margin-bottom:16px;}
+  h2{font-size:20px;font-weight:600;margin:0 0 8px;}
+  p{color:#5a5a6e;font-size:14px;margin:0;}
+  .brand{font-family:monospace;color:#DFFF00;font-size:11px;margin-top:32px;opacity:0.6;}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">${icon}</div>
+    <h2>${message}</h2>
+    ${detail}
+    <div class="brand">// schedkit</div>
+  </div>
+</body></html>`;
 }
