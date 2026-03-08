@@ -106,6 +106,12 @@ fastify.get('/onboarding', async (req, reply) => {
   return reply.type('text/html').send(readFileSync(join(__dirname, '../public/onboarding.html')));
 });
 
+// 404 handler
+fastify.setNotFoundHandler(async (req, reply) => {
+  const { readFileSync } = await import('fs');
+  return reply.code(404).type('text/html').send(readFileSync(join(__dirname, '../public/404.html')));
+});
+
 // Health
 fastify.get('/health', {
   schema: {

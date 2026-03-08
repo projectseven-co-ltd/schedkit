@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page Not Found — SchedKit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#0a0a0b;--surface:#111114;--border:#1e1e24;--accent:#DFFF00;--text:#e8e8ea;--muted:#5a5a6e;--font-sans:'Space Grotesk',sans-serif;--font-mono:'Fira Code',monospace}
+  [data-lights="on"]{--bg:#f5f4ef;--surface:#edecea;--border:rgba(0,0,0,0.1);--accent:#4a5500;--text:#141410;--muted:#5a5a4a}
+
+  body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;overflow:hidden}
+
+  /* CRT scanline overlay */
+  body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:100}
+
+  .stage{text-align:center;position:relative;padding:40px 20px}
+
+  /* Glitch number */
+  .code{font-family:var(--font-mono);font-size:clamp(80px,18vw,160px);font-weight:500;color:var(--accent);line-height:1;position:relative;display:inline-block;animation:flicker 4s infinite}
+  .code::before,.code::after{content:'404';position:absolute;inset:0;font-family:var(--font-mono);font-size:inherit;font-weight:inherit;line-height:inherit}
+  .code::before{color:#ff5f5f;clip-path:polygon(0 20%,100% 20%,100% 40%,0 40%);transform:translateX(-3px);animation:glitch-r 2.5s infinite}
+  .code::after{color:#00d4ff;clip-path:polygon(0 55%,100% 55%,100% 75%,0 75%);transform:translateX(3px);animation:glitch-b 2.5s infinite}
+
+  @keyframes flicker{0%,95%,100%{opacity:1}96%{opacity:.7}97%{opacity:1}98%{opacity:.4}99%{opacity:1}}
+  @keyframes glitch-r{0%,90%,100%{transform:translateX(-3px);clip-path:polygon(0 20%,100% 20%,100% 40%,0 40%)}92%{transform:translateX(6px);clip-path:polygon(0 15%,100% 15%,100% 45%,0 45%)}94%{transform:translateX(-3px)}}
+  @keyframes glitch-b{0%,88%,100%{transform:translateX(3px);clip-path:polygon(0 55%,100% 55%,100% 75%,0 75%)}90%{transform:translateX(-6px);clip-path:polygon(0 50%,100% 50%,100% 80%,0 80%)}93%{transform:translateX(3px)}}
+
+  h1{font-size:clamp(16px,3vw,22px);font-weight:600;margin:16px 0 10px;letter-spacing:0.02em}
+  .sub{font-family:var(--font-mono);font-size:13px;color:var(--muted);margin-bottom:36px;letter-spacing:0.05em}
+  .path{font-family:var(--font-mono);font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:6px 14px;border-radius:6px;display:inline-block;margin-bottom:36px;max-width:90vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:8px;font-family:var(--font-sans);font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:opacity .15s;border:none}
+  .btn-primary{background:var(--accent);color:var(--bg)}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+  .btn:hover{opacity:.8}
+
+  /* Floating dots */
+  .dots{position:fixed;inset:0;pointer-events:none;z-index:0}
+  .dot{position:absolute;width:2px;height:2px;border-radius:50%;background:var(--accent);opacity:0;animation:drift var(--dur,8s) var(--delay,0s) infinite ease-in-out}
+  @keyframes drift{0%{opacity:0;transform:translateY(0) translateX(0)}10%{opacity:.4}90%{opacity:.2}100%{opacity:0;transform:translateY(-80px) translateX(var(--dx,20px))}}
+
+  .stage{position:relative;z-index:1}
+
+  /* Terminal blink cursor */
+  .cursor{display:inline-block;width:10px;height:1.1em;background:var(--accent);vertical-align:text-bottom;margin-left:2px;animation:blink .8s step-end infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+</style>
+</head>
+<body>
+<div class="dots" id="dots"></div>
+<div class="stage">
+  <div class="code">404</div>
+  <h1>Nothing here<span class="cursor"></span></h1>
+  <p class="sub">// PAGE_NOT_FOUND · SIGNAL_LOST</p>
+  <div class="path" id="badpath"></div>
+  <div class="actions">
+    <a href="/" class="btn btn-primary">← Home</a>
+    <a href="/login" class="btn btn-ghost">Log in</a>
+  </div>
+</div>
+<script>
+// Show the bad path
+const p = document.getElementById('badpath');
+if (p) p.textContent = window.location.pathname;
+
+// Lights
+(function(){
+  const stored = localStorage.getItem('p7-lights');
+  const on = stored === '1' || (stored === null && window.matchMedia?.('(prefers-color-scheme: light)').matches);
+  document.documentElement.setAttribute('data-lights', on ? 'on' : 'off');
+})();
+
+// Floating dots
+const container = document.getElementById('dots');
+for (let i = 0; i < 28; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot';
+  d.style.cssText = `left:${Math.random()*100}%;top:${20+Math.random()*80}%;--dur:${6+Math.random()*10}s;--delay:${Math.random()*8}s;--dx:${(Math.random()-0.5)*60}px`;
+  container.appendChild(d);
+}
+</script>
+</body>
+</html>
