@@ -23,7 +23,22 @@ async function fireWebhook(url, payload) {
 
 export default async function bookingsRoutes(fastify) {
   // List bookings (authed)
-  fastify.get('/bookings', { preHandler: requireApiKey }, async (req) => {
+  fastify.get('/bookings', {
+    preHandler: requireApiKey,
+    schema: {
+      tags: ['Bookings'],
+      summary: 'List bookings',
+      security: [{ apiKey: [] }],
+      querystring: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['confirmed', 'cancelled', 'rescheduled'], description: 'Filter by status' },
+          limit: { type: 'integer', default: 50 },
+          page: { type: 'integer', default: 1 },
+        },
+      },
+    },
+  }, async (req) => {
     const { status, limit = 50, page = 1 } = req.query;
     let where = `(user_id,eq,${req.user.Id})`;
     if (status) where += `~and(status,eq,${status})`;
@@ -38,7 +53,15 @@ export default async function bookingsRoutes(fastify) {
   });
 
   // Get single booking (authed)
-  fastify.get('/bookings/:id', { preHandler: requireApiKey }, async (req, reply) => {
+  fastify.get('/bookings/:id', {
+    preHandler: requireApiKey,
+    schema: {
+      tags: ['Bookings'],
+      summary: 'Get booking',
+      security: [{ apiKey: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } } },
+    },
+  }, async (req, reply) => {
     const row = await db.get(tables.bookings, req.params.id);
     if (!row || row.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
     return row;
