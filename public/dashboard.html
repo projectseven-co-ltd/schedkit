@@ -675,7 +675,8 @@ async function apiFetch(path, opts = {}) {
     headers: { ...(hasBody ? { 'Content-Type': 'application/json' } : {}), ...(opts.headers || {}) },
     credentials: 'include',
   });
-  if (res.status === 401 || res.status === 403) { window.location.href = '/login'; return; }
+  if (res.status === 401) { window.location.href = '/login'; return; }
+  if (res.status === 403) { toast('You don\'t have permission to do that', 'err'); return; }
   return res;
 }
 
@@ -1293,7 +1294,7 @@ async function loadOrgDetail(orgSlug) {
                   </td>
                   <td><span class="badge">${t.routing === 'round_robin' ? '🔄 Round Robin' : '🎲 Random'}</span></td>
                   <td style="text-align:right;white-space:nowrap">
-                    <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="openManageTeamModal('${esc(org.slug)}','${esc(t.slug)}')">Manage</button>
+                    ${isAdmin ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="openManageTeamModal('${esc(org.slug)}','${esc(t.slug)}')">Manage</button>` : ''}
                     ${isAdmin ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;color:var(--red)" onclick="deleteTeam('${esc(org.slug)}','${esc(t.slug)}')">Delete</button>` : ''}
                   </td>
                 </tr>`).join('')}
