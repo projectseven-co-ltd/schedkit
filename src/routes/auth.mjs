@@ -88,9 +88,17 @@ export default async function authRoutes(fastify) {
 
   // POST /v1/auth/logout
   fastify.post('/v1/auth/logout', async (req, reply) => {
+    const cookieHeader = req.headers['cookie'] || '';
+    const match = cookieHeader.match(/sk_session=([^;]+)/);
+    if (match) {
+      try {
+        const result = await db.find(tables.sessions, `(token,eq,${match[1]})`);
+        if (result.list?.length) await db.delete(tables.sessions, result.list[0].Id);
+      } catch {}
+    }
     reply
-      .header('Set-Cookie', 'sk_session=; Path=/; HttpOnly; Max-Age=0')
-      .redirect('/login');
+      .header('Set-Cookie', 'sk_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0')
+      .send({ ok: true });
   });
 
   // GET /v1/auth/me — return current session user

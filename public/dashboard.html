@@ -698,7 +698,8 @@ async function saveEventType() {
   const url = editingEventTypeId ? `/v1/event-types/${editingEventTypeId}` : '/v1/event-types';
   const method = editingEventTypeId ? 'PATCH' : 'POST';
   const res = await apiFetch(url, { method, body: JSON.stringify(body) });
-  if (res?.ok) {
+  if (!res) return; // apiFetch already redirected to /login
+  if (res.ok) {
     closeModal('et-modal'); toast('Saved!', 'ok'); await loadEventTypes();
   } else toast('Save failed', 'err');
 }
