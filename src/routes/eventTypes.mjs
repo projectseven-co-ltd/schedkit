@@ -2,6 +2,7 @@ import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
+
 async function requireAuth(req, reply) {
   if (req.headers['x-api-key']) return requireApiKey(req, reply);
   return requireSession(req, reply);
@@ -11,14 +12,14 @@ const eventTypeSchema = {
   type: 'object',
   properties: {
     Id: { type: 'integer' },
-    title: { type: 'string', description: 'Display name, e.g. "Discovery Call"' },
-    slug: { type: 'string', description: 'URL-friendly identifier, e.g. "discovery"' },
+    title: { type: 'string' },
+    slug: { type: 'string' },
     description: { type: 'string' },
     appointment_label: { type: 'string', description: 'Custom noun shown to attendees — "appointment", "inspection", "session", etc.' },
-    duration_minutes: { type: 'integer', description: 'Length of the event in minutes' },
-    buffer_before: { type: 'integer', description: 'Prep time in minutes before each booking' },
-    buffer_after: { type: 'integer', description: 'Recovery time in minutes after each booking' },
-    min_notice_minutes: { type: 'integer', description: 'Minimum advance notice required to book (e.g. 120 = must book at least 2h ahead)' },
+    duration_minutes: { type: 'integer' },
+    buffer_before: { type: 'integer' },
+    buffer_after: { type: 'integer' },
+    min_notice_minutes: { type: 'integer', description: 'Minimum advance notice required to book (minutes)' },
     max_bookings_per_day: { type: 'integer' },
     location: { type: 'string' },
     location_type: { type: 'string', enum: ['video', 'phone', 'in_person', 'other'] },
@@ -69,11 +70,11 @@ export default async function eventTypesRoutes(fastify) {
           title: { type: 'string' },
           slug: { type: 'string' },
           description: { type: 'string' },
-          appointment_label: { type: 'string', default: 'meeting', description: 'What to call the booking — meeting, appointment, inspection, session, etc.' },
+          appointment_label: { type: 'string', default: 'meeting' },
           duration_minutes: { type: 'integer' },
-          buffer_before: { type: 'integer', default: 0, description: 'Minutes of prep time before each booking' },
-          buffer_after: { type: 'integer', default: 0, description: 'Minutes of buffer after each booking' },
-          min_notice_minutes: { type: 'integer', default: 0, description: 'Minimum minutes in advance a booking must be made. E.g. 120 = 2 hours notice required.' },
+          buffer_before: { type: 'integer', default: 0 },
+          buffer_after: { type: 'integer', default: 0 },
+          min_notice_minutes: { type: 'integer', default: 0 },
           max_bookings_per_day: { type: 'integer' },
           location: { type: 'string' },
           location_type: { type: 'string', enum: ['video', 'phone', 'in_person', 'other'] },
@@ -119,7 +120,8 @@ export default async function eventTypesRoutes(fastify) {
   }, async (req, reply) => {
     const existing = await db.get(tables.event_types, req.params.id);
     if (!existing || existing.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
-    return await db.update(tables.event_types, req.params.id, req.body);
+    const updated = await db.update(tables.event_types, req.params.id, req.body);
+    return updated;
   });
 
   fastify.delete('/event-types/:id', {
