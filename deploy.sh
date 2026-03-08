@@ -5,12 +5,13 @@ set -e
 
 APP_DIR="/var/www/vhosts/schedkit.net/httpdocs"
 NODE="/opt/plesk/node/22/bin/node"
+NPM="/opt/plesk/node/22/bin/npm"
 PM2="$APP_DIR/node_modules/.bin/pm2"
 
 cd "$APP_DIR"
 
 echo "[deploy] Installing dependencies..."
-"$NODE" "$(which npm || echo /opt/plesk/node/22/bin/npm)" ci --omit=dev
+"$NPM" ci --omit=dev
 
 echo "[deploy] Reloading app via pm2..."
 if "$NODE" "$PM2" list | grep -q schedkit; then
