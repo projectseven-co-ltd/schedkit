@@ -9,7 +9,7 @@ const mj = Mailjet.apiConnect(
 const FROM_EMAIL = process.env.MJ_FROM_EMAIL || 'noreply@schedkit.net';
 const FROM_NAME  = process.env.MJ_FROM_NAME  || 'SchedKit';
 
-export async function sendBookingConfirmation({ attendee_name, attendee_email, host_name, event_title, start_time, timezone, cancel_url }) {
+export async function sendBookingConfirmation({ attendee_name, attendee_email, host_name, event_title, start_time, timezone, cancel_url, reschedule_url }) {
   const startLocal = new Date(start_time).toLocaleString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
     hour: '2-digit', minute: '2-digit', timeZone: timezone,
@@ -52,7 +52,9 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
             </table>
 
             <p style="margin:0 0 24px;font-size:13px;color:#5a5a6e;line-height:1.6;">
-              Need to cancel? <a href="${cancel_url}" style="color:#DFFF00;">Click here to cancel this booking</a>.
+              Need to make a change?
+              <a href="${reschedule_url || '#'}" style="color:#DFFF00;">Reschedule</a> &nbsp;·&nbsp;
+              <a href="${cancel_url}" style="color:#5a5a6e;">Cancel this booking</a>
             </p>
           </td>
         </tr>

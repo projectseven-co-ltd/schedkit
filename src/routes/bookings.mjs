@@ -108,6 +108,7 @@ export default async function bookingsRoutes(fastify) {
 
     // Send confirmation email
     const cancelUrl = `https://${process.env.BASE_DOMAIN || 'schedkit.net'}/v1/cancel/${cancel_token}`;
+    const rescheduleUrl = `https://${process.env.BASE_DOMAIN || 'schedkit.net'}/v1/reschedule/${reschedule_token}`;
     await sendBookingConfirmation({
       attendee_name,
       attendee_email,
@@ -116,6 +117,7 @@ export default async function bookingsRoutes(fastify) {
       start_time: start.toISOString(),
       timezone: attendee_timezone,
       cancel_url: cancelUrl,
+      reschedule_url: rescheduleUrl,
     });
 
     return reply.code(201).send({
@@ -140,44 +142,183 @@ export default async function bookingsRoutes(fastify) {
     return { status: 'cancelled', uid: booking.uid };
   });
 
-  // PUBLIC: Cancel booking (GET — email link click)
+  // PUBLIC: Cancel booking (GET — "Are you sure?" page)
   fastify.get('/cancel/:token', async (req, reply) => {
     const result = await db.find(tables.bookings, `(cancel_token,eq,${req.params.token})`);
-    if (!result.list?.length) {
-      return reply.type('text/html').send(cancelPage('Invalid or expired cancellation link.', null, false));
-    }
+    if (!result.list?.length) return reply.type('text/html').send(resultPage('⚠️', 'Invalid or expired cancellation link.', null));
     const booking = result.list[0];
-    if (booking.status === 'cancelled') {
-      return reply.type('text/html').send(cancelPage('This booking has already been cancelled.', booking, false));
-    }
+    if (booking.status === 'cancelled') return reply.type('text/html').send(resultPage('⚠️', 'This booking has already been cancelled.', booking));
+    const et = await db.get(tables.event_types, booking.event_type_id);
+    return reply.type('text/html').send(confirmCancelPage(booking, et));
+  });
+
+  // PUBLIC: Cancel booking (POST — confirmed)
+  fastify.post('/cancel/:token/confirm', async (req, reply) => {
+    const result = await db.find(tables.bookings, `(cancel_token,eq,${req.params.token})`);
+    if (!result.list?.length) return reply.type('text/html').send(resultPage('⚠️', 'Invalid or expired cancellation link.', null));
+    const booking = result.list[0];
+    if (booking.status === 'cancelled') return reply.type('text/html').send(resultPage('⚠️', 'Already cancelled.', booking));
     await db.update(tables.bookings, booking.Id, { status: 'cancelled' });
     const et = await db.get(tables.event_types, booking.event_type_id);
     await fireWebhook(et?.webhook_url, { event: 'booking.cancelled', booking: { uid: booking.uid } });
-    return reply.type('text/html').send(cancelPage('Your booking has been cancelled.', booking, true));
+    return reply.type('text/html').send(resultPage('✅', 'Your booking has been cancelled.', booking));
+  });
+
+  // PUBLIC: Reschedule (GET — shows booking page with context)
+  fastify.get('/reschedule/:token', async (req, reply) => {
+    const result = await db.find(tables.bookings, `(reschedule_token,eq,${req.params.token})`);
+    if (!result.list?.length) return reply.type('text/html').send(resultPage('⚠️', 'Invalid or expired reschedule link.', null));
+    const booking = result.list[0];
+    if (booking.status === 'cancelled') return reply.type('text/html').send(resultPage('⚠️', 'This booking has been cancelled and cannot be rescheduled.', booking));
+
+    // Look up user slug and event slug
+    const user = await db.get(tables.users, booking.user_id);
+    const et = await db.get(tables.event_types, booking.event_type_id);
+    if (!user || !et) return reply.type('text/html').send(resultPage('⚠️', 'Booking details not found.', null));
+
+    return reply.type('text/html').send(reschedulePage(booking, user, et, req.params.token));
+  });
+
+  // PUBLIC: Reschedule (POST — cancel old, create new)
+  fastify.post('/reschedule/:token', async (req, reply) => {
+    const { start_time, attendee_timezone = 'UTC' } = req.body;
+    if (!start_time) return reply.code(400).send({ error: 'start_time required' });
+
+    const result = await db.find(tables.bookings, `(reschedule_token,eq,${req.params.token})`);
+    if (!result.list?.length) return reply.code(404).send({ error: 'Invalid token' });
+    const oldBooking = result.list[0];
+    if (oldBooking.status === 'cancelled') return reply.code(400).send({ error: 'Booking already cancelled' });
+
+    const et = await db.get(tables.event_types, oldBooking.event_type_id);
+    const user = await db.get(tables.users, oldBooking.user_id);
+
+    const start = parseISO(start_time);
+    const end = addMinutes(start, et.duration_minutes);
+
+    // Conflict check (exclude self)
+    const existing = await db.find(tables.bookings, `(user_id,eq,${oldBooking.user_id})~and(status,eq,confirmed)`);
+    const conflict = (existing.list || []).some(b => {
+      if (b.Id === oldBooking.Id) return false;
+      const bStart = new Date(b.start_time).getTime();
+      const bEnd = new Date(b.end_time).getTime();
+      return bStart < end.getTime() && bEnd > start.getTime();
+    });
+    if (conflict) return reply.code(409).send({ error: 'Time slot no longer available' });
+
+    // Cancel old, create new
+    await db.update(tables.bookings, oldBooking.Id, { status: 'cancelled' });
+
+    const uid = nanoid(12);
+    const cancel_token = nanoid(24);
+    const reschedule_token = nanoid(24);
+
+    await db.create(tables.bookings, {
+      uid,
+      event_type_id: String(et.Id),
+      user_id: String(oldBooking.user_id),
+      attendee_name: oldBooking.attendee_name,
+      attendee_email: oldBooking.attendee_email,
+      attendee_timezone,
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      status: 'confirmed',
+      notes: oldBooking.notes || '',
+      cancel_token,
+      reschedule_token,
+      created_at: new Date().toISOString(),
+    });
+
+    const cancelUrl = `https://${process.env.BASE_DOMAIN || 'schedkit.net'}/v1/cancel/${cancel_token}`;
+    await sendBookingConfirmation({
+      attendee_name: oldBooking.attendee_name,
+      attendee_email: oldBooking.attendee_email,
+      host_name: user?.name || 'Host',
+      event_title: et.title,
+      start_time: start.toISOString(),
+      timezone: attendee_timezone,
+      cancel_url: cancelUrl,
+    });
+
+    return reply.send({ status: 'rescheduled', uid, start_time: start.toISOString(), end_time: end.toISOString(), cancel_url: `/v1/cancel/${cancel_token}`, reschedule_url: `/v1/reschedule/${reschedule_token}` });
   });
 }
 
-function cancelPage(message, booking, success) {
-  const icon = success ? '✅' : '⚠️';
-  const detail = booking ? `<p style="font-family:monospace;color:#DFFF00;margin:12px 0 0;font-size:13px;">Booking ID: ${booking.uid}</p>` : '';
+function shell(title, body) {
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Booking Cancelled</title>
+<title>${title}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Fira+Code&display=swap" rel="stylesheet">
 <style>
-  body{margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Arial,sans-serif;color:#e8e8ea;display:flex;align-items:center;justify-content:center;min-height:100vh;}
-  .card{background:#111114;border:1px solid #1e1e24;border-radius:12px;padding:48px 40px;text-align:center;max-width:420px;width:90%;}
-  .icon{font-size:48px;margin-bottom:16px;}
-  h2{font-size:20px;font-weight:600;margin:0 0 8px;}
-  p{color:#5a5a6e;font-size:14px;margin:0;}
-  .brand{font-family:monospace;color:#DFFF00;font-size:11px;margin-top:32px;opacity:0.6;}
-</style>
-</head>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0a0a0b;font-family:'Space Grotesk',system-ui,sans-serif;color:#e8e8ea;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+  .brand{font-family:'Fira Code',monospace;color:#DFFF00;font-size:12px;letter-spacing:0.1em;margin-bottom:32px;opacity:0.7}
+  .card{background:#111114;border:1px solid #1e1e24;border-radius:12px;padding:40px 36px;text-align:center;max-width:440px;width:100%}
+  .icon{font-size:44px;margin-bottom:16px}
+  h2{font-size:20px;font-weight:600;margin-bottom:8px}
+  .sub{color:#5a5a6e;font-size:14px;line-height:1.5;margin-bottom:4px}
+  .uid{font-family:'Fira Code',monospace;color:#DFFF00;font-size:12px;margin-top:12px}
+  .time{font-family:'Fira Code',monospace;color:#e8e8ea;font-size:13px;margin:16px 0;background:#0a0a0b;border:1px solid #1e1e24;border-radius:8px;padding:12px 16px}
+  .actions{display:flex;flex-direction:column;gap:10px;margin-top:24px}
+  .btn{padding:12px 20px;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:opacity 0.15s}
+  .btn-danger{background:#ff5f5f;color:#fff}
+  .btn-danger:hover{opacity:0.85}
+  .btn-ghost{background:none;border:1px solid #1e1e24;color:#5a5a6e}
+  .btn-ghost:hover{border-color:#5a5a6e;color:#e8e8ea}
+  .btn-accent{background:#DFFF00;color:#0a0a0b}
+  .btn-accent:hover{opacity:0.9}
+</style></head>
 <body>
-  <div class="card">
+<div class="brand">// schedkit</div>
+<div class="card">${body}</div>
+</body></html>`;
+}
+
+function confirmCancelPage(booking, et) {
+  const startLocal = new Date(booking.start_time).toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: booking.attendee_timezone || 'UTC',
+  });
+  return shell('Cancel Booking', `
+    <div class="icon">🗓️</div>
+    <h2>Cancel this booking?</h2>
+    <p class="sub">You're about to cancel your meeting with <strong>${et?.title || 'your host'}</strong>.</p>
+    <div class="time">${startLocal}<br><small style="color:#5a5a6e">${booking.attendee_timezone || 'UTC'}</small></div>
+    <p class="sub">This cannot be undone. You will need to book again if you change your mind.</p>
+    <div class="actions">
+      <form method="POST" action="/v1/cancel/${booking.cancel_token}/confirm">
+        <button type="submit" class="btn btn-danger" style="width:100%">Yes, cancel my booking</button>
+      </form>
+      <button class="btn btn-ghost" onclick="history.back()">← Go back</button>
+    </div>
+  `);
+}
+
+function resultPage(icon, message, booking) {
+  const detail = booking ? `<div class="uid">Booking ID: ${booking.uid}</div>` : '';
+  return shell(message, `
     <div class="icon">${icon}</div>
     <h2>${message}</h2>
     ${detail}
-    <div class="brand">// schedkit</div>
-  </div>
-</body></html>`;
+  `);
+}
+
+function reschedulePage(booking, user, et, token) {
+  const startLocal = new Date(booking.start_time).toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: booking.attendee_timezone || 'UTC',
+  });
+  return shell('Reschedule Booking', `
+    <div class="icon">🔄</div>
+    <h2>Reschedule your booking</h2>
+    <p class="sub">Currently scheduled for:</p>
+    <div class="time">${startLocal}</div>
+    <p class="sub" style="margin-bottom:20px">Pick a new time below. Your old slot will be released.</p>
+    <div class="actions">
+      <a href="/book/${user.slug}/${et.slug}?reschedule=${token}&name=${encodeURIComponent(booking.attendee_name)}&email=${encodeURIComponent(booking.attendee_email)}&tz=${encodeURIComponent(booking.attendee_timezone || 'UTC')}">
+        <button class="btn btn-accent" style="width:100%">Pick a new time →</button>
+      </a>
+      <button class="btn btn-ghost" onclick="history.back()">← Go back</button>
+    </div>
+  `);
 }

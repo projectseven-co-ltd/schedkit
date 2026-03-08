@@ -4,12 +4,13 @@
 export default async function bookingPageRoutes(fastify) {
   fastify.get('/book/:username/:event_slug', async (req, reply) => {
     const { username, event_slug } = req.params;
-    const html = buildPage(username, event_slug);
+    const { reschedule, name, email, tz } = req.query;
+    const html = buildPage(username, event_slug, { reschedule, name, email, tz });
     reply.type('text/html').send(html);
   });
 }
 
-function buildPage(username, eventSlug) {
+function buildPage(username, eventSlug, { reschedule, name, email, tz } = {}) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -257,13 +258,16 @@ function buildPage(username, eventSlug) {
 (async () => {
   const USERNAME = ${JSON.stringify(username)};
   const EVENT_SLUG = ${JSON.stringify(eventSlug)};
+  const RESCHEDULE_TOKEN = ${JSON.stringify(reschedule || null)};
+  const PREFILL_NAME = ${JSON.stringify(name || '')};
+  const PREFILL_EMAIL = ${JSON.stringify(email || '')};
   const API_BASE = '';
 
   let eventType = null;
   let selectedDate = null;
   let selectedSlot = null;
   let currentYear, currentMonth;
-  let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  let timezone = ${JSON.stringify(tz || '')} || Intl.DateTimeFormat().resolvedOptions().timeZone;
   let availableDates = new Set();
 
   // --- Init ---
@@ -275,6 +279,15 @@ function buildPage(username, eventSlug) {
   populateTimezones();
   renderCalendar();
   preloadMonth();
+
+  // Pre-fill reschedule fields
+  if (RESCHEDULE_TOKEN) {
+    document.getElementById('f-name').value = PREFILL_NAME;
+    document.getElementById('f-email').value = PREFILL_EMAIL;
+    document.getElementById('btn-confirm').textContent = 'Confirm Reschedule';
+    document.querySelector('.event-meta') && (document.querySelector('.event-meta').insertAdjacentHTML('beforeend',
+      '<span style="color:#DFFF00;font-size:12px;margin-left:8px">🔄 Rescheduling</span>'));
+  }
 
   // --- Load event type ---
   async function loadEventType() {
@@ -290,7 +303,7 @@ function buildPage(username, eventSlug) {
         document.getElementById('event-meta').innerHTML =
           \`<span><span class="icon">⏱</span>\${eventType.duration_minutes} min</span>
            <span><span class="icon">📹</span>Video call</span>\`;
-        document.title = \`Book: \${eventType.title}\`;
+        document.title = RESCHEDULE_TOKEN ? \`Reschedule: \${eventType.title}\` : \`Book: \${eventType.title}\`;
       }
     } catch(e) {
       document.getElementById('event-host').textContent = 'Could not load event';
@@ -463,22 +476,25 @@ function buildPage(username, eventSlug) {
 
     errEl.style.display = 'none';
     const btn = document.getElementById('btn-confirm');
-    btn.disabled = true; btn.textContent = 'Booking...';
+    btn.disabled = true;
+    btn.textContent = RESCHEDULE_TOKEN ? 'Rescheduling...' : 'Booking...';
 
     try {
-      const res = await fetch(\`\${API_BASE}/v1/book/\${USERNAME}/\${EVENT_SLUG}\`, {
+      const url = RESCHEDULE_TOKEN
+        ? \`\${API_BASE}/v1/reschedule/\${RESCHEDULE_TOKEN}\`
+        : \`\${API_BASE}/v1/book/\${USERNAME}/\${EVENT_SLUG}\`;
+
+      const body = RESCHEDULE_TOKEN
+        ? { start_time: selectedSlot.start, attendee_timezone: timezone }
+        : { start_time: selectedSlot.start, attendee_name: name, attendee_email: email, attendee_timezone: timezone, notes };
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          start_time: selectedSlot.start,
-          attendee_name: name,
-          attendee_email: email,
-          attendee_timezone: timezone,
-          notes,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) { showError(data.error || 'Booking failed. Please try again.'); btn.disabled = false; btn.textContent = 'Confirm Booking'; return; }
+      if (!res.ok) { showError(data.error || 'Failed. Please try again.'); btn.disabled = false; btn.textContent = RESCHEDULE_TOKEN ? 'Confirm Reschedule' : 'Confirm Booking'; return; }
 
       // Show confirmation
       const startLocal = new Date(data.start_time).toLocaleString([], {
