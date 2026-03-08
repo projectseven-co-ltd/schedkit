@@ -656,6 +656,7 @@ tr:hover td{background:var(--surface2)}
 const API = '';
 let currentUser = null;
 let editingEventTypeId = null;
+let editingEventTypeTeamCtx = null; // { orgSlug, teamSlug } when editing a team event type
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const TIMEZONES = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : ['UTC','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','Europe/London','Europe/Paris'];
 
@@ -825,9 +826,16 @@ async function loadEventTypes() {
   document.getElementById('event-types-list').innerHTML = cards;
 }
 
-function openEventTypeModal(et) {
+function openEventTypeModal(et, teamCtx = null) {
   editingEventTypeId = et?.Id || null;
-  document.getElementById('et-modal-title').textContent = et ? 'Edit Event Type' : 'New Event Type';
+  editingEventTypeTeamCtx = teamCtx || null;
+  const isTeam = !!teamCtx;
+  const prefix = isTeam ? `Team Event Type — ${teamCtx.teamSlug}` : '';
+  document.getElementById('et-modal-title').textContent = et ? `Edit ${isTeam ? 'Team ' : ''}Event Type` : `New ${isTeam ? 'Team ' : ''}Event Type`;
+  if (isTeam) {
+    document.getElementById('et-modal-title').innerHTML =
+      `${et ? 'Edit' : 'New'} Event Type <span style="font-size:12px;font-family:var(--font-mono);color:var(--muted);font-weight:400">— ${teamCtx.orgSlug} / ${teamCtx.teamSlug}</span>`;
+  }
   document.getElementById('et-title').value = et?.title || '';
   document.getElementById('et-slug').value = et?.slug || '';
   document.getElementById('et-label').value = et?.appointment_label || '';
@@ -869,12 +877,28 @@ async function saveEventType() {
   };
   if (!body.title || !body.slug || !body.duration_minutes) return toast('Title, slug, and duration required', 'err');
 
-  const url = editingEventTypeId ? `/v1/event-types/${editingEventTypeId}` : '/v1/event-types';
-  const method = editingEventTypeId ? 'PATCH' : 'POST';
+  let url, method;
+  if (editingEventTypeTeamCtx) {
+    const { orgSlug, teamSlug } = editingEventTypeTeamCtx;
+    url = editingEventTypeId
+      ? `/v1/orgs/${orgSlug}/teams/${teamSlug}/event-types/${editingEventTypeId}`
+      : `/v1/orgs/${orgSlug}/teams/${teamSlug}/event-types`;
+    method = editingEventTypeId ? 'PATCH' : 'POST';
+  } else {
+    url = editingEventTypeId ? `/v1/event-types/${editingEventTypeId}` : '/v1/event-types';
+    method = editingEventTypeId ? 'PATCH' : 'POST';
+  }
   const res = await apiFetch(url, { method, body: JSON.stringify(body) });
   if (!res) return; // apiFetch already redirected to /login
   if (res.ok) {
-    closeModal('et-modal'); toast('Saved!', 'ok'); await loadEventTypes();
+    closeModal('et-modal');
+    toast('Saved!', 'ok');
+    if (editingEventTypeTeamCtx) {
+      openManageTeamModal(editingEventTypeTeamCtx.orgSlug, editingEventTypeTeamCtx.teamSlug);
+    } else {
+      await loadEventTypes();
+    }
+    editingEventTypeTeamCtx = null;
   } else {
     const err = await res.json().catch(() => ({}));
     toast('Save failed: ' + (err.error || err.message || res.status), 'err');
@@ -1413,13 +1437,16 @@ async function openManageTeamModal(orgSlug, teamSlug) {
             <td>${esc(et.title)}</td>
             <td style="font-family:var(--font-mono);font-size:12px">${et.duration_minutes}m</td>
             <td><a href="/book/${orgSlug}/${teamSlug}/${et.slug}" target="_blank" style="color:var(--accent);font-size:12px;font-family:var(--font-mono)">${et.slug}</a></td>
-            <td><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--red)" onclick="deleteTeamET('${orgSlug}','${teamSlug}','${et.slug}')">Delete</button></td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px" onclick="closeOrgModal();openEventTypeModal(${JSON.stringify(et).replace(/"/g,'&quot;')},{orgSlug:'${orgSlug}',teamSlug:'${teamSlug}'})">Edit</button>
+              <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--red)" onclick="deleteTeamET('${orgSlug}','${teamSlug}','${et.slug}')">Delete</button>
+            </td>
           </tr>`).join('')}
         </tbody>
       </table>
     ` : '<p style="color:var(--muted);font-size:13px;margin-bottom:10px">No event types yet.</p>'}
     <div style="display:flex;gap:10px">
-      <button class="btn btn-primary" onclick="openCreateTeamETModal('${orgSlug}','${teamSlug}')">+ New Event Type</button>
+      <button class="btn btn-primary" onclick="closeOrgModal();openEventTypeModal(null,{orgSlug:'${orgSlug}',teamSlug:'${teamSlug}'})">+ New Event Type</button>
       <button class="btn btn-ghost" onclick="closeOrgModal()">Close</button>
     </div>
   `);

@@ -371,10 +371,16 @@ export default async function orgsRoutes(fastify) {
           title: { type: 'string' },
           slug: { type: 'string' },
           duration_minutes: { type: 'integer' },
+          buffer_before: { type: 'integer' },
+          buffer_after: { type: 'integer' },
           buffer_minutes: { type: 'integer' },
           location: { type: 'string' },
+          location_type: { type: 'string' },
           description: { type: 'string' },
+          appointment_label: { type: 'string' },
           min_notice_minutes: { type: 'integer' },
+          webhook_url: { type: 'string' },
+          custom_fields: { type: 'string' },
         },
       },
     },
@@ -391,10 +397,15 @@ export default async function orgsRoutes(fastify) {
       title: req.body.title,
       slug,
       duration_minutes: req.body.duration_minutes,
-      buffer_minutes: req.body.buffer_minutes || 0,
+      buffer_before: req.body.buffer_before ?? req.body.buffer_minutes ?? 0,
+      buffer_after: req.body.buffer_after ?? 0,
       location: req.body.location || '',
+      location_type: req.body.location_type || '',
       description: req.body.description || '',
+      appointment_label: req.body.appointment_label || 'meeting',
       min_notice_minutes: req.body.min_notice_minutes || 0,
+      webhook_url: req.body.webhook_url || '',
+      custom_fields: req.body.custom_fields || '[]',
     });
     return reply.code(201).send(et);
   });
@@ -419,10 +430,16 @@ export default async function orgsRoutes(fastify) {
           title: { type: 'string' },
           slug: { type: 'string' },
           duration_minutes: { type: 'integer' },
+          buffer_before: { type: 'integer' },
+          buffer_after: { type: 'integer' },
           buffer_minutes: { type: 'integer' },
           location: { type: 'string' },
+          location_type: { type: 'string' },
           description: { type: 'string' },
+          appointment_label: { type: 'string' },
           min_notice_minutes: { type: 'integer' },
+          webhook_url: { type: 'string' },
+          custom_fields: { type: 'string' },
         },
       },
     },
@@ -437,7 +454,8 @@ export default async function orgsRoutes(fastify) {
     if (!et) return reply.code(404).send({ error: 'Event type not found' });
 
     const updates = {};
-    const fields = ['title', 'slug', 'duration_minutes', 'buffer_minutes', 'location', 'description', 'min_notice_minutes'];
+    const fields = ['title', 'slug', 'duration_minutes', 'buffer_before', 'buffer_after', 'buffer_minutes',
+      'location', 'location_type', 'description', 'appointment_label', 'min_notice_minutes', 'webhook_url', 'custom_fields'];
     for (const f of fields) {
       if (req.body[f] !== undefined) updates[f] = f === 'slug' ? slugify(req.body[f]) : req.body[f];
     }
