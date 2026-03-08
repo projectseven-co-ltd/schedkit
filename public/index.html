@@ -21,6 +21,19 @@
     --font-sans: 'Space Grotesk', system-ui, sans-serif;
     --font-mono: 'Fira Code', monospace;
   }
+  [data-lights="on"] {
+    --bg: #f5f4ef; --surface: #edecea; --border: rgba(0,0,0,0.1);
+    --accent: #4a5500; --accent-dim: rgba(74,85,0,0.08);
+    --text: #141410; --muted: #5a5a4a;
+  }
+  [data-lights="on"] nav { background: rgba(240,239,234,0.92) !important; border-color: rgba(0,0,0,0.08) !important; }
+  [data-lights="on"] .btn-primary { color: #f5f4ef; }
+  [data-lights="on"] .nav-cta { color: #f5f4ef; }
+  [data-lights="on"] .request-form button { color: #f5f4ef; }
+  [data-lights="on"] .hero::before { background-image: linear-gradient(rgba(74,85,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(74,85,0,0.04) 1px, transparent 1px); }
+  .lights-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.08em; cursor: pointer; transition: all .2s; white-space: nowrap; }
+  .lights-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #lightsFlicker { position: fixed; inset: 0; z-index: 9999; pointer-events: none; background: rgba(255,255,230,0); }
 
   html { scroll-behavior: smooth; }
 
@@ -253,8 +266,12 @@
 <!-- NAV -->
 <nav>
   <a href="/" class="nav-logo">sched<span>kit</span></a>
-  <a href="#request" class="nav-cta">Request Access</a>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="lights-btn" id="lightsBtn"><span>🔦</span><span id="lightsBtnLabel">LIGHTS ON</span></button>
+    <a href="#request" class="nav-cta">Request Access</a>
+  </div>
 </nav>
+<div id="lightsFlicker"></div>
 
 <!-- HERO -->
 <section class="hero">
@@ -474,6 +491,14 @@
 </footer>
 
 <script>
+(function(){
+  const btn=document.getElementById('lightsBtn'),label=document.getElementById('lightsBtnLabel'),flicker=document.getElementById('lightsFlicker');
+  let lights=localStorage.getItem('p7-lights')==='1'||(localStorage.getItem('p7-lights')===null&&window.matchMedia?.('(prefers-color-scheme: light)').matches);
+  function applyTheme(on){document.documentElement.setAttribute('data-lights',on?'on':'off');if(label)label.textContent=on?'LIGHTS OFF':'LIGHTS ON';}
+  function flickerOn(cb){let i=0,fl=[80,60,100,50,120,40,200];function s(){flicker.style.background=i%2===0?'rgba(255,255,230,0.18)':'rgba(255,255,230,0)';i++;if(i<fl.length)setTimeout(s,fl[i-1]);else{flicker.style.background='rgba(255,255,230,0)';cb();}}s();}
+  applyTheme(lights);
+  if(btn)btn.addEventListener('click',function(){if(!lights){flickerOn(()=>{lights=true;localStorage.setItem('p7-lights','1');applyTheme(true);});}else{lights=false;localStorage.setItem('p7-lights','0');applyTheme(false);}});
+})();
 document.getElementById('request-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('req-btn');
