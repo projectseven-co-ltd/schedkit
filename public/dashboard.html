@@ -682,9 +682,10 @@ async function init() {
   if (calConnected || calError) {
     // Clean up URL and navigate to settings
     history.replaceState({}, '', '/dashboard');
-    await loadSection('settings');
     document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.section === 'settings'));
-    document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === 'sec-settings'));
+    document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === 'section-settings'));
+    await loadSection('settings');
+    populateTimezones();
     return;
   }
 
