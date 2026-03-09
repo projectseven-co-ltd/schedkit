@@ -78,7 +78,7 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
         </tr>
         <tr>
           <td style="padding:16px 28px;background:#0a0a0b;border-top:1px solid #1e1e24;">
-            <p style="margin:0;font-size:11px;color:#5a5a6e;font-family:monospace;">Powered by SchedKit</p>
+            <p style="margin:0;font-size:11px;color:#5a5a6e;font-family:monospace;">// schedkit</p>
           </td>
         </tr>
       </table>
@@ -249,7 +249,7 @@ export async function sendRescheduleNotification({ attendee_name, attendee_email
           </p>
         </td></tr>
         <tr><td style="padding:16px 28px;background:#0a0a0b;border-top:1px solid #1e1e24;">
-          <p style="margin:0;font-size:11px;color:#5a5a6e;font-family:monospace;">Powered by SchedKit</p>
+          <p style="margin:0;font-size:11px;color:#5a5a6e;font-family:monospace;">// schedkit</p>
         </td></tr>
       </table>
     </td></tr>
@@ -299,7 +299,7 @@ export async function sendCancellationEmail({ attendee_name, attendee_email, hos
           <p style="margin:0;font-size:13px;color:#5a5a6e;line-height:1.6;">If you'd like to rebook, please reach out to ${host_name} directly.</p>
         </td></tr>
         <tr><td style="padding:16px 28px;background:#0a0a0b;border-top:1px solid #1e1e24;">
-          <p style="margin:0;font-size:11px;color:#5a5a6e;font-family:monospace;">Powered by SchedKit</p>
+          <p style="margin:0;font-size:11px;color:#5a5a6e;font-family:monospace;">// schedkit</p>
         </td></tr>
       </table>
     </td></tr>
