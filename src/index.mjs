@@ -23,6 +23,7 @@ import orgsRoutes from './routes/orgs.mjs';
 import teamSlotsRoutes from './routes/teamSlots.mjs';
 import teamBookingPageRoutes from './routes/teamBookingPage.mjs';
 import calendarRoutes from './routes/calendar.mjs';
+import notificationRoutes from './routes/notifications.mjs';
 
 const fastify = Fastify({ logger: true });
 
@@ -92,6 +93,7 @@ await fastify.register(teamSlotsRoutes, { prefix: '/v1' });
 await fastify.register(bookingPageRoutes);
 await fastify.register(teamBookingPageRoutes);
 await fastify.register(calendarRoutes, { prefix: '/v1' });
+await fastify.register(notificationRoutes, { prefix: '/v1' });
 
 // Page routes (no prefix)
 fastify.get('/login', async (req, reply) => {

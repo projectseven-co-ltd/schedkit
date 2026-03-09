@@ -373,6 +373,21 @@ tr:hover td{background:var(--surface2)}
             <div style="color:var(--muted);font-size:13px">Loading…</div>
           </div>
         </div>
+
+        <div class="table-wrap" style="padding:28px;margin-top:20px">
+          <h3 style="margin:0 0 6px;font-size:15px">Push Notifications</h3>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.6">Get instant push notifications on your phone when someone books or cancels. Uses <a href="https://ntfy.sh" target="_blank" style="color:var(--accent)">ntfy.sh</a> — free, no account needed.</p>
+          <div class="form-row">
+            <label>ntfy Topic URL</label>
+            <input type="text" id="ntfy-topic" placeholder="https://ntfy.sh/your-topic or just your-topic">
+            <div class="form-hint">Subscribe in the ntfy app to your topic to receive notifications</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-primary" onclick="saveNtfy()">Save</button>
+            <button class="btn btn-ghost" onclick="testNtfy()">Send Test</button>
+          </div>
+          <div id="ntfy-status" style="font-size:12px;margin-top:8px;color:var(--muted)"></div>
+        </div>
       </div>
     </div>
 
@@ -717,6 +732,7 @@ async function loadUser() {
   document.getElementById('settings-timezone').value = currentUser.timezone || 'UTC';
   document.getElementById('settings-booking-url').textContent = `https://schedkit.net/book/${currentUser.slug}`;
   document.getElementById('settings-api-key').dataset.key = currentUser.api_key;
+  document.getElementById('ntfy-topic').value = currentUser.ntfy_topic || '';
 }
 
 // ── Navigation ────────────────────────────────────
@@ -1653,6 +1669,23 @@ function revealApiKey() {
 
 function copyBookingUrl() {
   copyText(`https://schedkit.net/book/${currentUser?.slug}`);
+}
+
+async function saveNtfy() {
+  const topic = document.getElementById('ntfy-topic').value.trim();
+  const res = await apiFetch('/v1/auth/me', { method: 'PATCH', body: JSON.stringify({ ntfy_topic: topic }) });
+  if (res?.ok) { toast('Saved!', 'ok'); await loadUser(); }
+  else toast('Save failed', 'err');
+}
+
+async function testNtfy() {
+  const topic = document.getElementById('ntfy-topic').value.trim();
+  if (!topic) { toast('Enter a topic first', 'err'); return; }
+  const statusEl = document.getElementById('ntfy-status');
+  statusEl.textContent = 'Sending…';
+  const res = await apiFetch('/v1/notifications/test', { method: 'POST', body: JSON.stringify({ topic }) });
+  if (res?.ok) { statusEl.textContent = '✓ Test notification sent'; toast('Sent!', 'ok'); }
+  else { statusEl.textContent = '✗ Failed to send'; toast('Send failed', 'err'); }
 }
 
 // ── Admin Reschedule ──────────────────────────────

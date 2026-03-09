@@ -1,6 +1,7 @@
 // src/routes/bookings.js
 
 import { isSlotBusy, createCalendarEvent, deleteCalendarEvent } from '../lib/googleCalendar.mjs';
+import { notifyNewBooking, notifyBookingCancelled } from '../lib/notify.mjs';
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
@@ -251,6 +252,9 @@ export default async function bookingsRoutes(fastify) {
       flag,
     });
 
+    // Push notification
+    notifyNewBooking(user, { attendee_name, attendee_email, start_time: start.toISOString() }, eventType).catch(() => {});
+
     return reply.code(201).send({
       uid,
       status: 'confirmed',
@@ -285,6 +289,7 @@ export default async function bookingsRoutes(fastify) {
         start_time: booking.start_time, timezone: booking.attendee_timezone || 'UTC',
       });
     } catch(e) { fastify.log.error('Cancel email failed:', e.message); }
+    if (user) notifyBookingCancelled(user, booking, et || {}).catch(() => {});
     return { status: 'cancelled', uid: booking.uid };
   });
 

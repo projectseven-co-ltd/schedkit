@@ -138,17 +138,19 @@ export default async function authRoutes(fastify) {
           name: { type: 'string' },
           email: { type: 'string' },
           timezone: { type: 'string' },
+          ntfy_topic: { type: 'string' },
         }
       },
       security: [{ cookieAuth: [] }],
     },
     preHandler: requireSession
   }, async (req, reply) => {
-    const { name, email, timezone } = req.body || {};
+    const { name, email, timezone, ntfy_topic } = req.body || {};
     const updates = {
       ...(name && { name }),
       ...(email && { email }),
       ...(timezone && { timezone }),
+      ...(ntfy_topic !== undefined && { ntfy_topic }),
     };
     // If user has no name yet (completing onboarding), also update slug from name
     if (name && !req.user.name) {
