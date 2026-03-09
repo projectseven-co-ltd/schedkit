@@ -54,12 +54,13 @@ export default async function clientFlagRoutes(fastify) {
         properties: {
           risk_level: { type: 'string', enum: ['ok', 'caution', 'high', 'blocked'], description: 'ok=clear, caution=watch, high=get payment first, blocked=refuse service' },
           notes: { type: 'string', description: 'Free-form notes about this client' },
+          discount_flag: { type: 'string', description: 'Discount tier: vet, realtor, partner' },
         },
       },
     },
   }, async (req, reply) => {
     const { email } = req.params;
-    const { risk_level = 'caution', notes = '' } = req.body;
+    const { risk_level = 'caution', notes = '', discount_flag = '' } = req.body;
 
     // Check for existing flag
     const existing = await db.find(tables.client_flags,
@@ -67,13 +68,13 @@ export default async function clientFlagRoutes(fastify) {
     const current = existing.list?.[0];
 
     if (current) {
-      await db.update(tables.client_flags, current.Id, { risk_level, notes });
-      return { ok: true, action: 'updated', email, risk_level, notes };
+      await db.update(tables.client_flags, current.Id, { risk_level, notes, discount_flag });
+      return { ok: true, action: 'updated', email, risk_level, notes, discount_flag };
     } else {
       const created = await db.create(tables.client_flags, {
-        email, risk_level, notes, flagged_by: String(req.user.Id),
+        email, risk_level, notes, discount_flag, flagged_by: String(req.user.Id),
       });
-      return { ok: true, action: 'created', email, risk_level, notes, id: created.Id };
+      return { ok: true, action: 'created', email, risk_level, notes, discount_flag, id: created.Id };
     }
   });
 

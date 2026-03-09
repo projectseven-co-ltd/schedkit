@@ -518,9 +518,19 @@ tr:hover td{background:var(--surface2)}
     <div class="form-row">
       <label>Risk Level</label>
       <select id="flag-risk">
+        <option value="ok">✅ No Risk</option>
         <option value="caution">⚠️ Caution — watch this client</option>
         <option value="high">🚨 High Risk — get payment first</option>
         <option value="blocked">🚫 Blocked — refuse service</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Discount / Trust Tier</label>
+      <select id="flag-discount">
+        <option value="">None</option>
+        <option value="vet">🎖️ Vet / First Responder</option>
+        <option value="realtor">🏠 Realtor</option>
+        <option value="partner">🤝 Partner</option>
       </select>
     </div>
     <div class="form-row">
@@ -822,7 +832,7 @@ function renderBookingsTable(bookings) {
       `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openFlagModal(${JSON.stringify(window._clientFlags?.[b.attendee_email]||{email:b.attendee_email}).replace(/'/g,"&#39;")})'>${window._clientFlags?.[b.attendee_email] ? '🚨 Edit Flag' : '🏴 Flag'}</button>`,
     ].filter(Boolean).join(' ');
     return `<tr>
-      <td><strong>${esc(b.attendee_name)}</strong><br><span style="color:var(--muted);font-size:12px">${esc(b.attendee_email)}</span>${(() => { const f = window._clientFlags?.[b.attendee_email]; if (!f || f.risk_level === 'ok') return ''; const c = {caution:'#f5a623',high:'#ff5f5f',blocked:'#ff1744'}[f.risk_level]||'#f5a623'; const l = {caution:'⚠️ Caution',high:'🚨 High Risk',blocked:'🚫 Blocked'}[f.risk_level]||f.risk_level; return `<br><span style="font-size:11px;font-family:var(--font-mono);color:${c};cursor:pointer" title="${esc(f.notes||'')}" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>${l}</span>`; })()}</td>
+      <td><strong>${esc(b.attendee_name)}</strong><br><span style="color:var(--muted);font-size:12px">${esc(b.attendee_email)}</span>${(() => { const f = window._clientFlags?.[b.attendee_email]; let badges = ''; if (f && f.risk_level && f.risk_level !== 'ok') { const c = {caution:'#f5a623',high:'#ff5f5f',blocked:'#ff1744'}[f.risk_level]||'#f5a623'; const l = {caution:'⚠️ Caution',high:'🚨 High Risk',blocked:'🚫 Blocked'}[f.risk_level]||f.risk_level; badges += `<br><span style="font-size:11px;font-family:var(--font-mono);color:${c};cursor:pointer" title="${esc(f.notes||'')}" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>${l}</span>`; } if (f && f.discount_flag) { const dl = {vet:'🎖️ Vet/First Responder',realtor:'🏠 Realtor',partner:'🤝 Partner'}[f.discount_flag]||f.discount_flag; badges += `<br><span style="font-size:11px;font-family:var(--font-mono);color:#4ade80;cursor:pointer" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>${dl}</span>`; } return badges; })()}</td>
       <td>${dateStr}<br><span style="color:var(--muted);font-size:12px">${timeStr}</span></td>
       <td><span class="badge badge-${b.status}">${b.status}</span></td>
       <td style="color:var(--muted);font-size:12px">${esc(b.attendee_timezone || '')}</td>
@@ -1173,9 +1183,10 @@ async function loadClients() {
   }
   const riskColors = { caution: '#f5a623', high: '#ff5f5f', blocked: '#ff1744', ok: '#4ade80' };
   const riskLabels = { caution: '⚠️ Caution', high: '🚨 High Risk', blocked: '🚫 Blocked', ok: '✅ Cleared' };
+  const discountLabels = { vet: '🎖️ Vet/First Responder', realtor: '🏠 Realtor', partner: '🤝 Partner' };
   const rows = flags.map(f => `<tr>
     <td style="font-family:var(--font-mono);font-size:13px">${esc(f.email)}</td>
-    <td><span style="font-size:12px;font-weight:600;color:${riskColors[f.risk_level]||'#f5a623'}">${riskLabels[f.risk_level]||f.risk_level}</span></td>
+    <td><span style="font-size:12px;font-weight:600;color:${riskColors[f.risk_level]||'#f5a623'}">${riskLabels[f.risk_level]||f.risk_level}</span>${f.discount_flag ? `<br><span style="font-size:11px;color:#4ade80">${discountLabels[f.discount_flag]||f.discount_flag}</span>` : ''}</td>
     <td style="font-size:13px;color:var(--muted);max-width:260px">${esc(f.notes||'')}</td>
     <td style="font-size:12px;color:var(--muted)">${new Date(f.CreatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</td>
     <td style="white-space:nowrap">
@@ -1184,7 +1195,7 @@ async function loadClients() {
     </td>
   </tr>`).join('');
   el.innerHTML = `<table>
-    <thead><tr><th>Email</th><th>Risk Level</th><th>Notes</th><th>Flagged</th><th></th></tr></thead>
+    <thead><tr><th>Email</th><th>Risk / Tier</th><th>Notes</th><th>Flagged</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
@@ -1195,7 +1206,8 @@ function openFlagModal(flag) {
   document.getElementById('flag-existing-id').value = flag?.Id || '';
   document.getElementById('flag-email').value = flag?.email || '';
   document.getElementById('flag-email').readOnly = isEdit;
-  document.getElementById('flag-risk').value = flag?.risk_level || 'caution';
+  document.getElementById('flag-risk').value = flag?.risk_level || 'ok';
+  document.getElementById('flag-discount').value = flag?.discount_flag || '';
   document.getElementById('flag-notes').value = flag?.notes || '';
   openModal('flag-modal');
 }
@@ -1203,12 +1215,13 @@ function openFlagModal(flag) {
 async function saveFlag() {
   const email = document.getElementById('flag-email').value.trim();
   const risk_level = document.getElementById('flag-risk').value;
+  const discount_flag = document.getElementById('flag-discount').value;
   const notes = document.getElementById('flag-notes').value.trim();
   if (!email) return toast('Email required', 'err');
 
   const res = await apiFetch(`/v1/clients/${encodeURIComponent(email)}/flag`, {
     method: 'POST',
-    body: JSON.stringify({ risk_level, notes }),
+    body: JSON.stringify({ risk_level, discount_flag, notes }),
   });
   if (res?.ok) {
     closeModal('flag-modal');
