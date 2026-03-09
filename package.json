@@ -1,6 +1,6 @@
 {
   "name": "p7-scheduler",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Lightweight API-first scheduling service",
   "main": "src/index.mjs",
   "scripts": {
