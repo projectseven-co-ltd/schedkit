@@ -43,7 +43,7 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
       <table width="560" cellpadding="0" cellspacing="0" style="background:#111114;border:1px solid #1e1e24;border-radius:10px;overflow:hidden;">
         <tr>
           <td style="padding:12px 28px;background:#0a0a0b;border-bottom:1px solid #1e1e24;">
-            <span style="font-family:monospace;color:#DFFF00;font-size:12px;letter-spacing:0.1em;">// schedkit</span>
+            <img src="https://schedkit.net/logo.png" width="32" height="32" alt="\\" style="display:block;border:0;">
           </td>
         </tr>
         <tr>
@@ -78,7 +78,7 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
         </tr>
         <tr>
           <td style="padding:16px 28px;background:#0a0a0b;border-top:1px solid #1e1e24;">
-            <p style="margin:0;font-size:11px;color:#5a5a6e;font-family:monospace;">// schedkit</p>
+            <img src="https://schedkit.net/logo.png" width="32" height="32" alt="\\" style="display:block;border:0;">
           </td>
         </tr>
       </table>
@@ -109,7 +109,7 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#111114;border:1px solid #1e1e24;border-radius:10px;overflow:hidden;">
         <tr><td style="padding:12px 28px;background:#0a0a0b;border-bottom:1px solid #1e1e24;">
-          <span style="font-family:monospace;color:#DFFF00;font-size:12px;letter-spacing:0.1em;">// schedkit · new booking</span>
+          <img src="https://schedkit.net/logo.png" width="32" height="32" alt="\\" style="display:block;border:0;">
         </td></tr>
         ${flagBanner}
         <tr><td style="padding:28px 28px 24px;">
@@ -225,7 +225,7 @@ export async function sendRescheduleNotification({ attendee_name, attendee_email
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#111114;border:1px solid #1e1e24;border-radius:10px;overflow:hidden;">
         <tr><td style="padding:12px 28px;background:#0a0a0b;border-bottom:1px solid #1e1e24;">
-          <span style="font-family:monospace;color:#DFFF00;font-size:12px;letter-spacing:0.1em;">// schedkit</span>
+          <img src="https://schedkit.net/logo.png" width="32" height="32" alt="\\" style="display:block;border:0;">
         </td></tr>
         <tr><td style="padding:36px 28px 24px;">
           <p style="font-size:13px;color:#5a5a6e;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;">Your ${label} has been rescheduled</p>
@@ -249,7 +249,7 @@ export async function sendRescheduleNotification({ attendee_name, attendee_email
           </p>
         </td></tr>
         <tr><td style="padding:16px 28px;background:#0a0a0b;border-top:1px solid #1e1e24;">
-          <p style="margin:0;font-size:11px;color:#5a5a6e;font-family:monospace;">// schedkit</p>
+          <img src="https://schedkit.net/logo.png" width="32" height="32" alt="\\" style="display:block;border:0;">
         </td></tr>
       </table>
     </td></tr>
@@ -283,7 +283,7 @@ export async function sendCancellationEmail({ attendee_name, attendee_email, hos
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#111114;border:1px solid #1e1e24;border-radius:10px;overflow:hidden;">
         <tr><td style="padding:12px 28px;background:#0a0a0b;border-bottom:1px solid #1e1e24;">
-          <span style="font-family:monospace;color:#DFFF00;font-size:12px;letter-spacing:0.1em;">// schedkit</span>
+          <img src="https://schedkit.net/logo.png" width="32" height="32" alt="\\" style="display:block;border:0;">
         </td></tr>
         <tr><td style="padding:36px 28px 24px;">
           <p style="font-size:13px;color:#ff5f5f;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;">Your ${label} has been cancelled</p>
@@ -299,7 +299,7 @@ export async function sendCancellationEmail({ attendee_name, attendee_email, hos
           <p style="margin:0;font-size:13px;color:#5a5a6e;line-height:1.6;">If you'd like to rebook, please reach out to ${host_name} directly.</p>
         </td></tr>
         <tr><td style="padding:16px 28px;background:#0a0a0b;border-top:1px solid #1e1e24;">
-          <p style="margin:0;font-size:11px;color:#5a5a6e;font-family:monospace;">// schedkit</p>
+          <img src="https://schedkit.net/logo.png" width="32" height="32" alt="\\" style="display:block;border:0;">
         </td></tr>
       </table>
     </td></tr>
