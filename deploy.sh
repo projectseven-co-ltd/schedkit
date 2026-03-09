@@ -1,24 +1,27 @@
 #!/bin/bash
 # SchedKit — Plesk post-deployment script
-# Runs automatically after every git push via Plesk Git integration
 set -e
 
 APP_DIR="/var/www/vhosts/schedkit.net/httpdocs"
 NODE="/opt/plesk/node/22/bin/node"
 NPM="/opt/plesk/node/22/bin/npm"
-PM2="$APP_DIR/node_modules/.bin/pm2"
+PM2_HOME="/var/www/vhosts/schedkit.net/.pm2"
+PM2_BIN=$(find /var/www/vhosts/schedkit.net -name "pm2" -path "*/bin/pm2" -not -path "*/logrotate*" 2>/dev/null | head -1)
+
+export HOME="/var/www/vhosts/schedkit.net"
+export PM2_HOME
 
 cd "$APP_DIR"
 
 echo "[deploy] Installing dependencies..."
-"$NPM" ci
+"$NPM" install --prefer-offline
 
 echo "[deploy] Reloading app via pm2..."
-if "$NODE" "$PM2" list | grep -q schedkit; then
-  "$NODE" "$PM2" reload schedkit
+if "$NODE" "$PM2_BIN" list 2>/dev/null | grep -q schedkit; then
+  "$NODE" "$PM2_BIN" reload schedkit --update-env
 else
-  "$NODE" "$PM2" start src/index.mjs --name schedkit --interpreter "$NODE"
-  "$NODE" "$PM2" save
+  "$NODE" "$PM2_BIN" start src/index.mjs --name schedkit --interpreter "$NODE"
+  "$NODE" "$PM2_BIN" save
 fi
 
 echo "[deploy] Done. App is live."
