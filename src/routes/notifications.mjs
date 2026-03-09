@@ -11,7 +11,7 @@ export default async function notificationRoutes(fastify) {
     const url = topic.startsWith('http') ? topic : `https://ntfy.sh/${topic}`;
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain', 'Title': '🔔 SchedKit Test', 'Tags': 'schedkit', 'Priority': 'default' },
+      headers: { 'Content-Type': 'text/plain', 'Title': 'SchedKit Test', 'Tags': 'bell,schedkit', 'Priority': 'default' },
       body: 'Your ntfy notifications are working!',
     });
     if (!res.ok) return reply.code(502).send({ error: 'ntfy_failed', status: res.status });

@@ -38,7 +38,8 @@ async function sendNtfy(topic, title, message, emoji = '📅', priority = 'defau
       method: 'POST',
       headers: {
         'Content-Type': 'text/plain',
-        'Title': `${emoji} ${title}`,
+        'Title': title,
+        'Tags': `schedkit`,
         'Priority': priority,
         'Tags': 'schedkit',
       },
