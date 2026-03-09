@@ -1598,11 +1598,14 @@ async function loadCalendarStatus() {
   if (!res) return;
   const data = await res.json();
   if (data.connected) {
+    const emailLabel = data.calendar_email
+      ? `Connected as <strong style="font-family:var(--font-mono);font-size:12px">${esc(data.calendar_email)}</strong>`
+      : `Connected <span style="color:var(--muted);font-size:12px">(<a href="/v1/auth/google/connect" style="color:var(--accent)">re-connect to show email</a>)</span>`;
     area.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4caf50"></span>
-          <span style="font-size:13px">Connected as <strong style="font-family:var(--font-mono);font-size:12px">${esc(data.calendar_email)}</strong></span>
+          <span style="font-size:13px">${emailLabel}</span>
         </div>
         <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;color:var(--red)" onclick="disconnectCalendar()">Disconnect</button>
       </div>`;

@@ -43,11 +43,16 @@ export default async function calendarRoutes(fastify) {
       const tokens = await exchangeCode(code);
 
       // Get calendar email from Google userinfo
-      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${tokens.access_token}` },
-      });
-      const userInfo = userInfoRes.ok ? await userInfoRes.json() : {};
-      const calendarEmail = userInfo.email || '';
+      let calendarEmail = '';
+      try {
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        });
+        if (userInfoRes.ok) {
+          const userInfo = await userInfoRes.json();
+          calendarEmail = userInfo.email || '';
+        }
+      } catch(e) { console.error('userinfo fetch failed:', e.message); }
 
       const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
