@@ -7,6 +7,7 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 import { ensureSchema } from './lib/schema.mjs';
 import { meta } from './lib/noco.mjs';
@@ -51,12 +52,15 @@ await fastify.register(swagger, {
 await fastify.register(swaggerUi, {
   routePrefix: '/docs',
   uiConfig: { docExpansion: 'list', deepLinking: true },
+  logo: { type: 'image/png', content: readFileSync(join(__dirname, '../public/logo.png')) },
   theme: {
-    title: 'SchedKit API Docs',
+    title: '\\\\ SchedKit API',
     css: [{ filename: 'docs.css', content: `
       body { background: #0a0a0b !important; }
       .swagger-ui { background: #0a0a0b; color: #e8e8ea; }
-      .swagger-ui .topbar { background: #111114; border-bottom: 1px solid #1e1e24; }
+      .swagger-ui .topbar { background: #111114; border-bottom: 1px solid #1e1e24; padding: 10px 0; }
+      .swagger-ui .topbar-wrapper { gap: 12px; }
+      .swagger-ui .topbar-wrapper img { height: 32px; width: 32px; }
       .swagger-ui .topbar .download-url-wrapper .download-url-button { background: #DFFF00; color: #0a0a0b; }
       .swagger-ui .info .title { color: #DFFF00; font-family: monospace; }
       .swagger-ui .scheme-container { background: #111114; border: 1px solid #1e1e24; }
