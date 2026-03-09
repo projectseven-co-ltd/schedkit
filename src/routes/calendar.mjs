@@ -20,8 +20,8 @@ export default async function calendarRoutes(fastify) {
     return reply.redirect(url);
   });
 
-  // GET /v1/auth/google/callback — OAuth callback
-  fastify.get('/auth/google/callback', async (req, reply) => {
+  // GET /google-callback — OAuth callback (top-level to avoid nginx slash-in-param routing issues)
+  fastify.get('/google-callback', async (req, reply) => {
     const { code, state, error } = req.query;
 
     if (error) {
@@ -93,5 +93,49 @@ export default async function calendarRoutes(fastify) {
       await db.delete(tables.calendar_connections, result.list[0].Id);
     }
     return { ok: true };
+  });
+}
+
+// Separate export for root-level callback registration (no /v1 prefix)
+export async function calendarCallbackRoute(fastify) {
+  const { exchangeCode } = await import('../lib/googleCalendar.mjs');
+  const { db } = await import('../lib/noco.mjs');
+  const { tables } = await import('../lib/tables.mjs');
+
+  fastify.get('/google-callback', async (req, reply) => {
+    const { code, state, error } = req.query;
+    if (error) return reply.redirect('/dashboard?cal_error=access_denied#account');
+    if (!code || !state) return reply.redirect('/dashboard?cal_error=missing_params#account');
+
+    let userId;
+    try {
+      const payload = JSON.parse(Buffer.from(state, 'base64url').toString());
+      userId = payload.userId;
+    } catch { return reply.redirect('/dashboard?cal_error=invalid_state#account'); }
+
+    try {
+      const tokens = await exchangeCode(code);
+      let calendarEmail = '';
+      try {
+        const ui = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        });
+        if (ui.ok) calendarEmail = (await ui.json()).email || '';
+      } catch(e) { console.error('userinfo:', e.message); }
+
+      const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+      const existing = await db.find(tables.calendar_connections, `(user_id,eq,${userId})~and(provider,eq,google)`);
+      if (existing.list?.length) await db.delete(tables.calendar_connections, existing.list[0].Id);
+      await db.create(tables.calendar_connections, {
+        user_id: String(userId), provider: 'google',
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token || existing.list?.[0]?.refresh_token || '',
+        expires_at: expiresAt, calendar_email: calendarEmail,
+      });
+      return reply.redirect('/dashboard?cal_connected=1');
+    } catch(e) {
+      console.error('Google OAuth callback error:', e.message);
+      return reply.redirect('/dashboard?cal_error=token_exchange#account');
+    }
   });
 }

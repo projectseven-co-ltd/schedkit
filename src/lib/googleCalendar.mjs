@@ -6,7 +6,7 @@ import { tables } from './tables.mjs';
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const BASE_DOMAIN = process.env.BASE_DOMAIN || 'schedkit.net';
-const REDIRECT_URI = `https://${BASE_DOMAIN}/v1/auth/google/callback`;
+const REDIRECT_URI = `https://${BASE_DOMAIN}/google-callback`;
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 export function getAuthUrl(state) {
