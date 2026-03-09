@@ -4,6 +4,7 @@ import { addMinutes, format, parseISO, getDay } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { db } from './noco.mjs';
 import { tables } from './tables.mjs';
+import { getValidToken } from './googleCalendar.mjs';
 
 /**
  * Get available slots for an event type on a given date
@@ -32,13 +33,33 @@ export async function getSlots(userId, eventType, dateStr, timezone) {
 
   if (!availResult.list?.length) return [];
 
-  // Pre-fetch bookings and blocked times once (avoid N+1 per slot)
+  // Pre-fetch bookings, blocked times, and Google Calendar busy periods once
+  const dayStartUtc = fromZonedTime(parseISO(`${dateStr}T00:00:00`), availResult.list[0]?.timezone || 'UTC').toISOString();
+  const dayEndUtc   = fromZonedTime(parseISO(`${dateStr}T23:59:59`), availResult.list[0]?.timezone || 'UTC').toISOString();
+
   const [bookingsRes, blockedRes] = await Promise.all([
     db.find(tables.bookings, `(user_id,eq,${userId})~and(status,eq,confirmed)`),
     db.find(tables.blocked_times, `(user_id,eq,${userId})`),
   ]);
   const bookings = bookingsRes.list || [];
   const blocked = blockedRes.list || [];
+
+  // Fetch Google Calendar busy blocks for the day (one API call)
+  let gcalBusy = [];
+  try {
+    const token = await getValidToken(userId);
+    if (token) {
+      const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timeMin: dayStartUtc, timeMax: dayEndUtc, items: [{ id: 'primary' }] }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        gcalBusy = data.calendars?.primary?.busy || [];
+      }
+    }
+  } catch(e) { console.error('gcal freeBusy error:', e.message); }
 
   const slots = [];
 
@@ -59,7 +80,7 @@ export async function getSlots(userId, eventType, dateStr, timezone) {
         continue;
       }
 
-      if (isSlotFree(slotStart, blockEnd, bookings, blocked)) {
+      if (isSlotFree(slotStart, blockEnd, bookings, blocked, gcalBusy)) {
         slots.push({
           start: slotStart.toISOString(),
           end: slotEnd.toISOString(),
@@ -75,7 +96,7 @@ export async function getSlots(userId, eventType, dateStr, timezone) {
   return slots;
 }
 
-function isSlotFree(start, end, bookings, blocked) {
+function isSlotFree(start, end, bookings, blocked, gcalBusy = []) {
   const startMs = start.getTime();
   const endMs   = end.getTime();
 
@@ -88,6 +109,12 @@ function isSlotFree(start, end, bookings, blocked) {
   for (const b of blocked) {
     const bStart = new Date(b.start_time).getTime();
     const bEnd   = new Date(b.end_time).getTime();
+    if (bStart < endMs && bEnd > startMs) return false;
+  }
+
+  for (const b of gcalBusy) {
+    const bStart = new Date(b.start).getTime();
+    const bEnd   = new Date(b.end).getTime();
     if (bStart < endMs && bEnd > startMs) return false;
   }
 
