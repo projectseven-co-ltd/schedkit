@@ -54,7 +54,8 @@
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
   }
-  .nav-logo { font-family: var(--font-mono); color: var(--accent); font-size: 15px; letter-spacing: 0.05em; text-decoration: none; }
+  .nav-logo { font-family: var(--font-mono); color: var(--accent); font-size: 15px; letter-spacing: 0.05em; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+  .nav-logo img { height: 28px; width: 28px; }
   .nav-logo span { color: var(--muted); }
   .nav-cta {
     background: var(--accent); color: #0a0a0b;
@@ -265,7 +266,7 @@
 
 <!-- NAV -->
 <nav>
-  <a href="/" class="nav-logo">sched<span>kit</span></a>
+  <a href="/" class="nav-logo"><svg width="28" height="28" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#0A0A0B"/><line x1="128" y1="96" x2="208" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/></svg>sched<span>kit</span></a>
   <div style="display:flex;align-items:center;gap:12px">
     <button class="lights-btn" id="lightsBtn"><span>🔦</span><span id="lightsBtnLabel">LIGHTS ON</span></button>
     <a href="#request" class="nav-cta">Request Access</a>
@@ -501,7 +502,7 @@
 
 <!-- FOOTER -->
 <footer>
-  <span class="logo">// schedkit</span>
+  <span class="logo"><svg width="20" height="20" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:8px"><rect width="512" height="512" rx="96" fill="#0A0A0B"/><line x1="128" y1="96" x2="208" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/></svg>schedkit</span>
   <p style="color:var(--muted);">schedkit.net</p>
 </footer>
 
