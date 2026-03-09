@@ -71,7 +71,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
   position:fixed;top:0;left:0;height:100vh;z-index:50;
 }
 .sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
-.sidebar-logo a{font-family:var(--font-mono);color:var(--accent);font-size:16px;text-decoration:none}
+.sidebar-logo a{font-family:var(--font-mono);color:var(--accent);font-size:16px;text-decoration:none;display:flex;align-items:center;gap:10px}
 .sidebar-logo span{color:var(--muted)}
 .sidebar-nav{flex:1;padding:16px 10px;display:flex;flex-direction:column;gap:2px}
 .nav-item{
@@ -212,7 +212,7 @@ tr:hover td{background:var(--surface2)}
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><a href="/dashboard">sched<span>kit</span></a></div>
+  <div class="sidebar-logo"><a href="/dashboard"><svg width="26" height="26" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#0A0A0B"/><line x1="128" y1="96" x2="208" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/></svg>sched<span>kit</span></a></div>
   <nav class="sidebar-nav">
     <button class="nav-item active" data-section="bookings">
       <span class="nav-icon">📅</span> Bookings
