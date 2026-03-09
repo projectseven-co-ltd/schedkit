@@ -12,8 +12,17 @@
   const state = params.get('state');
   const error = params.get('error');
 
-  if (error) { window.location.href = '/dashboard?cal_error=' + error + '#account'; return; }
-  if (!code || !state) { window.location.href = '/dashboard?cal_error=missing_params#account'; return; }
+  const msg = document.getElementById('msg');
+
+  if (error) { window.location.href = '/dashboard?cal_error=' + error; return; }
+  if (!code || !state) {
+    msg.textContent = 'Error: missing params. code=' + code + ' state=' + (state ? 'ok' : 'null');
+    console.error('missing params', { code, state, search: window.location.search });
+    setTimeout(() => { window.location.href = '/dashboard?cal_error=missing_params'; }, 3000);
+    return;
+  }
+
+  msg.textContent = 'Exchanging token…';
 
   try {
     const res = await fetch('/v1/auth/google/exchange', {
@@ -26,10 +35,14 @@
     if (res.ok) {
       window.location.href = '/dashboard?cal_connected=1';
     } else {
-      window.location.href = '/dashboard?cal_error=' + (data.error || 'unknown') + '#account';
+      msg.textContent = 'Error: ' + res.status + ' — ' + (data.error || JSON.stringify(data));
+      console.error('exchange error', res.status, data);
+      setTimeout(() => { window.location.href = '/dashboard?cal_error=' + (data.error || 'unknown'); }, 3000);
     }
   } catch(e) {
-    window.location.href = '/dashboard?cal_error=network#account';
+    msg.textContent = 'Network error: ' + e.message;
+    console.error('exchange network error', e);
+    setTimeout(() => { window.location.href = '/dashboard?cal_error=network'; }, 3000);
   }
 })();
 </script>
