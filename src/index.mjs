@@ -100,6 +100,10 @@ fastify.get('/login', async (req, reply) => {
   const { readFileSync } = await import('fs');
   return reply.type('text/html').send(readFileSync(join(__dirname, '../public/login.html')));
 });
+fastify.get('/google-callback', async (req, reply) => {
+  const { readFileSync } = await import('fs');
+  return reply.type('text/html').send(readFileSync(join(__dirname, '../public/google-callback.html')));
+});
 fastify.get('/dashboard', async (req, reply) => {
   const { readFileSync } = await import('fs');
   return reply.type('text/html').send(readFileSync(join(__dirname, '../public/dashboard.html')));
