@@ -37,6 +37,7 @@ export default async function eventTypesRoutes(fastify) {
     schema: {
       tags: ['Event Types'],
       summary: 'List event types',
+      description: 'Returns all event types for the authenticated user. Each event type has a public booking URL at `/book/:username/:slug`.',
       security: [{ apiKey: [] }],
       response: { 200: { type: 'object', properties: { event_types: { type: 'array', items: eventTypeSchema } } } },
     },
@@ -64,6 +65,7 @@ export default async function eventTypesRoutes(fastify) {
     schema: {
       tags: ['Event Types'],
       summary: 'Create event type',
+      description: 'Create a new bookable event type. The `slug` is used in the public booking URL (`/book/:username/:slug`). Set `requires_confirmation: true` to put new bookings in a **pending** state — you will receive an email with one-click confirm/decline links, and the attendee is notified their request is under review.',
       security: [{ apiKey: [] }],
       body: {
         type: 'object',
@@ -80,8 +82,9 @@ export default async function eventTypesRoutes(fastify) {
           max_bookings_per_day: { type: 'integer' },
           location: { type: 'string' },
           location_type: { type: 'string', enum: ['video', 'phone', 'in_person', 'other'] },
-          webhook_url: { type: 'string' },
-          custom_fields: { type: 'string', description: 'JSON array of custom field definitions' },
+          webhook_url: { type: 'string', description: 'POST this URL when a booking is created for this event type' },
+          custom_fields: { type: 'string', description: 'JSON array of custom field definitions shown on the booking form' },
+          requires_confirmation: { type: 'boolean', description: 'If true, new bookings are held as `pending` until the host confirms or declines via email link or dashboard' },
         },
       },
     },
@@ -118,6 +121,7 @@ export default async function eventTypesRoutes(fastify) {
     schema: {
       tags: ['Event Types'],
       summary: 'Update event type',
+      description: 'Partially update an event type. Only fields included in the request body are changed. Toggle `requires_confirmation` here to switch between instant-confirm and host-approval flows.',
       security: [{ apiKey: [] }],
       params: { type: 'object', properties: { id: { type: 'string' } } },
       body: { type: 'object', properties: eventTypeSchema.properties },

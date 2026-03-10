@@ -35,11 +35,12 @@ export default async function bookingsRoutes(fastify) {
     schema: {
       tags: ['Bookings'],
       summary: 'List bookings',
+      description: 'Returns bookings for the authenticated user. Filter by `status`: `confirmed`, `pending` (awaiting host confirmation), `cancelled`, or `rescheduled`. Sorted by start time descending.',
       security: [{ apiKey: [] }],
       querystring: {
         type: 'object',
         properties: {
-          status: { type: 'string', enum: ['confirmed', 'cancelled', 'rescheduled'], description: 'Filter by status' },
+          status: { type: 'string', enum: ['confirmed', 'pending', 'cancelled', 'rescheduled', 'declined'], description: 'Filter by booking status' },
           limit: { type: 'integer', default: 50 },
           page: { type: 'integer', default: 1 },
         },

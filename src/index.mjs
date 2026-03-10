@@ -36,9 +36,22 @@ await fastify.register(swagger, {
   openapi: {
     info: {
       title: 'SchedKit API',
-      description: 'White-label scheduling API. All endpoints require `x-api-key` (user) or `x-admin-secret` (admin) headers unless marked Public.',
+      description: `**SchedKit** is an API-first white-label scheduling platform.\n\nAll endpoints require authentication via **\`x-api-key\`** (user API key) or **\`x-admin-secret\`** (admin) unless tagged **Public**.\n\n### Quick start\n1. Get your API key from the dashboard → Settings\n2. Pass it as \`x-api-key: YOUR_KEY\` on every request\n3. Create an event type, set your availability, share your booking link\n\n### Tags\n- **Event Types** — Define bookable event types (duration, buffer, confirmation requirements)\n- **Availability** — Set weekly recurring availability windows\n- **Bookings** — View, reschedule, cancel, confirm/decline bookings\n- **Auth** — Magic link login, session management\n- **Public** — Unauthenticated endpoints (booking slots, booking page data)`,
       version: '1.0.0',
     },
+    tags: [
+      { name: 'Event Types', description: 'Create and manage bookable event types. Each event type has a slug used in the public booking URL (`/book/:username/:slug`). Set `requires_confirmation: true` to hold bookings as pending until you manually accept or decline.' },
+      { name: 'Availability', description: 'Define your weekly recurring availability. Rules are per day-of-week with a start/end time in HH:MM format. The slots engine uses these rules minus existing bookings and blocked times.' },
+      { name: 'Bookings', description: 'List, retrieve, reschedule, cancel, confirm, or decline bookings. Bookings with `status=pending` are awaiting host confirmation (requires_confirmation flow).' },
+      { name: 'Auth', description: 'Magic link authentication. Request a login link via email, verify it to get a session, or use API keys for programmatic access.' },
+      { name: 'Public', description: 'Unauthenticated endpoints used by the booking page — available slots, booking submission, cancellation/reschedule via token.' },
+      { name: 'Blackout Dates', description: 'Block specific dates or date ranges from accepting bookings.' },
+      { name: 'Clients', description: 'Client risk flags — mark clients as caution, high-risk, or blocked. Flags appear in host notification emails.' },
+      { name: 'Notifications', description: 'Configure ntfy.sh push notification topics for new bookings.' },
+      { name: 'Organizations', description: 'Multi-user org and team management. Invite members, create shared team event types.' },
+      { name: 'Calendar', description: 'Google Calendar OAuth connection for two-way sync.' },
+      { name: 'Users', description: 'User profile and API key management.' },
+    ],
     servers: [{ url: 'https://schedkit.net', description: 'Production' }],
     components: {
       securitySchemes: {
@@ -52,7 +65,7 @@ await fastify.register(swagger, {
 
 await fastify.register(swaggerUi, {
   routePrefix: '/docs',
-  uiConfig: { docExpansion: 'list', deepLinking: true },
+  uiConfig: { docExpansion: 'none', deepLinking: true, defaultModelsExpandDepth: 0, displayRequestDuration: true },
   logo: { type: 'image/png', content: readFileSync(join(__dirname, '../public/logo.png')) },
   theme: {
     title: '\\\\ SchedKit API',
