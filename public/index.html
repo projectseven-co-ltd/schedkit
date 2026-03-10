@@ -31,8 +31,8 @@
   [data-lights="on"] .nav-cta { color: #f5f4ef; }
   [data-lights="on"] .request-form button { color: #f5f4ef; }
   [data-lights="on"] .hero::before { background-image: linear-gradient(rgba(74,85,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(74,85,0,0.04) 1px, transparent 1px); }
-  .lights-btn { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.08em; cursor: pointer; transition: all .2s; white-space: nowrap; }
-  .lights-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .lights-btn { display: inline-flex; align-items: center; gap: 7px; padding: 5px 4px; border: none; background: transparent; color: var(--muted); font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.08em; cursor: pointer; transition: color .2s; white-space: nowrap; }
+  .lights-btn:hover { color: var(--accent); }
   .phosphor-dot { width: 7px; height: 7px; border-radius: 50%; background: #DFFF00; box-shadow: 0 0 4px #DFFF00, 0 0 10px rgba(223,255,0,0.5); flex-shrink: 0; animation: phosphor-pulse 2.4s ease-in-out infinite; }
   [data-lights="on"] .phosphor-dot { background: #3d4700; box-shadow: 0 0 4px #3d4700, 0 0 10px rgba(61,71,0,0.4); }
   @keyframes phosphor-pulse { 0%,100%{opacity:1;box-shadow:0 0 4px #DFFF00,0 0 10px rgba(223,255,0,0.5)} 50%{opacity:0.45;box-shadow:0 0 2px #DFFF00,0 0 4px rgba(223,255,0,0.2)} }
