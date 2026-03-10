@@ -720,12 +720,12 @@ html, body {
 
     <!-- CONFIRMATION PANE -->
     <div id="confirm-pane" style="display:none" class="confirm-pane">
-      <div class="confirm-check">✓</div>
-      <div class="confirm-headline">You're booked!</div>
-      <div class="confirm-sub">Confirmation sent to <strong id="confirm-email"></strong></div>
+      <div class="confirm-check" id="confirm-icon">✓</div>
+      <div class="confirm-headline" id="confirm-headline">You're booked!</div>
+      <div class="confirm-sub" id="confirm-sub">Confirmation sent to <strong id="confirm-email"></strong></div>
       <div class="confirm-detail" id="confirm-detail"></div>
       <div class="confirm-uid" id="confirm-uid"></div>
-      <button class="btn-cancel-bkg" id="btn-cancel-bkg">Cancel this booking</button>
+      <button class="btn-cancel-bkg" id="btn-cancel-bkg" style="display:none">Cancel this booking</button>
     </div>
 
     <!-- FOOTER -->
@@ -1124,7 +1124,16 @@ html, body {
         <div class="confirm-row"><div class="confirm-row-icon">👤</div><div><div class="confirm-row-lbl">With</div><div class="confirm-row-val">\${USERNAME}</div></div></div>
       \`;
       document.getElementById('confirm-uid').textContent = 'Booking ID: ' + data.uid;
-      cancelUrl = data.cancel_url;
+
+      if (data.status === 'pending') {
+        document.getElementById('confirm-icon').textContent = '⏳';
+        document.getElementById('confirm-headline').textContent = 'Request received!';
+        document.getElementById('confirm-sub').innerHTML = 'Your request is awaiting confirmation by <strong>' + USERNAME + '</strong>. We\'ll email you at <strong id="confirm-email">' + emailVal + '</strong> once confirmed.';
+      } else {
+        cancelUrl = data.cancel_url;
+        document.getElementById('btn-cancel-bkg').style.display = '';
+      }
+
       document.getElementById('card-body').style.display = 'none';
       document.getElementById('form-pane').style.display = 'none';
       document.getElementById('confirm-pane').style.display = '';

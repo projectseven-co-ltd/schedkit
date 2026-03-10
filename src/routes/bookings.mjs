@@ -12,7 +12,7 @@ async function requireAuth(req, reply) {
 }
 import { addMinutes, parseISO } from 'date-fns';
 import { nanoid } from 'nanoid';
-import { sendBookingConfirmation, sendCancellationEmail } from '../lib/mailer.mjs';
+import { sendBookingConfirmation, sendCancellationEmail, sendBookingPending, sendHostConfirmationRequest, sendBookingConfirmedByHost, sendBookingDeclined } from '../lib/mailer.mjs';
 
 async function fireWebhook(url, payload) {
   if (!url) return;
@@ -187,6 +187,10 @@ export default async function bookingsRoutes(fastify) {
     const uid = nanoid(12);
     const cancel_token = nanoid(24);
     const reschedule_token = nanoid(24);
+    const confirm_token = nanoid(32);
+
+    const requiresConfirmation = !!eventType.requires_confirmation;
+    const bookingStatus = requiresConfirmation ? 'pending' : 'confirmed';
 
     const booking = await db.create(tables.bookings, {
       uid,
@@ -197,20 +201,61 @@ export default async function bookingsRoutes(fastify) {
       attendee_timezone,
       start_time: start.toISOString(),
       end_time: end.toISOString(),
-      status: 'confirmed',
+      status: bookingStatus,
       notes: notes || '',
       custom_responses: custom_responses ? JSON.stringify(custom_responses) : null,
       cancel_token,
       reschedule_token,
+      confirm_token,
       created_at: new Date().toISOString(),
     });
 
     // Fire webhook
     await fireWebhook(eventType.webhook_url, {
       event: 'booking.created',
-      booking: { uid, attendee_name, attendee_email, start_time, end_time: end.toISOString() },
+      booking: { uid, attendee_name, attendee_email, start_time, end_time: end.toISOString(), status: bookingStatus },
     });
 
+    if (requiresConfirmation) {
+      // Send "pending" email to attendee
+      await sendBookingPending({
+        attendee_name,
+        attendee_email,
+        host_name: user.name || username,
+        event_title: eventType.title,
+        start_time: start.toISOString(),
+        timezone: attendee_timezone,
+      });
+
+      // Send confirm/decline request to host
+      const BASE = `https://${process.env.BASE_DOMAIN || 'schedkit.net'}`;
+      await sendHostConfirmationRequest({
+        host_name: user.name || username,
+        host_email: user.email,
+        attendee_name,
+        attendee_email,
+        event_title: eventType.title,
+        start_time: start.toISOString(),
+        timezone: attendee_timezone || 'UTC',
+        notes: notes || '',
+        confirm_url: `${BASE}/v1/bookings/${confirm_token}/confirm`,
+        decline_url: `${BASE}/v1/bookings/${confirm_token}/decline`,
+      });
+
+      // Push notification
+      notifyNewBooking(user, { attendee_name, attendee_email, start_time: start.toISOString() }, eventType).catch(() => {});
+
+      return reply.code(201).send({
+        uid,
+        status: 'pending',
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+      });
+    }
+
+    // Normal flow (no confirmation required)
+
+    // Normal flow (no confirmation required)
     // Create Google Calendar event (non-blocking)
     try {
       const gcalEvent = await createCalendarEvent(user.Id, {
@@ -401,6 +446,8 @@ export default async function bookingsRoutes(fastify) {
 
     return reply.send({ status: 'rescheduled', uid, start_time: start.toISOString(), end_time: end.toISOString(), cancel_url: `/v1/cancel/${cancel_token}`, reschedule_url: `/v1/reschedule/${reschedule_token}` });
   });
+
+  await registerConfirmDeclineRoutes(fastify);
 }
 
 function shell(title, body) {
@@ -432,6 +479,83 @@ function shell(title, body) {
 <div class="brand">// schedkit</div>
 <div class="card">${body}</div>
 </body></html>`;
+}
+
+// ── PUBLIC: Confirm booking (host clicks link in email) ──────────────────────
+async function registerConfirmDeclineRoutes(fastify) {
+  const BASE = `https://${process.env.BASE_DOMAIN || 'schedkit.net'}`;
+
+  fastify.get('/bookings/:confirm_token/confirm', async (req, reply) => {
+    const { confirm_token } = req.params;
+    const result = await db.find(tables.bookings, `(confirm_token,eq,${confirm_token})`);
+    const booking = result.list?.[0];
+    if (!booking) return reply.type('text/html').send(resultPage('❌', 'Booking not found.', null));
+    if (booking.status === 'confirmed') return reply.type('text/html').send(resultPage('✅', 'Already confirmed.', booking));
+    if (booking.status === 'declined' || booking.status === 'cancelled') {
+      return reply.type('text/html').send(resultPage('⚠️', 'This booking has already been actioned.', booking));
+    }
+
+    await db.update(tables.bookings, booking.Id, { status: 'confirmed' });
+
+    // Get event type + user for email context
+    const et = await db.get(tables.event_types, booking.event_type_id);
+    const user = await db.get(tables.users, booking.user_id);
+
+    // Send confirmed email to attendee
+    try {
+      await sendBookingConfirmedByHost({
+        attendee_name: booking.attendee_name,
+        attendee_email: booking.attendee_email,
+        host_name: user?.name || 'Your host',
+        event_title: et?.title || 'Meeting',
+        start_time: booking.start_time,
+        timezone: booking.attendee_timezone || 'UTC',
+        cancel_url: `${BASE}/v1/cancel/${booking.cancel_token}`,
+        reschedule_url: `${BASE}/v1/reschedule/${booking.reschedule_token}`,
+      });
+    } catch(e) { fastify.log.error('Confirmed-by-host email failed:', e.message); }
+
+    return reply.type('text/html').send(shell('Booking Confirmed', `
+      <div class="icon">✅</div>
+      <h2>Booking confirmed</h2>
+      <p class="sub">${booking.attendee_name} has been notified.</p>
+      <div class="uid">Booking ID: ${booking.uid}</div>
+    `));
+  });
+
+  fastify.get('/bookings/:confirm_token/decline', async (req, reply) => {
+    const { confirm_token } = req.params;
+    const result = await db.find(tables.bookings, `(confirm_token,eq,${confirm_token})`);
+    const booking = result.list?.[0];
+    if (!booking) return reply.type('text/html').send(resultPage('❌', 'Booking not found.', null));
+    if (booking.status === 'confirmed') return reply.type('text/html').send(resultPage('⚠️', 'This booking was already confirmed.', booking));
+    if (booking.status === 'declined' || booking.status === 'cancelled') {
+      return reply.type('text/html').send(resultPage('⚠️', 'This booking has already been actioned.', booking));
+    }
+
+    await db.update(tables.bookings, booking.Id, { status: 'declined' });
+
+    const et = await db.get(tables.event_types, booking.event_type_id);
+    const user = await db.get(tables.users, booking.user_id);
+
+    try {
+      await sendBookingDeclined({
+        attendee_name: booking.attendee_name,
+        attendee_email: booking.attendee_email,
+        host_name: user?.name || 'Your host',
+        event_title: et?.title || 'Meeting',
+        start_time: booking.start_time,
+        timezone: booking.attendee_timezone || 'UTC',
+      });
+    } catch(e) { fastify.log.error('Declined email failed:', e.message); }
+
+    return reply.type('text/html').send(shell('Booking Declined', `
+      <div class="icon">✕</div>
+      <h2>Booking declined</h2>
+      <p class="sub">${booking.attendee_name} has been notified.</p>
+      <div class="uid">Booking ID: ${booking.uid}</div>
+    `));
+  });
 }
 
 function confirmCancelPage(booking, et) {

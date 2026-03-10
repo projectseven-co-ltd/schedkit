@@ -320,3 +320,211 @@ export async function sendCancellationEmail({ attendee_name, attendee_email, hos
     console.error('Mailjet cancel email error:', e.message);
   }
 }
+
+// ── Pending booking — sent to attendee when requires_confirmation=true ──────
+export async function sendBookingPending({ attendee_name, attendee_email, host_name, event_title, start_time, timezone }) {
+  const startLocal = new Date(start_time).toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: timezone,
+  });
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    body{margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif}
+    .wrap{max-width:560px;margin:40px auto;background:#111114;border:1px solid #1e1e24;border-radius:12px;overflow:hidden}
+    .header{background:#1a1a1f;padding:28px 36px;border-bottom:1px solid #1e1e24}
+    .logo{font-size:18px;font-weight:700;color:#DFFF00;letter-spacing:-0.5px}
+    .body{padding:32px 36px}
+    h1{margin:0 0 8px;font-size:22px;font-weight:700;color:#e8e8ea}
+    .sub{margin:0 0 28px;font-size:15px;color:#8b8b9a}
+    .detail-box{background:#0a0a0b;border:1px solid #1e1e24;border-radius:8px;padding:18px 20px;margin-bottom:28px}
+    .detail-row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:#8b8b9a;border-bottom:1px solid #1a1a1f}
+    .detail-row:last-child{border-bottom:none}
+    .detail-val{color:#e8e8ea;font-weight:500;text-align:right}
+    .badge{display:inline-block;background:#2a2a10;border:1px solid #DFFF00;color:#DFFF00;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:0.5px;margin-bottom:20px}
+    .note{font-size:14px;color:#8b8b9a;line-height:1.6}
+    .footer{padding:20px 36px;border-top:1px solid #1e1e24;font-size:12px;color:#4a4a5a;text-align:center}
+  </style></head><body>
+  <div class="wrap">
+    <div class="header"><div class="logo">sched<span style="color:#fff">kit</span></div></div>
+    <div class="body">
+      <div class="badge">⏳ AWAITING CONFIRMATION</div>
+      <h1>Your booking request was received</h1>
+      <p class="sub">${host_name} will review and confirm your booking shortly.</p>
+      <div class="detail-box">
+        <div class="detail-row"><span>Event</span><span class="detail-val">${event_title}</span></div>
+        <div class="detail-row"><span>With</span><span class="detail-val">${host_name}</span></div>
+        <div class="detail-row"><span>Requested time</span><span class="detail-val">${startLocal}</span></div>
+      </div>
+      <p class="note">You'll receive a confirmation email once ${host_name} accepts your booking. No action needed from you right now.</p>
+    </div>
+    <div class="footer">Powered by SchedKit &nbsp;·&nbsp; schedkit.net</div>
+  </div>
+</body></html>`;
+  try {
+    await mj.post('send', { version: 'v3.1' }).request({
+      Messages: [{
+        From: { Email: FROM_EMAIL, Name: FROM_NAME },
+        To: [{ Email: attendee_email, Name: attendee_name }],
+        Subject: `Booking request received: ${event_title} with ${host_name}`,
+        HTMLPart: html,
+      }],
+    });
+  } catch(e) { console.error('Mailjet pending email error:', e.message); }
+}
+
+// ── Host notification — sent to host when a pending booking needs action ────
+export async function sendHostConfirmationRequest({ host_name, host_email, attendee_name, attendee_email, event_title, start_time, timezone, notes, confirm_url, decline_url }) {
+  const startLocal = new Date(start_time).toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: timezone,
+  });
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    body{margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif}
+    .wrap{max-width:560px;margin:40px auto;background:#111114;border:1px solid #1e1e24;border-radius:12px;overflow:hidden}
+    .header{background:#1a1a1f;padding:28px 36px;border-bottom:1px solid #1e1e24}
+    .logo{font-size:18px;font-weight:700;color:#DFFF00;letter-spacing:-0.5px}
+    .body{padding:32px 36px}
+    h1{margin:0 0 8px;font-size:22px;font-weight:700;color:#e8e8ea}
+    .sub{margin:0 0 28px;font-size:15px;color:#8b8b9a}
+    .detail-box{background:#0a0a0b;border:1px solid #1e1e24;border-radius:8px;padding:18px 20px;margin-bottom:28px}
+    .detail-row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:#8b8b9a;border-bottom:1px solid #1a1a1f}
+    .detail-row:last-child{border-bottom:none}
+    .detail-val{color:#e8e8ea;font-weight:500;text-align:right}
+    .actions{display:flex;gap:12px;margin-bottom:28px}
+    .btn-confirm{flex:1;display:block;padding:14px;background:#DFFF00;color:#0a0a0b;font-weight:700;font-size:15px;text-align:center;border-radius:8px;text-decoration:none}
+    .btn-decline{flex:1;display:block;padding:14px;background:#1a1a1f;color:#e8e8ea;font-weight:600;font-size:15px;text-align:center;border-radius:8px;text-decoration:none;border:1px solid #2e2e3a}
+    .note{font-size:13px;color:#4a4a5a;line-height:1.6}
+    .footer{padding:20px 36px;border-top:1px solid #1e1e24;font-size:12px;color:#4a4a5a;text-align:center}
+  </style></head><body>
+  <div class="wrap">
+    <div class="header"><div class="logo">sched<span style="color:#fff">kit</span></div></div>
+    <div class="body">
+      <h1>New booking request</h1>
+      <p class="sub">${attendee_name} wants to book time with you.</p>
+      <div class="detail-box">
+        <div class="detail-row"><span>Name</span><span class="detail-val">${attendee_name}</span></div>
+        <div class="detail-row"><span>Email</span><span class="detail-val">${attendee_email}</span></div>
+        <div class="detail-row"><span>Event</span><span class="detail-val">${event_title}</span></div>
+        <div class="detail-row"><span>Requested time</span><span class="detail-val">${startLocal}</span></div>
+        ${notes ? `<div class="detail-row"><span>Notes</span><span class="detail-val">${notes}</span></div>` : ''}
+      </div>
+      <div class="actions">
+        <a href="${confirm_url}" class="btn-confirm">✓ Confirm booking</a>
+        <a href="${decline_url}" class="btn-decline">✕ Decline</a>
+      </div>
+      <p class="note">These links are single-use and expire after the booking is actioned. No login required.</p>
+    </div>
+    <div class="footer">Powered by SchedKit &nbsp;·&nbsp; schedkit.net</div>
+  </div>
+</body></html>`;
+  try {
+    await mj.post('send', { version: 'v3.1' }).request({
+      Messages: [{
+        From: { Email: FROM_EMAIL, Name: FROM_NAME },
+        To: [{ Email: host_email, Name: host_name }],
+        Subject: `New booking request: ${attendee_name} — ${event_title}`,
+        HTMLPart: html,
+      }],
+    });
+  } catch(e) { console.error('Mailjet host confirmation request error:', e.message); }
+}
+
+// ── Booking confirmed — sent to attendee after host accepts ─────────────────
+export async function sendBookingConfirmedByHost({ attendee_name, attendee_email, host_name, event_title, start_time, timezone, cancel_url, reschedule_url }) {
+  const startLocal = new Date(start_time).toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: timezone,
+  });
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    body{margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif}
+    .wrap{max-width:560px;margin:40px auto;background:#111114;border:1px solid #1e1e24;border-radius:12px;overflow:hidden}
+    .header{background:#1a1a1f;padding:28px 36px;border-bottom:1px solid #1e1e24}
+    .logo{font-size:18px;font-weight:700;color:#DFFF00;letter-spacing:-0.5px}
+    .body{padding:32px 36px}
+    h1{margin:0 0 8px;font-size:22px;font-weight:700;color:#e8e8ea}
+    .sub{margin:0 0 28px;font-size:15px;color:#8b8b9a}
+    .detail-box{background:#0a0a0b;border:1px solid #1e1e24;border-radius:8px;padding:18px 20px;margin-bottom:28px}
+    .detail-row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:#8b8b9a;border-bottom:1px solid #1a1a1f}
+    .detail-row:last-child{border-bottom:none}
+    .detail-val{color:#e8e8ea;font-weight:500;text-align:right}
+    .badge{display:inline-block;background:#0a1f0a;border:1px solid #4caf50;color:#4caf50;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:0.5px;margin-bottom:20px}
+    .btn{display:inline-block;padding:12px 24px;background:#1a1a1f;color:#e8e8ea;font-weight:600;font-size:14px;border-radius:8px;text-decoration:none;border:1px solid #2e2e3a;margin-right:8px}
+    .footer{padding:20px 36px;border-top:1px solid #1e1e24;font-size:12px;color:#4a4a5a;text-align:center}
+  </style></head><body>
+  <div class="wrap">
+    <div class="header"><div class="logo">sched<span style="color:#fff">kit</span></div></div>
+    <div class="body">
+      <div class="badge">✓ CONFIRMED</div>
+      <h1>Your booking is confirmed</h1>
+      <p class="sub">${host_name} has accepted your booking request.</p>
+      <div class="detail-box">
+        <div class="detail-row"><span>Event</span><span class="detail-val">${event_title}</span></div>
+        <div class="detail-row"><span>With</span><span class="detail-val">${host_name}</span></div>
+        <div class="detail-row"><span>When</span><span class="detail-val">${startLocal}</span></div>
+      </div>
+      <a href="${cancel_url}" class="btn">Cancel booking</a>
+      <a href="${reschedule_url}" class="btn">Reschedule</a>
+    </div>
+    <div class="footer">Powered by SchedKit &nbsp;·&nbsp; schedkit.net</div>
+  </div>
+</body></html>`;
+  try {
+    await mj.post('send', { version: 'v3.1' }).request({
+      Messages: [{
+        From: { Email: FROM_EMAIL, Name: FROM_NAME },
+        To: [{ Email: attendee_email, Name: attendee_name }],
+        Subject: `Confirmed: ${event_title} with ${host_name}`,
+        HTMLPart: html,
+      }],
+    });
+  } catch(e) { console.error('Mailjet confirmed-by-host email error:', e.message); }
+}
+
+// ── Booking declined — sent to attendee after host declines ─────────────────
+export async function sendBookingDeclined({ attendee_name, attendee_email, host_name, event_title, start_time, timezone }) {
+  const startLocal = new Date(start_time).toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: timezone,
+  });
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    body{margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif}
+    .wrap{max-width:560px;margin:40px auto;background:#111114;border:1px solid #1e1e24;border-radius:12px;overflow:hidden}
+    .header{background:#1a1a1f;padding:28px 36px;border-bottom:1px solid #1e1e24}
+    .logo{font-size:18px;font-weight:700;color:#DFFF00;letter-spacing:-0.5px}
+    .body{padding:32px 36px}
+    h1{margin:0 0 8px;font-size:22px;font-weight:700;color:#e8e8ea}
+    .sub{margin:0 0 28px;font-size:15px;color:#8b8b9a}
+    .detail-box{background:#0a0a0b;border:1px solid #1e1e24;border-radius:8px;padding:18px 20px;margin-bottom:28px}
+    .detail-row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:#8b8b9a;border-bottom:1px solid #1a1a1f}
+    .detail-row:last-child{border-bottom:none}
+    .detail-val{color:#e8e8ea;font-weight:500;text-align:right}
+    .badge{display:inline-block;background:#1f0a0a;border:1px solid #ef5350;color:#ef5350;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:0.5px;margin-bottom:20px}
+    .note{font-size:14px;color:#8b8b9a;line-height:1.6}
+    .footer{padding:20px 36px;border-top:1px solid #1e1e24;font-size:12px;color:#4a4a5a;text-align:center}
+  </style></head><body>
+  <div class="wrap">
+    <div class="header"><div class="logo">sched<span style="color:#fff">kit</span></div></div>
+    <div class="body">
+      <div class="badge">✕ DECLINED</div>
+      <h1>Booking request declined</h1>
+      <p class="sub">${host_name} was unable to accept your booking request.</p>
+      <div class="detail-box">
+        <div class="detail-row"><span>Event</span><span class="detail-val">${event_title}</span></div>
+        <div class="detail-row"><span>With</span><span class="detail-val">${host_name}</span></div>
+        <div class="detail-row"><span>Requested time</span><span class="detail-val">${startLocal}</span></div>
+      </div>
+      <p class="note">If you'd like to try a different time, visit the booking page to make a new request.</p>
+    </div>
+    <div class="footer">Powered by SchedKit &nbsp;·&nbsp; schedkit.net</div>
+  </div>
+</body></html>`;
+  try {
+    await mj.post('send', { version: 'v3.1' }).request({
+      Messages: [{
+        From: { Email: FROM_EMAIL, Name: FROM_NAME },
+        To: [{ Email: attendee_email, Name: attendee_name }],
+        Subject: `Booking declined: ${event_title} with ${host_name}`,
+        HTMLPart: html,
+      }],
+    });
+  } catch(e) { console.error('Mailjet declined email error:', e.message); }
+}
