@@ -124,6 +124,8 @@ tr:hover td{background:var(--surface2)}
 .badge-confirmed{background:rgba(74,222,128,.1);color:var(--green)}
 .badge-cancelled{background:rgba(255,95,95,.1);color:var(--red)}
 .badge-rescheduled{background:rgba(223,255,0,.08);color:var(--accent)}
+.badge-pending{background:rgba(251,191,36,.1);color:#fbbf24}
+.badge-declined{background:rgba(255,95,95,.08);color:#ff8a8a}
 .badge-active{background:rgba(74,222,128,.1);color:var(--green)}
 .badge-inactive{background:rgba(255,95,95,.1);color:var(--red)}
 
@@ -270,6 +272,7 @@ tr:hover td{background:var(--surface2)}
       </div>
       <div class="stats">
         <div class="stat"><div class="stat-label">upcoming</div><div class="stat-value" id="stat-upcoming">—</div></div>
+        <div class="stat"><div class="stat-label">pending</div><div class="stat-value" id="stat-pending" style="color:#fbbf24">—</div></div>
         <div class="stat"><div class="stat-label">total</div><div class="stat-value" id="stat-total">—</div></div>
         <div class="stat"><div class="stat-label">cancelled</div><div class="stat-value" id="stat-cancelled">—</div></div>
       </div>
@@ -455,6 +458,13 @@ tr:hover td{background:var(--surface2)}
     <div class="form-row">
       <label>Webhook URL <span style="color:var(--muted)">(optional)</span></label>
       <input type="url" id="et-webhook" placeholder="https://...">
+    </div>
+    <div class="form-row">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input type="checkbox" id="et-requires-confirmation" style="width:16px;height:16px;accent-color:var(--accent)">
+        Require host confirmation before booking is finalized
+      </label>
+      <div class="form-hint">Attendees will see "awaiting confirmation" and you'll get Accept/Decline links by email + in the dashboard.</div>
     </div>
     <div class="form-row">
       <label>Custom Fields <span style="color:var(--muted)">(collected from attendees at booking)</span></label>
@@ -778,10 +788,13 @@ async function loadBookings() {
   const now = new Date();
   const upcoming = bookings.filter(b => b.status === 'confirmed' && new Date(b.start_time) > now);
   const cancelled = bookings.filter(b => b.status === 'cancelled');
+  const pending = bookings.filter(b => b.status === 'pending');
 
   document.getElementById('stat-upcoming').textContent = upcoming.length;
   document.getElementById('stat-total').textContent = total;
   document.getElementById('stat-cancelled').textContent = cancelled.length;
+  const pendingStat = document.getElementById('stat-pending');
+  if (pendingStat) pendingStat.textContent = pending.length;
 
   // Store all bookings for toggle
   window._allBookings = bookings;
@@ -824,9 +837,12 @@ function renderBookingsTable(bookings) {
     const start = new Date(b.start_time);
     const dateStr = start.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
     const timeStr = start.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
-    const canReschedule = b.status === 'confirmed';
+    const canReschedule = b.status === 'confirmed' || b.status === 'pending';
     const canCancel = b.status === 'confirmed' || b.status === 'pending';
+    const isPending = b.status === 'pending';
     const actions = [
+      isPending ? `<button class="btn btn-primary" style="font-size:12px;padding:6px 12px;background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3)" onclick='confirmBooking(${JSON.stringify(b.confirm_token||'').replace(/'/g,"&#39;")}, ${JSON.stringify(b).replace(/'/g,"&#39;")})'>✓ Confirm</button>` : '',
+      isPending ? `<button class="btn" style="font-size:12px;padding:6px 12px;background:rgba(255,95,95,.08);color:#ff5f5f;border:1px solid rgba(255,95,95,.2)" onclick='declineBooking(${JSON.stringify(b.confirm_token||'').replace(/'/g,"&#39;")}, ${JSON.stringify(b).replace(/'/g,"&#39;")})'>✕ Decline</button>` : '',
       canReschedule ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openRescheduleModal(${JSON.stringify(b).replace(/'/g,"&#39;")})'>Reschedule</button>` : '',
       canCancel ? `<button class="btn" style="font-size:12px;padding:6px 12px;background:rgba(255,95,95,.08);color:#ff5f5f;border:1px solid rgba(255,95,95,.2)" onclick='openCancelBookingModal(${JSON.stringify(b).replace(/'/g,"&#39;")})'>Cancel</button>` : '',
       `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openFlagModal(${JSON.stringify(window._clientFlags?.[b.attendee_email]||{email:b.attendee_email}).replace(/'/g,"&#39;")})'>${window._clientFlags?.[b.attendee_email] ? '🚨 Edit Flag' : '🏴 Flag'}</button>`,
@@ -902,6 +918,7 @@ function openEventTypeModal(et, teamCtx = null) {
   document.getElementById('et-location-type').value = et?.location_type || '';
   document.getElementById('et-location').value = et?.location || '';
   document.getElementById('et-webhook').value = et?.webhook_url || '';
+  document.getElementById('et-requires-confirmation').checked = !!et?.requires_confirmation;
   // Load custom fields builder
   const fields = (() => { try { return JSON.parse(et?.custom_fields || '[]'); } catch { return []; } })();
   document.getElementById('cf-builder').innerHTML = '';
@@ -929,6 +946,7 @@ async function saveEventType() {
     location: v('et-location') || null,
     webhook_url: v('et-webhook') || null,
     custom_fields: JSON.stringify(getCustomFields()),
+    requires_confirmation: document.getElementById('et-requires-confirmation').checked,
   };
   if (!body.title || !body.slug || !body.duration_minutes) return toast('Title, slug, and duration required', 'err');
 
@@ -1850,6 +1868,31 @@ async function confirmCancelBooking() {
     toast('Cancel failed — try again', 'err');
   }
   btn.disabled = false; btn.textContent = 'Yes, Cancel';
+}
+
+// ── Confirm / Decline pending bookings ────────────
+async function confirmBooking(confirm_token, booking) {
+  if (!confirm_token) return toast('Missing confirm token', 'err');
+  if (!confirm(`Confirm booking for ${booking.attendee_name}?`)) return;
+  const res = await fetch(`/v1/bookings/${confirm_token}/confirm`, { credentials: 'include' });
+  if (res.ok || res.status === 200) {
+    toast('Booking confirmed — attendee notified', 'ok');
+    await loadBookings();
+  } else {
+    toast('Confirm failed', 'err');
+  }
+}
+
+async function declineBooking(confirm_token, booking) {
+  if (!confirm_token) return toast('Missing confirm token', 'err');
+  if (!confirm(`Decline booking for ${booking.attendee_name}? They will be notified.`)) return;
+  const res = await fetch(`/v1/bookings/${confirm_token}/decline`, { credentials: 'include' });
+  if (res.ok || res.status === 200) {
+    toast('Booking declined — attendee notified', 'ok');
+    await loadBookings();
+  } else {
+    toast('Decline failed', 'err');
+  }
 }
 
 // ── Create Booking ────────────────────────────────

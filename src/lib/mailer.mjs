@@ -356,7 +356,7 @@ export async function sendBookingPending({ attendee_name, attendee_email, host_n
       </div>
       <p class="note">You'll receive a confirmation email once ${host_name} accepts your booking. No action needed from you right now.</p>
     </div>
-    <div class="footer">Powered by SchedKit &nbsp;·&nbsp; schedkit.net</div>
+    <div class="footer"><a href="https://schedkit.net" style="display:inline-flex;align-items:center;gap:6px;color:#4a4a5a;text-decoration:none"><svg width="14" height="14" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="#DFFF00"/><line x1="128" y1="96" x2="208" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/></svg>schedkit.net</a></div>
   </div>
 </body></html>`;
   try {
@@ -413,7 +413,7 @@ export async function sendHostConfirmationRequest({ host_name, host_email, atten
       </div>
       <p class="note">These links are single-use and expire after the booking is actioned. No login required.</p>
     </div>
-    <div class="footer">Powered by SchedKit &nbsp;·&nbsp; schedkit.net</div>
+    <div class="footer"><a href="https://schedkit.net" style="display:inline-flex;align-items:center;gap:6px;color:#4a4a5a;text-decoration:none"><svg width="14" height="14" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="#DFFF00"/><line x1="128" y1="96" x2="208" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/></svg>schedkit.net</a></div>
   </div>
 </body></html>`;
   try {
@@ -464,7 +464,7 @@ export async function sendBookingConfirmedByHost({ attendee_name, attendee_email
       <a href="${cancel_url}" class="btn">Cancel booking</a>
       <a href="${reschedule_url}" class="btn">Reschedule</a>
     </div>
-    <div class="footer">Powered by SchedKit &nbsp;·&nbsp; schedkit.net</div>
+    <div class="footer"><a href="https://schedkit.net" style="display:inline-flex;align-items:center;gap:6px;color:#4a4a5a;text-decoration:none"><svg width="14" height="14" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="#DFFF00"/><line x1="128" y1="96" x2="208" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/></svg>schedkit.net</a></div>
   </div>
 </body></html>`;
   try {
@@ -514,7 +514,7 @@ export async function sendBookingDeclined({ attendee_name, attendee_email, host_
       </div>
       <p class="note">If you'd like to try a different time, visit the booking page to make a new request.</p>
     </div>
-    <div class="footer">Powered by SchedKit &nbsp;·&nbsp; schedkit.net</div>
+    <div class="footer"><a href="https://schedkit.net" style="display:inline-flex;align-items:center;gap:6px;color:#4a4a5a;text-decoration:none"><svg width="14" height="14" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="#DFFF00"/><line x1="128" y1="96" x2="208" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/></svg>schedkit.net</a></div>
   </div>
 </body></html>`;
   try {
