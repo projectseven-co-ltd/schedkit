@@ -1128,7 +1128,7 @@ html, body {
       if (data.status === 'pending') {
         document.getElementById('confirm-icon').textContent = '⏳';
         document.getElementById('confirm-headline').textContent = 'Request received!';
-        document.getElementById('confirm-sub').innerHTML = 'Your request is awaiting confirmation by <strong>' + USERNAME + '</strong>. We\'ll email you at <strong id="confirm-email">' + emailVal + '</strong> once confirmed.';
+        document.getElementById('confirm-sub').innerHTML = 'Your request is awaiting confirmation by <strong>' + USERNAME + '</strong>. You will be emailed at <strong id="confirm-email">' + emailVal + '</strong> once confirmed.';
       } else {
         cancelUrl = data.cancel_url;
         document.getElementById('btn-cancel-bkg').style.display = '';
