@@ -210,6 +210,16 @@
 
   /* --- CTA / REQUEST ACCESS --- */
   .cta-section { text-align: center; padding: 120px 24px; }
+
+  .embed-tab {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+    padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s;
+  }
+  .embed-tab:hover { color: var(--text); border-color: var(--text); }
+  .embed-tab-active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+  .embed-layout { display: grid; grid-template-columns: 1fr 420px; gap: 48px; align-items: start; }
+  @media (max-width: 900px) { .embed-layout { grid-template-columns: 1fr; } }
   .cta-card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 16px; padding: 64px 40px; max-width: 600px; margin: 0 auto;
@@ -268,6 +278,7 @@
 <nav>
   <a href="/" class="nav-logo"><svg width="28" height="28" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#0A0A0B"/><line x1="128" y1="96" x2="208" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/></svg>sched<span>kit</span></a>
   <div style="display:flex;align-items:center;gap:12px">
+    <a href="https://github.com/projectseven-co-ltd/schedkit-react#readme" target="_blank" style="font-family:var(--font-mono);font-size:13px;color:var(--muted);text-decoration:none;padding:6px 12px;border:1px solid var(--border);border-radius:8px;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">Docs</a>
     <button class="lights-btn" id="lightsBtn"><span>🔦</span><span id="lightsBtnLabel">LIGHTS ON</span></button>
     <a href="#request" class="nav-cta">Request Access</a>
   </div>
@@ -449,6 +460,141 @@
   </div>
 </section>
 
+<!-- EMBED SECTION -->
+<section id="embed" style="padding:100px 24px;">
+  <div class="container">
+    <div class="section-label">Embed anywhere</div>
+    <h2>One line. Any site.</h2>
+    <p class="section-sub">Drop a booking form into any React app, static site, or client portal. Three modes — inline, popup, or floating widget. No configuration required.</p>
+
+    <!-- Tab switcher -->
+    <div id="embedTabs" style="display:flex;gap:8px;margin-bottom:32px;flex-wrap:wrap;">
+      <button onclick="showEmbed('inline')" id="tab-inline" class="embed-tab embed-tab-active">Inline</button>
+      <button onclick="showEmbed('popup')" id="tab-popup" class="embed-tab">Popup</button>
+      <button onclick="showEmbed('widget')" id="tab-widget" class="embed-tab">Widget</button>
+      <button onclick="showEmbed('iframe')" id="tab-iframe" class="embed-tab">Plain iframe</button>
+    </div>
+
+    <!-- Code panels -->
+    <div class="embed-layout">
+      <div>
+        <!-- Inline -->
+        <div id="panel-inline" class="embed-panel">
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><i></i><i></i><i></i></div>
+              <span>Inline embed — React</span>
+            </div>
+            <pre><span class="c">npm install @schedkit/react</span>
+
+<span class="k">import</span> { SchedKitEmbed } <span class="k">from</span> <span class="s">'@schedkit/react'</span>;
+
+<span class="k">export default function</span> <span class="n">Page</span>() {
+  <span class="k">return</span> (
+    &lt;<span class="n">SchedKitEmbed</span>
+      <span class="n">user</span>=<span class="s">"acme"</span>
+      <span class="n">event</span>=<span class="s">"discovery"</span>
+      <span class="n">height</span>={<span class="n">750</span>}
+    /&gt;
+  );
+}</pre>
+          </div>
+          <p style="margin-top:16px;color:var(--muted);font-size:14px;">Renders the full booking form inline — no overlay, no button. Best for dedicated booking pages.</p>
+        </div>
+
+        <!-- Popup -->
+        <div id="panel-popup" class="embed-panel" style="display:none">
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><i></i><i></i><i></i></div>
+              <span>Popup modal — React</span>
+            </div>
+            <pre><span class="k">import</span> { SchedKitEmbed } <span class="k">from</span> <span class="s">'@schedkit/react'</span>;
+
+<span class="k">export default function</span> <span class="n">Hero</span>() {
+  <span class="k">return</span> (
+    &lt;<span class="n">SchedKitEmbed</span>
+      <span class="n">user</span>=<span class="s">"acme"</span>
+      <span class="n">event</span>=<span class="s">"discovery"</span>
+      <span class="n">mode</span>=<span class="s">"popup"</span>
+      <span class="n">label</span>=<span class="s">"Schedule a call"</span>
+      <span class="n">onBooked</span>={(<span class="n">data</span>) =&gt; console.<span class="n">log</span>(<span class="s">'Booked!'</span>, data)}
+    /&gt;
+  );
+}</pre>
+          </div>
+          <p style="margin-top:16px;color:var(--muted);font-size:14px;">Renders a button. Click opens a full-screen modal overlay. <code style="font-family:var(--font-mono);font-size:12px;background:var(--surface);padding:2px 6px;border-radius:4px;">onBooked</code> fires when the attendee confirms.</p>
+        </div>
+
+        <!-- Widget -->
+        <div id="panel-widget" class="embed-panel" style="display:none">
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><i></i><i></i><i></i></div>
+              <span>Floating widget — React</span>
+            </div>
+            <pre><span class="k">import</span> { SchedKitEmbed } <span class="k">from</span> <span class="s">'@schedkit/react'</span>;
+
+<span class="c">// Drop anywhere in your app — renders a</span>
+<span class="c">// sticky corner button, works on any page</span>
+&lt;<span class="n">SchedKitEmbed</span>
+  <span class="n">user</span>=<span class="s">"acme"</span>
+  <span class="n">event</span>=<span class="s">"discovery"</span>
+  <span class="n">mode</span>=<span class="s">"widget"</span>
+  <span class="n">label</span>=<span class="s">"Book now"</span>
+  <span class="n">corner</span>=<span class="s">"bottom-right"</span>
+/&gt;</pre>
+          </div>
+          <p style="margin-top:16px;color:var(--muted);font-size:14px;">Fixed button in the corner of the page. Zero layout changes — just drop it in <code style="font-family:var(--font-mono);font-size:12px;background:var(--surface);padding:2px 6px;border-radius:4px;">&lt;App /&gt;</code> and it floats everywhere.</p>
+        </div>
+
+        <!-- iframe -->
+        <div id="panel-iframe" class="embed-panel" style="display:none">
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><i></i><i></i><i></i></div>
+              <span>Plain iframe — any site</span>
+            </div>
+            <pre><span class="c">&lt;!-- Works on any site, no npm required --&gt;</span>
+&lt;<span class="k">iframe</span>
+  <span class="n">src</span>=<span class="s">"https://schedkit.net/book/acme/discovery"</span>
+  <span class="n">width</span>=<span class="s">"100%"</span>
+  <span class="n">height</span>=<span class="s">"750"</span>
+  <span class="n">frameborder</span>=<span class="s">"0"</span>
+  <span class="n">style</span>=<span class="s">"border-radius:12px"</span>
+&gt;&lt;/<span class="k">iframe</span>&gt;</pre>
+          </div>
+          <p style="margin-top:16px;color:var(--muted);font-size:14px;">No dependencies. Paste into any HTML, Webflow, WordPress, or Notion page and it just works.</p>
+        </div>
+
+        <div style="margin-top:28px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+          <a href="https://www.npmjs.com/package/@schedkit/react" target="_blank" class="btn-primary" style="font-size:14px;padding:10px 20px;">npm install @schedkit/react</a>
+          <a href="https://github.com/projectseven-co-ltd/schedkit-react#readme" target="_blank" class="btn-ghost" style="font-size:14px;padding:10px 20px;">Full docs →</a>
+        </div>
+      </div>
+
+      <!-- Live preview -->
+      <div style="position:relative;">
+        <div style="position:sticky;top:90px;">
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">Live preview</div>
+          <div style="border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface);">
+            <iframe
+              src="https://schedkit.net/book/jason/demo-meeting"
+              width="100%"
+              height="560"
+              frameborder="0"
+              style="display:block;"
+              title="SchedKit live demo"
+              loading="lazy"
+            ></iframe>
+          </div>
+          <p style="margin-top:10px;font-size:12px;color:var(--muted);font-family:var(--font-mono);">↑ This is a real, live booking page</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- USE CASES -->
 <section>
   <div class="container">
@@ -550,6 +696,15 @@ document.getElementById('request-form').addEventListener('submit', async (e) => 
     btn.disabled = false; btn.textContent = 'Request Access →';
   }
 });
+</script>
+<script>
+function showEmbed(mode) {
+  ['inline','popup','widget','iframe'].forEach(m => {
+    document.getElementById('panel-'+m).style.display = m === mode ? 'block' : 'none';
+    const tab = document.getElementById('tab-'+m);
+    tab.classList.toggle('embed-tab-active', m === mode);
+  });
+}
 </script>
 </body>
 </html>
