@@ -25,6 +25,7 @@ const eventTypeSchema = {
     location_type: { type: 'string', enum: ['video', 'phone', 'in_person', 'other'] },
     webhook_url: { type: 'string' },
     custom_fields: { type: 'string', description: 'JSON array of custom field definitions' },
+    requires_confirmation: { type: 'boolean', description: 'Require host to confirm each booking before it is finalized' },
     active: { type: 'boolean' },
   },
 };
@@ -87,7 +88,7 @@ export default async function eventTypesRoutes(fastify) {
   }, async (req, reply) => {
     const { title, slug, description, appointment_label, duration_minutes,
             buffer_before, buffer_after, min_notice_minutes,
-            max_bookings_per_day, location, location_type, webhook_url, custom_fields } = req.body;
+            max_bookings_per_day, location, location_type, webhook_url, custom_fields, requires_confirmation } = req.body;
 
     if (!title || !slug || !duration_minutes) {
       return reply.code(400).send({ error: 'title, slug, duration_minutes required' });
@@ -104,6 +105,7 @@ export default async function eventTypesRoutes(fastify) {
       max_bookings_per_day: max_bookings_per_day ? Number(max_bookings_per_day) : null,
       location, location_type, webhook_url,
       custom_fields: custom_fields || '[]',
+      requires_confirmation: !!requires_confirmation,
       active: true,
       created_at: new Date().toISOString(),
     });

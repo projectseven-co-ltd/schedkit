@@ -878,7 +878,7 @@ async function loadEventTypes() {
     <div class="table-wrap" style="margin-bottom:12px;padding:20px 24px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
         <div>
-          <div style="font-weight:700;font-size:16px;margin-bottom:4px">${esc(et.title)}</div>
+          <div style="font-weight:700;font-size:16px;margin-bottom:4px">${esc(et.title)}${et.requires_confirmation ? ' <span style="font-size:11px;font-weight:600;background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.3);padding:2px 8px;border-radius:20px;vertical-align:middle;">CONFIRM REQUIRED</span>' : ''}</div>
           <div style="color:var(--muted);font-size:13px;margin-bottom:10px">${et.duration_minutes} min · label: ${esc(et.appointment_label || 'meeting')} · notice: ${et.min_notice_minutes || 0}min</div>
           <div class="booking-link-box" style="max-width:460px">
             <code>schedkit.net/book/${esc(currentUser?.slug || '')}/${esc(et.slug)}</code>
