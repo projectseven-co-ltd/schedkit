@@ -495,6 +495,127 @@ html, body {
 }
 
 #lightsFlicker { position: fixed; inset: 0; z-index: 9999; pointer-events: none; }
+
+/* ── EMBED BUTTON ── */
+.embed-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 20px;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text2); font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.07em;
+  cursor: pointer; transition: all .18s;
+}
+.embed-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── EMBED MODAL ── */
+.em-backdrop {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 0;
+  animation: emFadeIn 0.18s ease;
+}
+@keyframes emFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.em-sheet {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 18px 18px 0 0;
+  width: 100%; max-width: 720px;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  animation: emSlideUp 0.22s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes emSlideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.em-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 24px 28px 0; flex-shrink: 0;
+}
+.em-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+.em-sub { font-size: 13px; color: var(--text2); }
+.em-close {
+  background: none; border: none; color: var(--text2);
+  font-size: 16px; cursor: pointer; padding: 4px 8px;
+  border-radius: 6px; transition: color 0.15s, background 0.15s;
+  flex-shrink: 0; margin-left: 16px;
+}
+.em-close:hover { color: var(--text); background: var(--surface); }
+
+/* Tabs */
+.em-tabs {
+  display: flex; gap: 4px; padding: 16px 28px 0;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.em-tab {
+  background: none; border: none; color: var(--text2);
+  font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+  padding: 8px 14px; cursor: pointer; border-radius: 8px 8px 0 0;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all 0.15s;
+}
+.em-tab:hover { color: var(--text); }
+.em-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Panels */
+.em-panels { padding: 20px 28px 28px; overflow-y: auto; flex: 1; }
+.em-panel { display: none; }
+.em-panel.active { display: block; }
+.em-panel-desc {
+  font-size: 13px; color: var(--text2);
+  margin-bottom: 12px; line-height: 1.55;
+}
+.em-panel-desc code {
+  font-family: var(--font-mono); font-size: 12px;
+  background: var(--surface); padding: 1px 5px; border-radius: 4px;
+  color: var(--accent);
+}
+.em-code-wrap { position: relative; margin-bottom: 12px; }
+.em-code {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--text2);
+  white-space: pre-wrap; word-break: break-all;
+  line-height: 1.6;
+  overflow-x: auto;
+  padding-right: 72px;
+}
+.em-copy {
+  position: absolute; top: 10px; right: 10px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text2); font-family: var(--font-mono); font-size: 10px;
+  padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  transition: all 0.15s; letter-spacing: 0.05em;
+}
+.em-copy:hover { border-color: var(--accent); color: var(--accent); }
+.em-copy.copied { border-color: var(--success, #00e5a0); color: var(--success, #00e5a0); }
+
+.em-options {
+  display: flex; flex-wrap: wrap; gap: 12px 20px;
+  margin-top: 4px;
+}
+.em-options label {
+  display: flex; flex-direction: column; gap: 5px;
+  font-size: 11px; font-family: var(--font-mono);
+  color: var(--text2); text-transform: uppercase; letter-spacing: 0.07em;
+}
+.em-select, .em-input {
+  background: var(--surface); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--font-sans); font-size: 13px;
+  padding: 7px 10px; border-radius: 8px; cursor: pointer;
+  min-width: 140px;
+}
+.em-select:focus, .em-input:focus { outline: none; border-color: var(--accent); }
+
+@media (max-width: 720px) {
+  .em-sheet { border-radius: 14px 14px 0 0; max-height: 90vh; }
+  .em-header, .em-tabs, .em-panels { padding-left: 16px; padding-right: 16px; }
+  .em-tabs { gap: 0; overflow-x: auto; }
+  .em-tab { font-size: 12px; padding: 8px 10px; white-space: nowrap; }
+}
 </style>
 </head>
 <body>
@@ -598,11 +719,116 @@ html, body {
           <svg width="14" height="14" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="#DFFF00"/><line x1="128" y1="96" x2="208" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/></svg>
           schedkit.net
         </a>
+        <button class="embed-btn" id="embedBtn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          Embed
+        </button>
         <button class="lights-btn mobile-lights" id="lightsBtnMobile">
           <span>🔦</span><span id="lightsBtnLabelMobile">LIGHTS ON</span>
         </button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ── EMBED MODAL ── -->
+<div id="embedModal" class="em-backdrop" style="display:none" aria-modal="true" role="dialog">
+  <div class="em-sheet">
+    <div class="em-header">
+      <div>
+        <div class="em-title">Embed this booking page</div>
+        <div class="em-sub">Copy any snippet below and add it to your site, app, or platform.</div>
+      </div>
+      <button class="em-close" id="embedClose">✕</button>
+    </div>
+
+    <!-- TABS -->
+    <div class="em-tabs">
+      <button class="em-tab active" data-tab="iframe">Inline iframe</button>
+      <button class="em-tab" data-tab="popup">Popup modal</button>
+      <button class="em-tab" data-tab="widget">Floating widget</button>
+      <button class="em-tab" data-tab="react">React</button>
+    </div>
+
+    <!-- PANELS -->
+    <div class="em-panels">
+
+      <!-- IFRAME -->
+      <div class="em-panel active" data-panel="iframe">
+        <div class="em-panel-desc">Drop this anywhere on a webpage to embed the booking form inline.</div>
+        <div class="em-code-wrap">
+          <pre class="em-code" id="code-iframe"></pre>
+          <button class="em-copy" data-target="code-iframe">Copy</button>
+        </div>
+        <div class="em-options">
+          <label>Height
+            <select id="opt-height" class="em-select">
+              <option value="700">700px</option>
+              <option value="800" selected>800px</option>
+              <option value="900">900px</option>
+              <option value="100vh">Full viewport</option>
+            </select>
+          </label>
+          <label>Width
+            <select id="opt-width" class="em-select">
+              <option value="100%">100%</option>
+              <option value="920px">920px (max)</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <!-- POPUP -->
+      <div class="em-panel" data-panel="popup">
+        <div class="em-panel-desc">Adds a button to your page. Clicking it opens the booking form in a centered modal overlay.</div>
+        <div class="em-code-wrap">
+          <pre class="em-code" id="code-popup"></pre>
+          <button class="em-copy" data-target="code-popup">Copy</button>
+        </div>
+        <div class="em-options">
+          <label>Button label
+            <input type="text" id="opt-btn-label" class="em-input" value="Book a meeting" placeholder="Book a meeting">
+          </label>
+        </div>
+      </div>
+
+      <!-- WIDGET -->
+      <div class="em-panel" data-panel="widget">
+        <div class="em-panel-desc">A sticky floating button in the corner of your page. Works on any site — just paste before <code>&lt;/body&gt;</code>.</div>
+        <div class="em-code-wrap">
+          <pre class="em-code" id="code-widget"></pre>
+          <button class="em-copy" data-target="code-widget">Copy</button>
+        </div>
+        <div class="em-options">
+          <label>Position
+            <select id="opt-corner" class="em-select">
+              <option value="bottom-right" selected>Bottom right</option>
+              <option value="bottom-left">Bottom left</option>
+            </select>
+          </label>
+          <label>Label
+            <input type="text" id="opt-widget-label" class="em-input" value="Book now" placeholder="Book now">
+          </label>
+        </div>
+      </div>
+
+      <!-- REACT -->
+      <div class="em-panel" data-panel="react">
+        <div class="em-panel-desc">Use the SchedKit React component. Install once, use anywhere.</div>
+        <div class="em-code-wrap">
+          <pre class="em-code" id="code-react-install"></pre>
+          <button class="em-copy" data-target="code-react-install">Copy</button>
+        </div>
+        <div class="em-panel-desc" style="margin-top:16px">Then in your component:</div>
+        <div class="em-code-wrap">
+          <pre class="em-code" id="code-react-use"></pre>
+          <button class="em-copy" data-target="code-react-use">Copy</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
   </div>
 </div>
@@ -904,6 +1130,189 @@ html, body {
   function showError(msg) {
     const el = document.getElementById('form-error'); el.textContent = msg; el.style.display = 'block';
   }
+
+  // ── Embed modal ──
+  (function() {
+    const BOOK_URL = \`\${location.origin}/book/\${USERNAME}/\${EVENT_SLUG}\`;
+    const modal = document.getElementById('embedModal');
+    const closeBtn = document.getElementById('embedClose');
+
+    document.getElementById('embedBtn').addEventListener('click', () => {
+      modal.style.display = 'flex';
+      updateCodes();
+    });
+    closeBtn.addEventListener('click', () => modal.style.display = 'none');
+    modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.style.display = 'none'; });
+
+    // Tabs
+    document.querySelectorAll('.em-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.em-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.em-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelector(\`[data-panel="\${tab.dataset.tab}"]\`).classList.add('active');
+      });
+    });
+
+    // Re-generate on option change
+    ['opt-height','opt-width','opt-btn-label','opt-corner','opt-widget-label'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateCodes);
+      if (el) el.addEventListener('change', updateCodes);
+    });
+
+    function g(id, fallback) {
+      const el = document.getElementById(id); return el ? el.value : fallback;
+    }
+
+    function updateCodes() {
+      const h = g('opt-height', '800px');
+      const w = g('opt-width', '100%');
+      const btnLabel = g('opt-btn-label', 'Book a meeting');
+      const corner = g('opt-corner', 'bottom-right');
+      const widgetLabel = g('opt-widget-label', 'Book now');
+      const isRight = corner === 'bottom-right';
+
+      // ── Iframe ──
+      document.getElementById('code-iframe').textContent =
+\`<iframe
+  src="\${BOOK_URL}"
+  width="\${w}"
+  height="\${h}"
+  frameborder="0"
+  style="border:none;border-radius:12px;display:block;"
+  title="Booking"
+  loading="lazy"
+></iframe>\`;
+
+      // ── Popup ──
+      document.getElementById('code-popup').textContent =
+\`<!-- SchedKit popup embed -->
+<button id="sk-open-btn" style="
+  background:#DFFF00;color:#0d0d0d;border:none;
+  padding:12px 24px;border-radius:10px;
+  font-weight:700;font-size:15px;cursor:pointer;
+">\${btnLabel}</button>
+
+<div id="sk-modal" style="display:none;position:fixed;inset:0;z-index:99999;
+  background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);
+  align-items:center;justify-content:center;padding:16px;">
+  <div style="position:relative;width:100%;max-width:960px;
+    height:90vh;border-radius:18px;overflow:hidden;
+    box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+    <iframe id="sk-iframe" src="" style="width:100%;height:100%;border:none;"
+      frameborder="0" title="Booking"></iframe>
+    <button onclick="document.getElementById('sk-modal').style.display='none'"
+      style="position:absolute;top:14px;right:16px;background:rgba(0,0,0,0.6);
+      border:none;color:#fff;border-radius:50%;width:32px;height:32px;
+      font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+  </div>
+</div>
+<script>
+  document.getElementById('sk-open-btn').addEventListener('click', function() {
+    var m = document.getElementById('sk-modal');
+    document.getElementById('sk-iframe').src = '\${BOOK_URL}';
+    m.style.display = 'flex';
+  });
+  document.getElementById('sk-modal').addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+  });
+<\\/script>\`;
+
+      // ── Widget ──
+      document.getElementById('code-widget').textContent =
+\`<!-- SchedKit floating widget -->
+<script>
+(function(){
+  var BOOKING_URL = '\${BOOK_URL}';
+  var open = false;
+  var btn = document.createElement('button');
+  btn.textContent = '\${widgetLabel}';
+  btn.style.cssText = 'position:fixed;\${isRight?'right':'left'}:20px;bottom:20px;z-index:99998;'+
+    'background:#DFFF00;color:#0d0d0d;border:none;padding:13px 22px;'+
+    'border-radius:50px;font-weight:700;font-size:14px;cursor:pointer;'+
+    'box-shadow:0 4px 20px rgba(0,0,0,0.35);transition:transform .15s;';
+  btn.onmouseenter = function(){ this.style.transform='scale(1.05)'; };
+  btn.onmouseleave = function(){ this.style.transform='scale(1)'; };
+
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:99999;'+
+    'background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);'+
+    'align-items:center;justify-content:center;padding:16px;';
+
+  var frame = document.createElement('iframe');
+  frame.style.cssText = 'width:100%;max-width:960px;height:90vh;border:none;'+
+    'border-radius:18px;display:block;box-shadow:0 24px 80px rgba(0,0,0,0.5);';
+  frame.title = 'Booking';
+
+  var xBtn = document.createElement('button');
+  xBtn.innerHTML = '✕';
+  xBtn.style.cssText = 'position:fixed;\${isRight?'right':'left'}:32px;top:24px;'+
+    'background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;'+
+    'width:36px;height:36px;font-size:16px;cursor:pointer;z-index:100000;';
+
+  overlay.appendChild(frame);
+  document.body.appendChild(overlay);
+  document.body.appendChild(xBtn);
+  document.body.appendChild(btn);
+  xBtn.style.display = 'none';
+
+  function openModal() {
+    frame.src = BOOKING_URL;
+    overlay.style.display = 'flex';
+    xBtn.style.display = '';
+    open = true;
+  }
+  function closeModal() {
+    overlay.style.display = 'none';
+    xBtn.style.display = 'none';
+    frame.src = '';
+    open = false;
+  }
+
+  btn.addEventListener('click', function(){ open ? closeModal() : openModal(); });
+  xBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape'&&open) closeModal(); });
+})();
+<\\/script>\`;
+
+      // ── React ──
+      document.getElementById('code-react-install').textContent =
+\`npm install @schedkit/react\`;
+      document.getElementById('code-react-use').textContent =
+\`import { SchedKitEmbed } from '@schedkit/react';
+
+// Inline
+<SchedKitEmbed user="\${USERNAME}" event="\${EVENT_SLUG}" height={800} />
+
+// Popup (renders a button)
+<SchedKitEmbed user="\${USERNAME}" event="\${EVENT_SLUG}" mode="popup" label="Book a meeting" />
+
+// Widget (floating button)
+<SchedKitEmbed user="\${USERNAME}" event="\${EVENT_SLUG}" mode="widget" label="Book now" />\`;
+    }
+
+    // Copy buttons
+    document.querySelectorAll('.em-copy').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pre = document.getElementById(btn.dataset.target);
+        navigator.clipboard.writeText(pre.textContent).then(() => {
+          btn.textContent = 'Copied!';
+          btn.classList.add('copied');
+          setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+        }).catch(() => {
+          const ta = document.createElement('textarea');
+          ta.value = pre.textContent;
+          document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+          btn.textContent = 'Copied!'; btn.classList.add('copied');
+          setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+        });
+      });
+    });
+  })();
 
   // ── Lights ──
   function initLights(btnId, labelId) {
