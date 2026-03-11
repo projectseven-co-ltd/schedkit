@@ -167,8 +167,33 @@ fastify.post('/v1/request-access', {
   const { name, email, company, message } = req.body || {};
   if (!name || !email) return reply.code(400).send({ error: 'Name and email required' });
   try {
+    // 1. Save to NocoDB leads table
+    const { nocoRequest } = await import('./lib/noco.mjs');
+    await nocoRequest('POST', `/api/v1/db/data/noco/${process.env.NOCO_BASE_ID}/leads`, {
+      name, email,
+      company: company || '',
+      message: message || '',
+      status: 'new',
+      submitted_at: new Date().toISOString(),
+    });
+
+    // 2. ntfy alert
+    const ntfyTopic = process.env.NTFY_TOPIC || 'schedkit-leads';
+    fetch(`https://ntfy.sh/${ntfyTopic}`, {
+      method: 'POST',
+      headers: {
+        'Title': `New SchedKit Lead: ${name}${company ? ' — ' + company : ''}`,
+        'Priority': 'high',
+        'Tags': 'schedkit,lead',
+        'Content-Type': 'text/plain',
+      },
+      body: `${name} <${email}>${company ? '\n' + company : ''}\n\n${message || '(no message)'}`,
+    }).catch(e => fastify.log.warn('ntfy alert failed: ' + e.message));
+
+    // 3. Email to Jason
     const { sendAccessRequest } = await import('./lib/mailer.mjs');
     await sendAccessRequest({ name, email, company, message });
+
     return { ok: true };
   } catch(e) {
     fastify.log.error(e);
