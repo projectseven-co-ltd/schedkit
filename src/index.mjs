@@ -168,8 +168,8 @@ fastify.post('/v1/request-access', {
   if (!name || !email) return reply.code(400).send({ error: 'Name and email required' });
   try {
     // 1. Save to NocoDB leads table
-    const { nocoRequest } = await import('./lib/noco.mjs');
-    await nocoRequest('POST', `/api/v1/db/data/noco/${process.env.NOCO_BASE_ID}/m7cck1nc79fliq7`, {
+    const { db } = await import('./lib/noco.mjs');
+    await db.create('m7cck1nc79fliq7', {
       name, email,
       company: company || '',
       message: message || '',
@@ -182,7 +182,7 @@ fastify.post('/v1/request-access', {
     fetch(`https://ntfy.sh/${ntfyTopic}`, {
       method: 'POST',
       headers: {
-        'Title': `New SchedKit Lead: ${name}${company ? ' — ' + company : ''}`,
+        'Title': `New SchedKit Lead: ${name}${company ? ' - ' + company : ''}`,
         'Priority': 'high',
         'Tags': 'schedkit,lead',
         'Content-Type': 'text/plain',
