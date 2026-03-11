@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <!-- White bg version -->
+  <rect width="800" height="200" fill="#f5f4ef"/>
+  <!-- Icon -->
+  <rect x="0" y="12" width="176" height="176" rx="33" fill="#0A0A0B"/>
+  <line x1="44" y1="44" x2="72" y2="156" stroke="#DFFF00" stroke-width="26" stroke-linecap="round"/>
+  <line x1="94" y1="44" x2="122" y2="156" stroke="#DFFF00" stroke-width="26" stroke-linecap="round"/>
+  <!-- Wordmark -->
+  <text x="202" y="132" font-family="'Space Grotesk', 'Helvetica Neue', Arial, sans-serif" font-size="90" font-weight="700" fill="#141410" letter-spacing="-2">sched</text>
+  <text x="575" y="132" font-family="'Fira Code', 'Courier New', monospace" font-size="90" font-weight="500" fill="#4a4a5a" letter-spacing="-2">kit</text>
+</svg>
