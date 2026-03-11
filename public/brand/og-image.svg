@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0a0a0b"/>
+      <stop offset="100%" stop-color="#0f0f14"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Subtle accent glow blob top-left -->
+  <ellipse cx="120" cy="120" rx="260" ry="180" fill="#DFFF00" fill-opacity="0.04"/>
+
+  <!-- Grid lines (subtle) -->
+  <line x1="0" y1="210" x2="1200" y2="210" stroke="#1e1e24" stroke-width="1"/>
+  <line x1="0" y1="420" x2="1200" y2="420" stroke="#1e1e24" stroke-width="1"/>
+  <line x1="300" y1="0" x2="300" y2="630" stroke="#1e1e24" stroke-width="1"/>
+  <line x1="600" y1="0" x2="600" y2="630" stroke="#1e1e24" stroke-width="1"/>
+  <line x1="900" y1="0" x2="900" y2="630" stroke="#1e1e24" stroke-width="1"/>
+
+  <!-- Bottom accent bar -->
+  <rect x="0" y="622" width="1200" height="8" fill="#DFFF00"/>
+
+  <!-- Logo icon -->
+  <rect x="80" y="195" width="130" height="130" rx="24" fill="#111114" stroke="#1e1e24" stroke-width="1"/>
+  <line x1="110" y1="220" x2="130" y2="300" stroke="#DFFF00" stroke-width="18" stroke-linecap="round"/>
+  <line x1="148" y1="220" x2="168" y2="300" stroke="#DFFF00" stroke-width="18" stroke-linecap="round"/>
+
+  <!-- Wordmark -->
+  <text x="232" y="283" font-family="'Space Grotesk','Helvetica Neue',Arial,sans-serif" font-size="72" font-weight="700" fill="#e8e8ea" letter-spacing="-1">sched</text>
+  <text x="530" y="283" font-family="'Fira Code','Courier New',monospace" font-size="72" font-weight="400" fill="#5a5a6e" letter-spacing="-1">kit</text>
+
+  <!-- Tagline -->
+  <text x="80" y="370" font-family="'Space Grotesk','Helvetica Neue',Arial,sans-serif" font-size="28" font-weight="500" fill="#DFFF00" letter-spacing="0.5">AI-Powered Scheduling Infrastructure</text>
+
+  <!-- Description -->
+  <text x="80" y="420" font-family="'Space Grotesk','Helvetica Neue',Arial,sans-serif" font-size="22" font-weight="400" fill="#5a5a6e">Intelligent booking · Smart team routing · Full API</text>
+  <text x="80" y="455" font-family="'Space Grotesk','Helvetica Neue',Arial,sans-serif" font-size="22" font-weight="400" fill="#5a5a6e">Give every client a seamless scheduling experience under your brand.</text>
+
+  <!-- URL badge -->
+  <rect x="80" y="495" width="210" height="40" rx="8" fill="#111114" stroke="#1e1e24" stroke-width="1"/>
+  <text x="98" y="521" font-family="'Fira Code','Courier New',monospace" font-size="16" font-weight="400" fill="#DFFF00">schedkit.net</text>
+
+  <!-- Right side decorative element — calendar dots -->
+  <rect x="950" y="180" width="180" height="240" rx="16" fill="#111114" stroke="#1e1e24" stroke-width="1"/>
+  <rect x="950" y="180" width="180" height="44" rx="16" fill="#1a1a1e"/>
+  <rect x="950" y="208" width="180" height="16" fill="#1a1a1e"/>
+  <text x="1010" y="210" font-family="'Space Grotesk',sans-serif" font-size="14" font-weight="600" fill="#e8e8ea">March</text>
+  <!-- Dot grid -->
+  <circle cx="975" cy="260" r="5" fill="#1e1e24"/>
+  <circle cx="1005" cy="260" r="5" fill="#1e1e24"/>
+  <circle cx="1035" cy="260" r="5" fill="#DFFF00"/>
+  <circle cx="1065" cy="260" r="5" fill="#1e1e24"/>
+  <circle cx="1095" cy="260" r="5" fill="#1e1e24"/>
+  <circle cx="975" cy="290" r="5" fill="#1e1e24"/>
+  <circle cx="1005" cy="290" r="5" fill="#DFFF00"/>
+  <circle cx="1035" cy="290" r="5" fill="#1e1e24"/>
+  <circle cx="1065" cy="290" r="5" fill="#1e1e24"/>
+  <circle cx="1095" cy="290" r="5" fill="#1e1e24"/>
+  <circle cx="975" cy="320" r="5" fill="#1e1e24"/>
+  <circle cx="1005" cy="320" r="5" fill="#1e1e24"/>
+  <circle cx="1035" cy="320" r="5" fill="#1e1e24"/>
+  <circle cx="1065" cy="320" r="5" fill="#DFFF00"/>
+  <circle cx="1095" cy="320" r="5" fill="#1e1e24"/>
+  <circle cx="975" cy="350" r="5" fill="#DFFF00"/>
+  <circle cx="1005" cy="350" r="5" fill="#1e1e24"/>
+  <circle cx="1035" cy="350" r="5" fill="#1e1e24"/>
+  <circle cx="1065" cy="350" r="5" fill="#1e1e24"/>
+  <circle cx="1095" cy="350" r="5" fill="#1e1e24"/>
+  <circle cx="975" cy="380" r="5" fill="#1e1e24"/>
+  <circle cx="1005" cy="380" r="5" fill="#1e1e24"/>
+  <circle cx="1035" cy="380" r="5" fill="#DFFF00"/>
+  <circle cx="1065" cy="380" r="5" fill="#1e1e24"/>
+  <circle cx="1095" cy="380" r="5" fill="#1e1e24"/>
+</svg>
