@@ -122,8 +122,8 @@ export default async function authRoutes(fastify) {
     },
     preHandler: requireSession
   }, async (req) => {
-    const { Id, name, email, slug, timezone, api_key, enterprise, ntfy_topic } = req.user;
-    return { Id, name, email, slug, timezone, api_key, enterprise: !!enterprise, ntfy_topic: ntfy_topic || '' };
+    const { Id, name, email, slug, timezone, api_key, enterprise, ntfy_topic, plan } = req.user;
+    return { Id, name, email, slug, timezone, api_key, enterprise: !!enterprise, ntfy_topic: ntfy_topic || "", plan: plan || "free" };
   });
 
   // PATCH /v1/auth/me — update profile

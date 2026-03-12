@@ -3,6 +3,7 @@
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireSession } from '../middleware/session.mjs';
+import { getLimits, planError } from './planLimits.mjs';
 import { nanoid } from 'nanoid';
 import { sendInvite } from '../lib/mailer.mjs';
 import { addHours } from 'date-fns';
@@ -40,6 +41,27 @@ async function getTeamBySlug(orgId, teamSlug) {
   return r.list?.[0] || null;
 }
 
+// Returns true if this org is "over limit" for the user's plan (oldest N are protected)
+async function isOrgOverLimit(userId, orgId, plan) {
+  const limits = getLimits(plan);
+  if (limits.orgs === Infinity) return false;
+  if (limits.orgs === 0) return true; // all orgs are over limit
+  const all = await db.find(tables.organizations, `(owner_user_id,eq,${userId})`, { sort: 'created_at', limit: 200 });
+  const orgs = all.list || [];
+  const allowed = orgs.slice(0, limits.orgs).map(o => String(o.Id));
+  return !allowed.includes(String(orgId));
+}
+
+// Returns true if this team is over limit for the org owner's plan
+async function isTeamOverLimit(ownerId, orgId, teamId, plan) {
+  const limits = getLimits(plan);
+  if (limits.teams_per_org === Infinity) return false;
+  const all = await db.find(tables.teams, `(org_id,eq,${orgId})`, { sort: 'created_at', limit: 200 });
+  const teams = all.list || [];
+  const allowed = teams.slice(0, limits.teams_per_org).map(t => String(t.Id));
+  return !allowed.includes(String(teamId));
+}
+
 async function getTeamETBySlug(teamId, etSlug) {
   const r = await db.find(tables.team_event_types, `(team_id,eq,${teamId})~and(slug,eq,${etSlug})`);
   return r.list?.[0] || null;
@@ -63,8 +85,17 @@ export default async function orgsRoutes(fastify) {
       },
     },
   }, async (req, reply) => {
-    if (!req.user.enterprise) {
-      return reply.code(403).send({ error: 'Organizations require an Enterprise account. Contact support to upgrade.' });
+    const plan = req.user.plan || 'free';
+    const limits = getLimits(plan);
+    if (limits.orgs === 0) {
+      return reply.code(403).send(planError('organizations', 0, 1));
+    }
+    if (limits.orgs !== Infinity) {
+      const existing_orgs = await db.find(tables.organizations, `(owner_user_id,eq,${req.user.Id})`);
+      const orgCount = (existing_orgs.list || []).length;
+      if (orgCount >= limits.orgs) {
+        return reply.code(403).send(planError('organizations', limits.orgs, orgCount));
+      }
     }
 
     const { name } = req.body;
@@ -147,6 +178,11 @@ export default async function orgsRoutes(fastify) {
     const ctx = await requireOrgAccess(req, reply, 'admin');
     if (!ctx) return;
     const { org } = ctx;
+
+    const plan = req.user.plan || 'free';
+    if (await isOrgOverLimit(req.user.Id, org.Id, plan)) {
+      return reply.code(403).send({ error: 'This org is read-only on your current plan. Upgrade to manage it.', upgrade_url: 'https://schedkit.net/#pricing' });
+    }
 
     const updates = {};
     if (req.body.name) updates.name = req.body.name;
@@ -268,6 +304,17 @@ export default async function orgsRoutes(fastify) {
     if (!ctx) return;
     const { org } = ctx;
 
+    // Plan enforcement: teams per org
+    const plan = req.user.plan || 'free';
+    const limits = getLimits(plan);
+    if (limits.teams_per_org !== Infinity) {
+      const existing_teams = await db.find(tables.teams, `(org_id,eq,${org.Id})`);
+      const teamCount = (existing_teams.list || []).length;
+      if (teamCount >= limits.teams_per_org) {
+        return reply.code(403).send(planError('teams per org', limits.teams_per_org, teamCount));
+      }
+    }
+
     const slug = req.body.slug ? slugify(req.body.slug) : slugify(req.body.name);
     const team = await db.create(tables.teams, {
       org_id: String(org.Id), name: req.body.name, slug, routing: req.body.routing, last_assigned_index: 0,
@@ -308,6 +355,14 @@ export default async function orgsRoutes(fastify) {
 
     const team = await getTeamBySlug(ctx.org.Id, req.params.team_slug);
     if (!team) return reply.code(404).send({ error: 'Team not found' });
+
+    const plan = req.user.plan || 'free';
+    if (await isOrgOverLimit(req.user.Id, ctx.org.Id, plan)) {
+      return reply.code(403).send({ error: 'This org is read-only on your current plan. Upgrade to manage it.', upgrade_url: 'https://schedkit.net/#pricing' });
+    }
+    if (await isTeamOverLimit(req.user.Id, ctx.org.Id, team.Id, plan)) {
+      return reply.code(403).send({ error: 'This team is read-only on your current plan. Upgrade to manage it.', upgrade_url: 'https://schedkit.net/#pricing' });
+    }
 
     const updates = {};
     if (req.body.name) updates.name = req.body.name;
@@ -391,6 +446,17 @@ export default async function orgsRoutes(fastify) {
     }
     if (!targetUserId) return reply.code(400).send({ error: 'email or user_id required' });
 
+    // Plan enforcement: team members
+    const plan = req.user.plan || 'free';
+    const limits = getLimits(plan);
+    if (limits.team_members !== Infinity) {
+      const allMembers = await db.find(tables.team_members, `(team_id,eq,${team.Id})`, { limit: 200 });
+      const memberCount = (allMembers.list || []).length;
+      if (memberCount >= limits.team_members) {
+        return reply.code(403).send(planError('team members', limits.team_members, memberCount));
+      }
+    }
+
     const existing = await db.find(tables.team_members, `(team_id,eq,${team.Id})~and(user_id,eq,${targetUserId})`);
     if (existing.list?.length) return reply.code(409).send({ error: 'Already a team member' });
 
@@ -467,6 +533,7 @@ export default async function orgsRoutes(fastify) {
           min_notice_minutes: { type: 'integer', description: 'Minimum advance notice required to book' },
           webhook_url: { type: 'string' },
           custom_fields: { type: 'string', description: 'JSON array of custom field definitions' },
+          requires_confirmation: { type: 'boolean' },
         },
       },
     },
@@ -486,12 +553,13 @@ export default async function orgsRoutes(fastify) {
       buffer_before: req.body.buffer_before ?? req.body.buffer_minutes ?? 0,
       buffer_after: req.body.buffer_after ?? 0,
       location: req.body.location || '',
-      location_type: req.body.location_type || '',
+      location_type: req.body.location_type || null,
       description: req.body.description || '',
       appointment_label: req.body.appointment_label || 'meeting',
       min_notice_minutes: req.body.min_notice_minutes || 0,
       webhook_url: req.body.webhook_url || '',
       custom_fields: req.body.custom_fields || '[]',
+      requires_confirmation: !!req.body.requires_confirmation,
     });
     return reply.code(201).send(et);
   });
@@ -533,6 +601,7 @@ export default async function orgsRoutes(fastify) {
           min_notice_minutes: { type: 'integer' },
           webhook_url: { type: 'string' },
           custom_fields: { type: 'string' },
+          requires_confirmation: { type: 'boolean' },
         },
       },
     },
@@ -552,6 +621,7 @@ export default async function orgsRoutes(fastify) {
     for (const f of fields) {
       if (req.body[f] !== undefined) updates[f] = f === 'slug' ? slugify(req.body[f]) : req.body[f];
     }
+    if (req.body.requires_confirmation !== undefined) updates.requires_confirmation = !!req.body.requires_confirmation;
 
     return db.update(tables.team_event_types, et.Id, updates);
   });

@@ -2,6 +2,7 @@ import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
+import { getLimits, planError } from './planLimits.mjs';
 
 async function requireAuth(req, reply) {
   if (req.headers['x-api-key']) return requireApiKey(req, reply);
@@ -69,7 +70,7 @@ export default async function eventTypesRoutes(fastify) {
       security: [{ apiKey: [] }],
       body: {
         type: 'object',
-        required: ['title', 'slug', 'duration_minutes'],
+        required: ['title', 'duration_minutes'],
         properties: {
           title: { type: 'string' },
           slug: { type: 'string' },
@@ -89,12 +90,32 @@ export default async function eventTypesRoutes(fastify) {
       },
     },
   }, async (req, reply) => {
-    const { title, slug, description, appointment_label, duration_minutes,
+    const { title, slug: rawSlug, description, appointment_label, duration_minutes,
             buffer_before, buffer_after, min_notice_minutes,
             max_bookings_per_day, location, location_type, webhook_url, custom_fields, requires_confirmation } = req.body;
 
-    if (!title || !slug || !duration_minutes) {
-      return reply.code(400).send({ error: 'title, slug, duration_minutes required' });
+    if (!title || !duration_minutes) {
+      return reply.code(400).send({ error: 'title and duration_minutes are required' });
+    }
+
+    // Auto-generate slug from title if not provided
+    const slug = (rawSlug || title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+    // Check for slug conflict
+    const conflict = await db.find(tables.event_types, `(user_id,eq,${req.user.Id})~and(slug,eq,${slug})`);
+    if (conflict.list?.length) {
+      return reply.code(409).send({ error: `You already have an event type with the slug "${slug}". Try a different title or slug.` });
+    }
+
+    // Plan enforcement
+    const plan = req.user.plan || 'free';
+    const limits = getLimits(plan);
+    if (limits.event_types !== Infinity) {
+      const existing = await db.find(tables.event_types, `(user_id,eq,${req.user.Id})`);
+      const count = (existing.list || []).length;
+      if (count >= limits.event_types) {
+        return reply.code(403).send(planError('event types', limits.event_types, count));
+      }
     }
 
     const row = await db.create(tables.event_types, {

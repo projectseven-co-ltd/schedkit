@@ -95,6 +95,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
 .user-chip .email{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .logout-btn{font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 12px;margin-top:8px;width:100%;text-align:left;border-radius:6px;transition:color .15s}
 .logout-btn:hover{color:var(--red)}
+.plan-badge{display:inline-block;font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-top:3px;font-weight:700}
+.plan-badge.free{background:var(--surface2);color:var(--muted)}
+.plan-badge.starter{background:rgba(100,160,255,0.12);color:#6aa0ff}
+.plan-badge.agency{background:rgba(223,255,0,0.12);color:var(--accent)}
+.plan-badge.enterprise{background:rgba(223,255,0,0.18);color:var(--accent);border:1px solid var(--accent-border)}
+.plan-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:24px}
+.plan-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.plan-card-name{font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--accent)}
+.plan-upgrade-btn{font-family:var(--font-mono);font-size:12px;background:var(--accent);color:#0a0a0b;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-weight:700;transition:opacity .15s}
+.plan-upgrade-btn:hover{opacity:.85}
 
 /* MAIN */
 .main{margin-left:var(--sidebar);flex:1;min-height:100vh;display:flex;flex-direction:column}
@@ -249,6 +259,7 @@ tr:hover td{background:var(--surface2)}
       <div class="info">
         <div class="name" id="user-name">Loading...</div>
         <div class="email" id="user-email"></div>
+        <span class="plan-badge free" id="user-plan-badge">free</span>
       </div>
     </div>
     <button class="logout-btn" onclick="logout()">Sign out</button>
@@ -328,7 +339,9 @@ tr:hover td{background:var(--surface2)}
     <!-- ORGS -->
     <div class="section" id="section-orgs">
       <div class="page-header">
-        <h2>Organizations <span id="org-enterprise-badge" style="display:none;font-size:11px;font-family:var(--font-mono);color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:2px 8px;vertical-align:middle">ENTERPRISE</span></h2>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="org-enterprise-badge" style="display:none;font-size:10px;font-family:var(--font-mono);color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:2px 8px;letter-spacing:.08em"></span>
+        </div>
         <button class="btn btn-primary" onclick="openCreateOrgModal()">+ New Org</button>
       </div>
       <div id="org-enterprise-notice" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:24px">
@@ -343,6 +356,18 @@ tr:hover td{background:var(--surface2)}
     <div class="section" id="section-settings">
       <div class="page-header"><h2>Account Settings</h2></div>
       <div style="max-width:480px">
+
+        <!-- Plan card -->
+        <div class="plan-card" id="plan-card">
+          <div class="plan-card-header">
+            <div>
+              <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Current Plan</div>
+              <div class="plan-card-name" id="settings-plan-name">Free</div>
+            </div>
+            <button class="plan-upgrade-btn" id="plan-upgrade-btn" onclick="window.open('https://schedkit.net/#pricing','_blank')" style="display:none">Upgrade →</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.7" id="settings-plan-limits"></div>
+        </div>
         <div class="table-wrap" style="padding:28px">
           <div class="form-row">
             <label>Name</label>
@@ -735,13 +760,23 @@ async function init() {
 
 async function apiFetch(path, opts = {}) {
   const hasBody = opts.body != null;
-  const res = await fetch(API + path, {
-    ...opts,
-    headers: { ...(hasBody ? { 'Content-Type': 'application/json' } : {}), ...(opts.headers || {}) },
+  const res = await fetch(path, {
     credentials: 'include',
+    headers: { ...(hasBody ? { 'Content-Type': 'application/json' } : {}), ...opts.headers },
+    ...opts,
   });
-  if (res.status === 401) { window.location.href = '/login'; return; }
-  if (res.status === 403) { toast('You don\'t have permission to do that', 'err'); return; }
+  if (res.status === 401) { window.location.href = '/login'; return null; }
+  if (res.status === 403) {
+    try {
+      const body = await res.clone().json();
+      if (body.upgrade_url) {
+        toast(`${body.error} <a href="${body.upgrade_url}" target="_blank" style="color:var(--accent);text-decoration:underline">Upgrade →</a>`, 'err', 6000);
+      } else {
+        toast(body.error || 'You don\'t have permission to do that', 'err');
+      }
+    } catch { toast('You don\'t have permission to do that', 'err'); }
+    return null;
+  }
   return res;
 }
 
@@ -752,6 +787,24 @@ async function loadUser() {
   document.getElementById('user-name').textContent = currentUser.name;
   document.getElementById('user-email').textContent = currentUser.email;
   document.getElementById('user-avatar').textContent = currentUser.name?.[0]?.toUpperCase() || '?';
+
+  // Plan badge + settings card
+  const plan = currentUser.plan || 'free';
+  const planNames = { free: 'Free', starter: 'Starter — $29/mo', agency: 'Agency — $99/mo', enterprise: 'Enterprise' };
+  const planLimits = {
+    free: 'Event types: 3 &nbsp;·&nbsp; Bookings/mo: 50 &nbsp;·&nbsp; No orgs',
+    starter: 'Event types: 10 &nbsp;·&nbsp; Bookings/mo: Unlimited &nbsp;·&nbsp; No orgs',
+    agency: 'Event types: Unlimited &nbsp;·&nbsp; 1 org · 5 teams · 25 members',
+    enterprise: 'Event types: Unlimited &nbsp;·&nbsp; Unlimited orgs, teams &amp; members',
+  };
+  const badge = document.getElementById('user-plan-badge');
+  if (badge) { badge.textContent = plan; badge.className = `plan-badge ${plan}`; }
+  const planNameEl = document.getElementById('settings-plan-name');
+  if (planNameEl) planNameEl.textContent = planNames[plan] || plan;
+  const planLimitsEl = document.getElementById('settings-plan-limits');
+  if (planLimitsEl) planLimitsEl.innerHTML = planLimits[plan] || '';
+  const upgradeBtn = document.getElementById('plan-upgrade-btn');
+  if (upgradeBtn) upgradeBtn.style.display = plan !== 'enterprise' ? 'block' : 'none';
   document.getElementById('settings-name').value = currentUser.name || '';
   document.getElementById('settings-email').value = currentUser.email || '';
   document.getElementById('settings-timezone').value = currentUser.timezone || 'UTC';
@@ -939,21 +992,25 @@ document.getElementById('et-title').addEventListener('input', e => {
 });
 
 async function saveEventType() {
+  const locationType = v('et-location-type');
   const body = {
-    title: v('et-title'), slug: v('et-slug'),
+    title: v('et-title'),
     appointment_label: v('et-label') || 'meeting',
-    description: v('et-desc'),
+    description: v('et-desc') || undefined,
     duration_minutes: parseInt(v('et-duration')),
     min_notice_minutes: parseInt(v('et-notice')) || 0,
     buffer_before: parseInt(v('et-buffer-before')) || 0,
     buffer_after: parseInt(v('et-buffer-after')) || 0,
-    location_type: v('et-location-type') || null,
-    location: v('et-location') || null,
-    webhook_url: v('et-webhook') || null,
+    webhook_url: v('et-webhook') || undefined,
     custom_fields: JSON.stringify(getCustomFields()),
     requires_confirmation: document.getElementById('et-requires-confirmation').checked,
   };
-  if (!body.title || !body.slug || !body.duration_minutes) return toast('Title, slug, and duration required', 'err');
+  const slug = v('et-slug');
+  if (slug) body.slug = slug;
+  if (locationType) body.location_type = locationType;
+  const location = v('et-location');
+  if (location) body.location = location;
+  if (!body.title || !body.duration_minutes) return toast('Title and duration required', 'err');
 
   let url, method;
   if (editingEventTypeTeamCtx) {
@@ -979,7 +1036,11 @@ async function saveEventType() {
     editingEventTypeTeamCtx = null;
   } else {
     const err = await res.json().catch(() => ({}));
-    toast('Save failed: ' + (err.error || err.message || res.status), 'err');
+    if (err.upgrade_url) {
+      toast(`${err.error} <a href="${err.upgrade_url}" target="_blank" style="color:var(--accent);text-decoration:underline">Upgrade →</a>`, 'err', 6000);
+    } else {
+      toast(err.error || err.message || `Save failed (${res.status})`, 'err');
+    }
   }
 }
 
@@ -1265,17 +1326,26 @@ async function removeFlag(email) {
 
 // ── Organizations ──────────────────────────────────
 async function loadOrgs() {
-  const isEnterprise = !!currentUser?.enterprise;
-  document.getElementById('org-enterprise-badge').style.display = isEnterprise ? '' : 'none';
-  document.getElementById('org-enterprise-notice').style.display = 'none'; // hide by default; show only if no orgs and not enterprise
-  document.querySelector('[onclick="openCreateOrgModal()"]').style.display = isEnterprise ? '' : 'none';
+  const plan = currentUser?.plan || 'free';
+  const planLimits = { free: 0, starter: 0, agency: 1, enterprise: Infinity };
+  const orgLimit = planLimits[plan] ?? 0;
+  const canCreateOrg = orgLimit > 0;
+
+  const badge = document.getElementById('org-enterprise-badge');
+  if (badge) {
+    badge.textContent = plan.toUpperCase();
+    badge.style.display = '';
+    badge.style.color = plan === 'enterprise' ? 'var(--accent)' : 'var(--muted)';
+    badge.style.borderColor = plan === 'enterprise' ? 'var(--accent)' : 'var(--border)';
+  }
+  document.querySelector('[onclick="openCreateOrgModal()"]').style.display = canCreateOrg ? '' : 'none';
 
   const res = await apiFetch('/v1/orgs');
   if (!res?.ok) return;
   const { orgs } = await res.json();
   const container = document.getElementById('orgs-list');
   if (!orgs.length) {
-    if (!isEnterprise) {
+    if (!canCreateOrg) {
       document.getElementById('org-enterprise-notice').style.display = '';
     } else {
       container.innerHTML = '<div class="empty"><div class="empty-icon">🏢</div><p>No organizations yet. Create one to get started.</p></div>';
@@ -1287,16 +1357,21 @@ async function loadOrgs() {
       <table>
         <thead><tr><th>Name</th><th>Slug</th><th>API Key</th><th></th></tr></thead>
         <tbody>
-          ${orgs.map(o => `
-            <tr>
-              <td><strong>${esc(o.name)}</strong></td>
+          ${orgs.map((o, i) => {
+            const locked = orgLimit !== Infinity && i >= orgLimit;
+            return `
+            <tr style="${locked ? 'opacity:0.5' : ''}">
+              <td><strong>${esc(o.name)}</strong>${locked ? ' <span title="Read-only on your plan" style="font-size:11px;color:var(--muted);margin-left:6px">🔒 read-only</span>' : ''}</td>
               <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">${esc(o.slug)}</span></td>
               <td><span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${o.api_key?.slice(0,12)}…</span></td>
               <td style="text-align:right">
-                <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="loadOrgDetail('${esc(o.slug)}')">Manage →</button>
+                ${locked
+                  ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;opacity:0.5" onclick="window.open('https://schedkit.net/#pricing','_blank')">🔒 Upgrade →</button>`
+                  : `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="loadOrgDetail('${esc(o.slug)}')">Manage →</button>`
+                }
               </td>
-            </tr>
-          `).join('')}
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>`;
@@ -2065,10 +2140,10 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function copyText(text) { navigator.clipboard.writeText(text).then(() => toast('Copied!', 'ok')); }
-function toast(msg, type = 'ok') {
+function toast(msg, type = 'ok', duration = 3000) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.className = `toast show ${type}`;
-  setTimeout(() => t.classList.remove('show'), 3000);
+  t.innerHTML = msg; t.className = `toast show ${type}`;
+  setTimeout(() => t.classList.remove('show'), duration);
 }
 
 // Close modals on overlay click

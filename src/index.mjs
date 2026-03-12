@@ -160,11 +160,12 @@ fastify.post('/v1/request-access', {
         email: { type: 'string', format: 'email' },
         company: { type: 'string' },
         message: { type: 'string' },
+        plan: { type: 'string', enum: ['free', 'starter', 'agency', 'enterprise'] },
       },
     },
   },
 }, async (req, reply) => {
-  const { name, email, company, message } = req.body || {};
+  const { name, email, company, message, plan = 'free' } = req.body || {};
   if (!name || !email) return reply.code(400).send({ error: 'Name and email required' });
   try {
     // 1. Save to NocoDB leads table
@@ -173,26 +174,49 @@ fastify.post('/v1/request-access', {
       name, email,
       company: company || '',
       message: message || '',
-      status: 'new',
+      plan: plan,
+      status: plan === 'free' ? 'approved' : 'new',
       submitted_at: new Date().toISOString(),
     });
 
     // 2. ntfy alert
     const ntfyTopic = process.env.NTFY_TOPIC || 'schedkit-leads';
+    const planLabel = plan.toUpperCase();
     fetch(`https://ntfy.sh/${ntfyTopic}`, {
       method: 'POST',
       headers: {
-        'Title': `New SchedKit Lead: ${name}${company ? ' - ' + company : ''}`,
-        'Priority': 'high',
+        'Title': `[${planLabel}] New SchedKit Signup: ${name}${company ? ' - ' + company : ''}`,
+        'Priority': plan === 'free' ? 'default' : 'high',
         'Tags': 'schedkit,lead',
         'Content-Type': 'text/plain',
       },
-      body: `${name} <${email}>${company ? '\n' + company : ''}\n\n${message || '(no message)'}`,
+      body: `${name} <${email}>${company ? '\n' + company : ''}\nPlan: ${planLabel}\n\n${message || '(no message)'}`,
     }).catch(e => fastify.log.warn('ntfy alert failed: ' + e.message));
 
-    // 3. Email to Jason
-    const { sendAccessRequest } = await import('./lib/mailer.mjs');
-    await sendAccessRequest({ name, email, company, message });
+    const { sendAccessRequest, sendWelcome } = await import('./lib/mailer.mjs');
+    const { tables } = await import('./lib/tables.mjs');
+
+    if (plan === 'free') {
+      // Free tier: create/update user account with plan=free
+      const existing = await db.find(tables.users, `(email,eq,${email})`);
+      if (existing.list?.length) {
+        await db.update(tables.users, existing.list[0].Id, { plan: 'free' });
+      } else {
+        const { nanoid } = await import('nanoid');
+        const slug = email.split('@')[0].replace(/[^a-z0-9]/gi, '').toLowerCase() + '-' + nanoid(4).toLowerCase();
+        await db.create(tables.users, {
+          name, email, slug,
+          api_key: `p7s_${nanoid(32)}`,
+          plan: 'free',
+          active: true,
+          created_at: new Date().toISOString(),
+        });
+      }
+      await sendWelcome({ name, email });
+    } else {
+      // Paid tiers: notify Jason
+      await sendAccessRequest({ name, email, company, message, plan });
+    }
 
     return { ok: true };
   } catch(e) {

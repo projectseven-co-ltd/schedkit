@@ -230,6 +230,45 @@
   .usecase h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
   .usecase p { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
+
+  /* --- PRICING --- */
+  .pricing-section { padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
+  .pricing-section .section-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.15em; color: var(--accent); text-transform: uppercase; margin-bottom: 12px; }
+  .pricing-section h2 { font-size: clamp(28px,4vw,42px); font-weight: 700; color: var(--text); margin-bottom: 16px; }
+  .pricing-section .pricing-sub { color: var(--muted); font-size: 16px; margin-bottom: 60px; }
+  .pricing-toggle { display: flex; align-items: center; gap: 12px; margin-bottom: 48px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+  .pricing-toggle .toggle-switch { position: relative; width: 44px; height: 24px; cursor: pointer; }
+  .pricing-toggle .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .pricing-toggle .toggle-track { position: absolute; inset: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; transition: .2s; }
+  .pricing-toggle .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: var(--muted); border-radius: 50%; transition: .2s; }
+  .pricing-toggle input:checked + .toggle-track { border-color: var(--accent); }
+  .pricing-toggle input:checked ~ .toggle-thumb { left: 23px; background: var(--accent); }
+  .pricing-toggle .save-badge { background: var(--accent); color: #000; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; letter-spacing: 0.05em; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
+  .pricing-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 24px; position: relative; }
+  .pricing-card.featured { border-color: var(--accent); }
+  .pricing-card.featured::before { content: 'MOST POPULAR'; position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #000; font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 20px; letter-spacing: 0.1em; white-space: nowrap; }
+  .pricing-card .plan-name { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+  .pricing-card .plan-price { font-size: 36px; font-weight: 700; color: var(--text); line-height: 1; margin-bottom: 4px; }
+  .pricing-card .plan-price span { font-size: 16px; font-weight: 400; color: var(--muted); }
+  .pricing-card .plan-price-annual { font-size: 13px; color: var(--muted); margin-bottom: 20px; min-height: 20px; font-family: var(--font-mono); }
+  .pricing-card .plan-desc { font-size: 14px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+  .pricing-card ul { list-style: none; padding: 0; margin: 0 0 28px; display: flex; flex-direction: column; gap: 10px; }
+  .pricing-card ul li { font-size: 13px; color: var(--muted); display: flex; align-items: flex-start; gap: 8px; line-height: 1.4; }
+  .pricing-card ul li::before { content: '✓'; color: var(--accent); font-family: var(--font-mono); flex-shrink: 0; margin-top: 1px; }
+  .pricing-card ul li.no::before { content: '–'; color: var(--border); }
+  .pricing-card ul li.no { opacity: 0.5; }
+  .pricing-card .plan-cta { display: block; width: 100%; padding: 11px; text-align: center; border-radius: 8px; font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.05em; text-decoration: none; cursor: pointer; border: none; transition: opacity .15s; }
+  .pricing-card .plan-cta:hover { opacity: 0.85; }
+  .pricing-card .plan-cta.cta-outline { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .pricing-card .plan-cta.cta-accent { background: var(--accent); color: #000; }
+  .pricing-card .plan-cta.cta-solid { background: var(--surface); border: 1px solid var(--accent); color: var(--accent); }
+  @media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) { .pricing-grid { grid-template-columns: 1fr; } .pricing-card.featured::before { font-size: 9px; } }
+
+  .plan-pill { background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-family: var(--font-mono); font-size: 12px; padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: all .15s; }
+  .plan-pill:hover { border-color: var(--accent); color: var(--text); }
+  .plan-pill.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 700; }
   /* --- CTA / REQUEST ACCESS --- */
   .cta-section { text-align: center; padding: 120px 24px; }
 
@@ -370,7 +409,8 @@
   <div style="display:flex;align-items:center;gap:12px">
     <button class="lights-btn" id="lightsBtn"><span class="phosphor-dot"></span><span id="lightsBtnLabel">LIGHTS ON</span></button>
     <a href="https://schedkit.net/docs" target="_blank" style="font-family:var(--font-mono);font-size:13px;color:var(--muted);text-decoration:none;padding:6px 12px;border:1px solid var(--border);border-radius:8px;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">API_</a>
-    <a href="#request" class="nav-cta">Request Access</a>
+    <a href="#pricing" style="font-family:var(--font-mono);font-size:13px;color:var(--muted);text-decoration:none;padding:6px 12px;transition:color 0.15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Pricing</a>
+    <a href="#request-access" class="nav-cta">Get Started</a>
   </div>
 </nav>
 <div id="lightsFlicker"></div>
@@ -385,7 +425,7 @@
 
   <p class="hero-sub">Intelligent booking, smart team routing, and a full API. Give every client a seamless scheduling experience — under your brand.</p>
   <div class="hero-actions">
-    <a href="#request" class="btn-primary">Request Access</a>
+    <a href="#request-access" class="btn-primary">Request Access</a>
     <a href="/book/jason/demo-meeting" class="btn-ghost" target="_blank">See a live demo →</a>
   </div>
   <div class="demo-pill">
@@ -535,7 +575,7 @@
         <div class="section-label">API-first</div>
         <h2>Fits into your stack</h2>
         <p class="section-sub">Provision clients, configure availability, and pull bookings from your own code. REST API, standard JSON, no SDK required.</p>
-        <a href="#request" class="btn-primary">Get API access</a>
+        <a href="#request-access" class="btn-primary">Get API access</a>
       </div>
       <div class="code-block">
         <div class="code-header">
@@ -737,22 +777,119 @@
   </div>
 </section>
 
+<!-- PRICING -->
+<section class="pricing-section" id="pricing">
+  <div class="section-label">Pricing</div>
+  <h2>Simple, transparent pricing</h2>
+  <p class="pricing-sub">Start free. Scale when you're ready.</p>
+
+  <div class="pricing-toggle">
+    <span>Monthly</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="billingToggle" onchange="toggleBilling()">
+      <div class="toggle-track"></div>
+      <div class="toggle-thumb"></div>
+    </label>
+    <span>Annual <span class="save-badge">SAVE 17%</span></span>
+  </div>
+
+  <div class="pricing-grid">
+
+    <div class="pricing-card">
+      <div class="plan-name">Free</div>
+      <div class="plan-price">$0<span>/mo</span></div>
+      <div class="plan-price-annual">&nbsp;</div>
+      <div class="plan-desc">For individuals who just need a booking link.</div>
+      <ul>
+        <li>1 user, personal only</li>
+        <li>3 event types</li>
+        <li>Booking page</li>
+        <li>API access</li>
+        <li class="no">White-label</li>
+        <li class="no">Teams / orgs</li>
+        <li>Community support</li>
+      </ul>
+      <button onclick="openSignup('free')" class="plan-cta cta-outline">Get started free →</button>
+    </div>
+
+    <div class="pricing-card">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price"><span class="price-val">$29</span><span>/mo</span></div>
+      <div class="plan-price-annual price-annual" style="display:none">$24/mo billed annually</div>
+      <div class="plan-price-annual price-monthly">&nbsp;</div>
+      <div class="plan-desc">For small teams and solo developers who need white-label.</div>
+      <ul>
+        <li>1 org, up to 5 members</li>
+        <li>Unlimited event types</li>
+        <li>White-label (no SchedKit branding)</li>
+        <li>Full API + webhooks</li>
+        <li>Team routing (round-robin / random)</li>
+        <li class="no">Custom domains</li>
+        <li>Email support</li>
+      </ul>
+      <button onclick="openSignup('starter')" class="plan-cta cta-solid">Request access →</button>
+    </div>
+
+    <div class="pricing-card featured">
+      <div class="plan-name">Agency</div>
+      <div class="plan-price"><span class="price-val">$99</span><span>/mo</span></div>
+      <div class="plan-price-annual price-annual" style="display:none">$82/mo billed annually</div>
+      <div class="plan-price-annual price-monthly">&nbsp;</div>
+      <div class="plan-desc">For agencies managing scheduling for multiple clients.</div>
+      <ul>
+        <li>10 orgs (resell to clients)</li>
+        <li>Unlimited members</li>
+        <li>White-label + custom domains</li>
+        <li>Full API + webhooks</li>
+        <li>Team routing + confirmable events</li>
+        <li>Priority support</li>
+        <li>Early access to new features</li>
+      </ul>
+      <button onclick="openSignup('agency')" class="plan-cta cta-accent">Request access →</button>
+    </div>
+
+    <div class="pricing-card">
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-price">Custom</div>
+      <div class="plan-price-annual">&nbsp;</div>
+      <div class="plan-desc">For larger teams that need custom contracts and dedicated support.</div>
+      <ul>
+        <li>Unlimited orgs</li>
+        <li>Unlimited members</li>
+        <li>SLA guarantee</li>
+        <li>Dedicated onboarding</li>
+        <li>Custom contract</li>
+        <li>Dedicated support</li>
+      </ul>
+      <button onclick="openSignup('enterprise')" class="plan-cta cta-outline">Contact us →</button>
+    </div>
+
+  </div>
+</section>
+
+<script>
+function toggleBilling() {
+  const annual = document.getElementById('billingToggle').checked;
+  document.querySelectorAll('.price-annual').forEach(el => el.style.display = annual ? 'block' : 'none');
+  document.querySelectorAll('.price-monthly').forEach(el => el.style.display = annual ? 'none' : 'block');
+  document.querySelectorAll('.pricing-card:not(:first-child):not(:last-child) .price-val').forEach((el, i) => {
+    el.textContent = annual ? ['$24','$82'][i] : ['$29','$99'][i];
+  });
+}
+</script>
+
 <!-- REQUEST ACCESS -->
-<section class="cta-section" id="request">
+<section class="cta-section" id="request-access">
   <div class="container">
-    <div class="cta-card">
+    <div class="cta-card" style="text-align:center;">
       <div class="section-label" style="margin-bottom:16px">Early Access</div>
       <h2>Get in before the crowd</h2>
-      <p>SchedKit is in early access. Tell us about your use case and we'll get you set up.</p>
-      <form class="request-form" id="request-form">
-        <input type="text" id="req-name" placeholder="Your name" required>
-        <input type="email" id="req-email" placeholder="Work email" required>
-        <input type="text" id="req-company" placeholder="Company or agency name">
-        <textarea id="req-message" placeholder="How are you planning to use SchedKit? (# of clients, use case, etc.)"></textarea>
-        <button type="submit" id="req-btn">Request Access →</button>
-        <div class="form-error-msg" id="req-error"></div>
-        <div class="form-success" id="req-success">✓ Request received — we'll be in touch shortly.</div>
-      </form>
+      <p style="color:var(--muted);margin-bottom:32px;">Free accounts open now. No waitlist. No credit card.</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <button class="plan-pill active" style="font-size:14px;padding:10px 24px;" onclick="openSignup('free')">Get started free →</button>
+        <button class="plan-pill" style="font-size:14px;padding:10px 24px;" onclick="openSignup('starter')">Request Starter access</button>
+        <button class="plan-pill" style="font-size:14px;padding:10px 24px;" onclick="openSignup('agency')">Request Agency access</button>
+      </div>
     </div>
   </div>
 </section>
@@ -772,43 +909,6 @@
   applyTheme(lights);
   if(btn)btn.addEventListener('click',function(){if(!lights){flickerOn(()=>{lights=true;localStorage.setItem('p7-lights','1');applyTheme(true);});}else{lights=false;localStorage.setItem('p7-lights','0');applyTheme(false);}});
 })();
-document.getElementById('request-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('req-btn');
-  const success = document.getElementById('req-success');
-  const error = document.getElementById('req-error');
-  const name = document.getElementById('req-name').value.trim();
-  const email = document.getElementById('req-email').value.trim();
-  const company = document.getElementById('req-company').value.trim();
-  const message = document.getElementById('req-message').value.trim();
-
-  btn.disabled = true; btn.textContent = 'Sending...';
-  error.style.display = 'none';
-
-  try {
-    const res = await fetch('/v1/request-access', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, company, message }),
-    });
-    if (res.ok) {
-      success.style.display = 'block';
-      btn.style.display = 'none';
-      document.getElementById('req-name').value = '';
-      document.getElementById('req-email').value = '';
-      document.getElementById('req-company').value = '';
-      document.getElementById('req-message').value = '';
-    } else {
-      throw new Error('Server error');
-    }
-  } catch(e) {
-    error.textContent = 'Something went wrong. Email us directly at hello@schedkit.net';
-    error.style.display = 'block';
-    btn.disabled = false; btn.textContent = 'Request Access →';
-  }
-});
-</script>
-<script>
 function showEmbed(mode) {
   ['inline','popup','widget','iframe'].forEach(m => {
     document.getElementById('panel-'+m).style.display = m === mode ? 'block' : 'none';
@@ -933,9 +1033,9 @@ function openSchedKitDemo() {
     ],
     [
       { type:'prompt', text:'git log --oneline -3' },
-      { type:'out', cls:'ok', text:'  f10e8f0  brand: OG image + full meta suite' },
-      { type:'out', cls:'ok', text:'  1e4770f  brand: wire favicon to all HTML pages' },
-      { type:'out', cls:'ok', text:'  709402d  brand: add full brand pack' },
+      { type:'out', cls:'ok', text:'  fetching...' },
+      { type:'out', cls:'ok', text:'  fetching...' },
+      { type:'out', cls:'ok', text:'  fetching...' },
     ],
     [
       { type:'prompt', text:'schedkit status' },
@@ -1002,7 +1102,7 @@ function openSchedKitDemo() {
         lines = [];
         clearContent();
         typeNext();
-      }, 3200);
+      }, 4500);
       return;
     }
 
@@ -1025,34 +1125,256 @@ function openSchedKitDemo() {
         el.textContent = targetText.slice(0, charIdx + 1);
       }
       charIdx++;
-      const delay = item.type === 'prompt' ? 55 + Math.random()*40 : 8;
+      const delay = item.type === 'prompt' ? 60 + Math.random()*45 : 18 + Math.random()*12;
       typingTimer = setTimeout(typeNext, delay);
     } else {
       // Line done — move to next
       charIdx = 0;
       lineIdx++;
-      const pauseAfter = item.type === 'prompt' ? 320 : 80;
+      const pauseAfter = item.type === 'prompt' ? 500 : 160;
       typingTimer = setTimeout(typeNext, pauseAfter);
     }
   }
 
-  // Kick off after a short delay
-  setTimeout(() => {
-    clearContent();
-    typeNext();
-  }, 800);
-
-  // Update "last commit" timestamp
-  const commitEl = document.getElementById('lastCommit');
-  if (commitEl) {
-    const times = ['moments ago','12s ago','just now','43s ago','2 min ago'];
-    let ti = 0;
-    setInterval(() => {
-      ti = (ti + 1) % times.length;
-      commitEl.textContent = times[ti];
-    }, 7000);
+  // Live commits from GitHub
+  async function loadCommits() {
+    try {
+      const res = await fetch('https://api.github.com/repos/projectseven-co-ltd/p7-scheduler/commits?per_page=3', {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      });
+      const commits = await res.json();
+      if (!Array.isArray(commits)) return;
+      const gitBlock = SESSIONS.find(c => c[0] && c[0].text === 'git log --oneline -3');
+      if (gitBlock) {
+        commits.forEach((c, i) => {
+          if (gitBlock[i+1]) {
+            const sha = c.sha.slice(0,7);
+            const msg = c.commit.message.split('\n')[0].slice(0,42);
+            gitBlock[i+1].text = '  ' + sha + '  ' + msg;
+          }
+        });
+      }
+      const commitEl = document.getElementById('lastCommit');
+      if (commitEl && commits[0]) {
+        const date = new Date(commits[0].commit.author.date);
+        const mins = Math.round((Date.now() - date) / 60000);
+        if (mins < 60) commitEl.textContent = mins + ' min ago';
+        else if (mins < 1440) commitEl.textContent = Math.round(mins/60) + 'h ago';
+        else commitEl.textContent = Math.round(mins/1440) + 'd ago';
+      }
+    } catch(e) {}
   }
+  loadCommits().then(() => {
+    setTimeout(() => { clearContent(); typeNext(); }, 800);
+  });
+  setInterval(loadCommits, 300000);
 })();
+</script>
+
+
+<!-- SIGNUP MODAL -->
+<div id="signupModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
+
+  <!-- Standard modal (free/starter/agency) -->
+  <div id="modal-standard" style="background:#111114;border:1px solid #2e2e3a;border-radius:16px;width:100%;max-width:420px;padding:36px 32px;position:relative;box-shadow:0 24px 80px rgba(0,0,0,0.6);">
+    <button onclick="closeSignup()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#5a5a6e;font-size:20px;cursor:pointer;line-height:1;padding:4px 8px;">&#x2715;</button>
+    <div id="modal-badge" style="font-family:monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px;color:#DFFF00;"></div>
+    <h3 id="modal-heading" style="margin:0 0 6px;font-size:22px;font-weight:700;color:#e8e8ea;"></h3>
+    <p id="modal-sub" style="margin:0 0 28px;font-size:14px;color:#5a5a6e;line-height:1.5;"></p>
+    <form id="modal-form" onsubmit="submitSignup(event)" style="display:flex;flex-direction:column;gap:12px;">
+      <input type="hidden" id="modal-plan">
+      <input id="modal-name" type="text" placeholder="Your name" required
+        style="background:#0a0a0b;border:1px solid #2e2e3a;border-radius:8px;padding:12px 14px;color:#e8e8ea;font-size:14px;outline:none;font-family:inherit;"
+        onfocus="this.style.borderColor='#DFFF00'" onblur="this.style.borderColor='#2e2e3a'">
+      <input id="modal-email" type="email" placeholder="Work email" required
+        style="background:#0a0a0b;border:1px solid #2e2e3a;border-radius:8px;padding:12px 14px;color:#e8e8ea;font-size:14px;outline:none;font-family:inherit;"
+        onfocus="this.style.borderColor='#DFFF00'" onblur="this.style.borderColor='#2e2e3a'">
+      <input id="modal-company" type="text" placeholder="Company or agency name"
+        style="background:#0a0a0b;border:1px solid #2e2e3a;border-radius:8px;padding:12px 14px;color:#e8e8ea;font-size:14px;outline:none;font-family:inherit;display:none;"
+        onfocus="this.style.borderColor='#DFFF00'" onblur="this.style.borderColor='#2e2e3a'">
+      <div id="modal-error" style="color:#ff5f5f;font-size:13px;display:none;"></div>
+      <button id="modal-btn" type="submit"
+        style="background:#DFFF00;color:#0a0a0b;border:none;border-radius:8px;padding:13px;font-family:monospace;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s;"
+        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Get started free &#x2192;</button>
+    </form>
+    <div id="modal-success" style="display:none;text-align:center;padding:16px 0;">
+      <div style="font-size:32px;margin-bottom:12px;">&#x2713;</div>
+      <p id="modal-success-text" style="color:#e8e8ea;font-size:15px;margin:0 0 6px;font-weight:600;"></p>
+      <p id="modal-success-sub" style="color:#5a5a6e;font-size:13px;margin:0;"></p>
+    </div>
+  </div>
+
+  <!-- Enterprise modal -->
+  <div id="modal-enterprise" style="display:none;background:#111114;border:1px solid #2e2e3a;border-radius:16px;width:100%;max-width:520px;padding:36px 32px;position:relative;box-shadow:0 24px 80px rgba(0,0,0,0.6);">
+    <button onclick="closeSignup()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#5a5a6e;font-size:20px;cursor:pointer;line-height:1;padding:4px 8px;">&#x2715;</button>
+    <div style="font-family:monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px;color:#DFFF00;">Enterprise</div>
+    <h3 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#e8e8ea;">Let&#x2019;s talk</h3>
+    <p style="margin:0 0 28px;font-size:14px;color:#5a5a6e;line-height:1.5;">Custom contracts, SLAs, dedicated onboarding. Pick how you want to connect.</p>
+
+    <div id="ent-options" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <button onclick="showEntForm()" style="background:#0a0a0b;border:1px solid #2e2e3a;border-radius:10px;padding:20px 16px;cursor:pointer;text-align:left;transition:border-color .15s;" onmouseover="this.style.borderColor='#DFFF00'" onmouseout="this.style.borderColor='#2e2e3a'">
+        <div style="font-size:20px;margin-bottom:8px;">&#x2709;&#xFE0F;</div>
+        <div style="font-family:monospace;font-size:13px;color:#e8e8ea;font-weight:600;margin-bottom:4px;">Send a message</div>
+        <div style="font-size:12px;color:#5a5a6e;">We&#x2019;ll reply same day</div>
+      </button>
+      <button onclick="openEntBooking()" style="background:#0a0a0b;border:1px solid #DFFF00;border-radius:10px;padding:20px 16px;cursor:pointer;text-align:left;transition:opacity .15s;" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <div style="font-size:20px;margin-bottom:8px;">&#x1F4C5;</div>
+        <div style="font-family:monospace;font-size:13px;color:#DFFF00;font-weight:600;margin-bottom:4px;">Book a call</div>
+        <div style="font-size:12px;color:#5a5a6e;">30 min &#x2014; pick a time now</div>
+      </button>
+    </div>
+
+    <form id="ent-form" onsubmit="submitEntSignup(event)" style="display:none;flex-direction:column;gap:12px;margin-top:20px;">
+      <input id="ent-name" type="text" placeholder="Your name" required
+        style="background:#0a0a0b;border:1px solid #2e2e3a;border-radius:8px;padding:12px 14px;color:#e8e8ea;font-size:14px;outline:none;font-family:inherit;"
+        onfocus="this.style.borderColor='#DFFF00'" onblur="this.style.borderColor='#2e2e3a'">
+      <input id="ent-email" type="email" placeholder="Work email" required
+        style="background:#0a0a0b;border:1px solid #2e2e3a;border-radius:8px;padding:12px 14px;color:#e8e8ea;font-size:14px;outline:none;font-family:inherit;"
+        onfocus="this.style.borderColor='#DFFF00'" onblur="this.style.borderColor='#2e2e3a'">
+      <input id="ent-company" type="text" placeholder="Company name"
+        style="background:#0a0a0b;border:1px solid #2e2e3a;border-radius:8px;padding:12px 14px;color:#e8e8ea;font-size:14px;outline:none;font-family:inherit;"
+        onfocus="this.style.borderColor='#DFFF00'" onblur="this.style.borderColor='#2e2e3a'">
+      <div id="ent-error" style="color:#ff5f5f;font-size:13px;display:none;"></div>
+      <div style="display:flex;gap:8px;">
+        <button type="button" onclick="showEntOptions()" style="flex:0 0 auto;background:transparent;border:1px solid #2e2e3a;border-radius:8px;padding:12px 16px;color:#5a5a6e;font-family:monospace;font-size:13px;cursor:pointer;">&#x2190; Back</button>
+        <button id="ent-btn" type="submit"
+          style="flex:1;background:#DFFF00;color:#0a0a0b;border:none;border-radius:8px;padding:13px;font-family:monospace;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s;"
+          onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Send message &#x2192;</button>
+      </div>
+    </form>
+
+    <div id="ent-success" style="display:none;text-align:center;padding:24px 0;">
+      <div style="font-size:32px;margin-bottom:12px;">&#x2713;</div>
+      <p style="color:#e8e8ea;font-size:15px;margin:0 0 6px;font-weight:600;">Message sent.</p>
+      <p style="color:#5a5a6e;font-size:13px;margin:0;">OlSon will follow up personally.</p>
+    </div>
+  </div>
+
+</div>
+
+
+<script>
+const planConfig = {
+  free:       { badge: "Free Plan", heading: "Get started free", sub: "No waitlist. No credit card. Your booking page is ready in seconds.", btn: "Get started free →", company: false, successText: "You’re in.", successSub: "Check your inbox — welcome note from OlSon on the way." },
+  starter:    { badge: "Starter — $29/mo", heading: "Request Starter access", sub: "Invite-only during early access. We’ll get back to you same day.", btn: "Request access →", company: true, successText: "Request received.", successSub: "We’ll be in touch shortly." },
+  agency:     { badge: "Agency — $99/mo", heading: "Request Agency access", sub: "Built for agencies. Tell us how many clients you’re managing.", btn: "Request access →", company: true, successText: "Request received.", successSub: "We’ll be in touch shortly." },
+};
+
+function openSignup(plan) {
+  const modal = document.getElementById("signupModal");
+  modal.style.display = "flex";
+
+  if (plan === "enterprise") {
+    document.getElementById("modal-standard").style.display = "none";
+    document.getElementById("modal-enterprise").style.display = "block";
+    showEntOptions();
+    return;
+  }
+
+  document.getElementById("modal-enterprise").style.display = "none";
+  document.getElementById("modal-standard").style.display = "block";
+
+  const cfg = planConfig[plan] || planConfig.free;
+  document.getElementById("modal-plan").value = plan;
+  document.getElementById("modal-badge").textContent = cfg.badge;
+  document.getElementById("modal-heading").textContent = cfg.heading;
+  document.getElementById("modal-sub").textContent = cfg.sub;
+  document.getElementById("modal-btn").textContent = cfg.btn;
+  document.getElementById("modal-company").style.display = cfg.company ? "block" : "none";
+  document.getElementById("modal-name").value = "";
+  document.getElementById("modal-email").value = "";
+  document.getElementById("modal-company").value = "";
+  document.getElementById("modal-error").style.display = "none";
+  document.getElementById("modal-form").style.display = "flex";
+  document.getElementById("modal-success").style.display = "none";
+  document.getElementById("modal-btn").disabled = false;
+  requestAnimationFrame(() => document.getElementById("modal-name").focus());
+}
+
+function showEntOptions() {
+  document.getElementById("ent-options").style.display = "grid";
+  document.getElementById("ent-form").style.display = "none";
+  document.getElementById("ent-success").style.display = "none";
+}
+
+function showEntForm() {
+  document.getElementById("ent-options").style.display = "none";
+  document.getElementById("ent-form").style.display = "flex";
+  requestAnimationFrame(() => document.getElementById("ent-name").focus());
+}
+
+function openEntBooking() {
+  closeSignup();
+  const overlay = document.createElement("div");
+  overlay.id = "entBookingOverlay";
+  overlay.style.cssText = "position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;";
+  overlay.innerHTML = '<div style="position:relative;width:100%;max-width:860px;height:85vh;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6);background:#111114;border:1px solid #2e2e3a;"><button onclick="document.getElementById(\'entBookingOverlay\').remove()" style="position:absolute;top:14px;right:14px;z-index:1;background:rgba(0,0,0,0.6);border:none;color:#e8e8ea;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#x2715;</button><iframe src="https://schedkit.net/book/schedkit/leadership/enterprise-intro" style="width:100%;height:100%;border:none;display:block;" title="Book Enterprise Intro" loading="lazy"></iframe></div>';
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+  document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { overlay.remove(); document.removeEventListener("keydown", esc); } });
+  document.body.appendChild(overlay);
+}
+
+function closeSignup() {
+  document.getElementById("signupModal").style.display = "none";
+}
+
+document.getElementById("signupModal").addEventListener("click", function(e) {
+  if (e.target === this) closeSignup();
+});
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") closeSignup();
+});
+
+async function submitSignup(e) {
+  e.preventDefault();
+  const plan = document.getElementById("modal-plan").value;
+  const name = document.getElementById("modal-name").value.trim();
+  const email = document.getElementById("modal-email").value.trim();
+  const company = document.getElementById("modal-company").value.trim();
+  const btn = document.getElementById("modal-btn");
+  const errEl = document.getElementById("modal-error");
+  btn.disabled = true; btn.textContent = "Sending...";
+  errEl.style.display = "none";
+  try {
+    const res = await fetch("/v1/request-access", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, company, plan }) });
+    if (!res.ok) throw new Error();
+    const cfg = planConfig[plan] || planConfig.free;
+    document.getElementById("modal-form").style.display = "none";
+    document.getElementById("modal-success-text").textContent = cfg.successText;
+    document.getElementById("modal-success-sub").textContent = cfg.successSub;
+    document.getElementById("modal-success").style.display = "block";
+    setTimeout(closeSignup, 3200);
+  } catch {
+    errEl.textContent = "Something went wrong. Email ceo@schedkit.net directly.";
+    errEl.style.display = "block";
+    btn.disabled = false;
+    btn.textContent = (planConfig[plan] || planConfig.free).btn;
+  }
+}
+
+async function submitEntSignup(e) {
+  e.preventDefault();
+  const name = document.getElementById("ent-name").value.trim();
+  const email = document.getElementById("ent-email").value.trim();
+  const company = document.getElementById("ent-company").value.trim();
+  const btn = document.getElementById("ent-btn");
+  const errEl = document.getElementById("ent-error");
+  btn.disabled = true; btn.textContent = "Sending...";
+  errEl.style.display = "none";
+  try {
+    const res = await fetch("/v1/request-access", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, company, plan: "enterprise" }) });
+    if (!res.ok) throw new Error();
+    document.getElementById("ent-form").style.display = "none";
+    document.getElementById("ent-success").style.display = "block";
+    setTimeout(closeSignup, 3200);
+  } catch {
+    errEl.textContent = "Something went wrong. Email ceo@schedkit.net directly.";
+    errEl.style.display = "block";
+    btn.disabled = false;
+    btn.textContent = "Send message →";
+  }
+}
 </script>
 
 </body>
