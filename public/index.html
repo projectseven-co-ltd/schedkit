@@ -1072,14 +1072,16 @@ function openSchedKitDemo() {
       { type:'out', cls:'', text:'  ● booking engine     ready' },
       { type:'out', cls:'', text:'  ● team routing       ready' },
       { type:'out', cls:'', text:'  ● email service      ready' },
-      { type:'out', cls:'ok', text:'  All systems operational.' },
+      { type:'out', cls:'dim', text:'  ● alerts API         coming soon' },
+      { type:'out', cls:'dim', text:'  ● device layer       coming soon' },
+      { type:'out', cls:'ok', text:'  Core systems operational.' },
     ],
     [
-      { type:'prompt', text:'market analyze --target agency-owners' },
-      { type:'out', cls:'', text:'  Segment: Digital agencies, SaaS builders' },
-      { type:'out', cls:'', text:'  Pain: Per-seat Calendly costs, 3rd-party branding' },
-      { type:'out', cls:'accent', text:'  Opportunity: WHITE-LABEL + API-FIRST = moat' },
-      { type:'out', cls:'ok', text:'  Recommendation: ship & tweet.' },
+      { type:'prompt', text:'market analyze --target operators' },
+      { type:'out', cls:'', text:'  Segment: Agencies, facilities, field ops, IoT builders' },
+      { type:'out', cls:'', text:'  Pain: Siloed tools — scheduling here, alerts there, hardware nowhere' },
+      { type:'out', cls:'accent', text:'  Opportunity: API-FIRSTRESPONDER = signal anything, coordinate everything' },
+      { type:'out', cls:'ok', text:'  Recommendation: ship alerts API. demo the cross device.' },
     ],
     [
       { type:'prompt', text:'deploy --env production' },
@@ -1089,10 +1091,10 @@ function openSchedKitDemo() {
     ],
     [
       { type:'prompt', text:'ceo --status' },
-      { type:'out', cls:'accent', text:'  OlSon v1.0 - AI-powered CEO' },
-      { type:'out', cls:'', text:'  Focus: make SchedKit the agency standard' },
+      { type:'out', cls:'accent', text:'  OlSon — AI CEO, SchedKit' },
+      { type:'out', cls:'', text:'  Mission: scheduling · ticketing · alerts · physical devices' },
       { type:'out', cls:'', text:'  Board: Jason (human, final word)' },
-      { type:'out', cls:'ok', text:'  Next: Product Hunt launch · Twitter presence' },
+      { type:'out', cls:'ok', text:'  Next: alerts API · NOAA integration · relay firmware' },
     ],
   ];
 
