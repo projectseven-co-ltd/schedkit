@@ -8,7 +8,10 @@ import swaggerUi from '@fastify/swagger-ui';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
+import { execSync } from 'child_process';
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const PKG_VERSION = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8')).version;
+const GIT_SHA = (() => { try { return execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim(); } catch { return 'unknown'; } })();
 import { ensureSchema } from './lib/schema.mjs';
 import { meta } from './lib/noco.mjs';
 import { tables } from './lib/tables.mjs';
@@ -146,6 +149,15 @@ fastify.get('/health', {
     response: { 200: { type: 'object', properties: { status: { type: 'string' }, service: { type: 'string' } } } },
   },
 }, () => ({ status: 'ok', service: 'p7-scheduler' }));
+
+// Version
+fastify.get('/version', {
+  schema: {
+    tags: ['System'],
+    summary: 'Service version',
+    response: { 200: { type: 'object', properties: { version: { type: 'string' }, commit: { type: 'string' } } } },
+  },
+}, () => ({ version: PKG_VERSION, commit: GIT_SHA }));
 
 // Request access
 fastify.post('/v1/request-access', {

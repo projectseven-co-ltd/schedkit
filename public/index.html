@@ -897,8 +897,14 @@ function toggleBilling() {
 <!-- FOOTER -->
 <footer>
   <span class="logo" style="display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#0A0A0B"/><line x1="128" y1="96" x2="208" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/></svg>sched<span style="color:var(--muted)">kit</span></span>
-  <p style="color:var(--muted);">schedkit.net</p>
+  <p style="color:var(--muted);">schedkit.net &nbsp;·&nbsp; <span id="footer-version" style="font-family:var(--font-mono);font-size:11px;opacity:.5">v0.6.0</span></p>
 </footer>
+<script>
+fetch('/version').then(r=>r.json()).then(d=>{
+  const el = document.getElementById('footer-version');
+  if (el) el.textContent = `v${d.version} (${d.commit})`;
+}).catch(()=>{});
+</script>
 
 <script>
 (function(){
