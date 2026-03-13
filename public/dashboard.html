@@ -218,10 +218,21 @@ tr:hover td{background:var(--surface2)}
 .loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);font-family:var(--font-mono);font-size:13px}
 
 @media(max-width:768px){
-  .sidebar{transform:translateX(-100%);transition:.2s}
-  .sidebar.open{transform:translateX(0)}
+  .sidebar{transform:translateX(-100%);transition:.25s;z-index:100}
+  .sidebar.open{transform:translateX(0);box-shadow:4px 0 32px rgba(0,0,0,0.6)}
   .main{margin-left:0}
   .form-grid{grid-template-columns:1fr}
+  .mob-hamburger{display:flex!important}
+  .mob-overlay{display:block!important}
+}
+.mob-hamburger{
+  display:none;align-items:center;justify-content:center;
+  background:none;border:1px solid var(--border);border-radius:6px;
+  padding:6px 10px;cursor:pointer;color:var(--text);font-size:18px;line-height:1;
+  margin-right:8px;
+}
+.mob-overlay{
+  display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,0.5);
 }
 </style>
 </head>
@@ -266,10 +277,16 @@ tr:hover td{background:var(--surface2)}
   </div>
 </aside>
 
+<!-- MOBILE OVERLAY -->
+<div class="mob-overlay" id="mobOverlay" onclick="closeSidebar()"></div>
+
 <!-- MAIN -->
 <main class="main">
   <div class="topbar">
-    <h1 id="page-title">Bookings</h1>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="mob-hamburger" id="mobHamburger" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+      <h1 id="page-title">Bookings</h1>
+    </div>
     <div style="display:flex;align-items:center;gap:12px">
       <button class="lights-btn" id="lightsBtn"><span>🔦</span><span id="lightsBtnLabel">LIGHTS ON</span></button>
       <div id="topbar-actions"></div>
@@ -824,8 +841,19 @@ document.querySelectorAll('.nav-item').forEach(item => {
     const titles = { bookings:'Bookings','event-types':'Event Types',availability:'Availability',blackout:'Blackout Dates',clients:'Client Flags',orgs:'Organizations',settings:'Settings' };
     document.getElementById('page-title').textContent = titles[section] || section;
     loadSection(section);
+    closeSidebar(); // close on mobile after nav
   });
 });
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('mobOverlay').style.display =
+    document.getElementById('sidebar').classList.contains('open') ? 'block' : 'none';
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('mobOverlay').style.display = 'none';
+}
 
 async function loadSection(name) {
   if (name === 'bookings') await loadBookings();
@@ -2031,7 +2059,21 @@ async function openCreateBookingModal() {
     cbSlot = null;
     document.getElementById('cb-next-btn').disabled = true;
     document.getElementById('cb-slots-row').style.display = 'none';
-    if (cbEt && cbFpDate.selectedDates.length) {
+    if (cbEt && cbFpDate && cbFpDate.selectedDates.length) {
+      await loadCbSlots(cbFpDate.input.value);
+    }
+  }, { once: false });
+
+  // Remove stale listeners by replacing the element clone
+  const fresh = etSel.cloneNode(true);
+  etSel.parentNode.replaceChild(fresh, etSel);
+  fresh.addEventListener('change', async () => {
+    const opt = fresh.options[fresh.selectedIndex];
+    cbEt = opt.value ? JSON.parse(opt.dataset.et) : null;
+    cbSlot = null;
+    document.getElementById('cb-next-btn').disabled = true;
+    document.getElementById('cb-slots-row').style.display = 'none';
+    if (cbEt && cbFpDate && cbFpDate.selectedDates.length) {
       await loadCbSlots(cbFpDate.input.value);
     }
   });
