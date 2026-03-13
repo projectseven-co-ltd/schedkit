@@ -38,6 +38,7 @@ function buildWarRoom(incidents) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>⚡ WAR ROOM — SchedKit</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -69,7 +70,6 @@ html, body {
   font-size: 13px;
   overflow: hidden;
 }
-/* SCANLINE effect */
 body::after {
   content: '';
   position: fixed;
@@ -89,7 +89,6 @@ body::after {
   grid-template-rows: 56px 1fr;
   height: 100vh;
 }
-/* HEADER */
 #header {
   display: flex;
   align-items: center;
@@ -138,12 +137,31 @@ body::after {
   color: var(--muted);
   letter-spacing: 2px;
 }
-/* MAIN LAYOUT */
-#main {
-  display: grid;
-  grid-template-columns: 1fr 420px;
-  overflow: hidden;
+/* TAB BAR */
+#tab-bar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: 16px;
 }
+.tab-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  padding: 3px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab-btn:hover { color: var(--text); border-color: var(--acid); }
+.tab-btn.active { color: var(--acid); border-color: var(--acid); background: var(--acid-dim); }
+/* VIEWS */
+#view-list { display: grid; grid-template-columns: 1fr 420px; overflow: hidden; height: 100%; }
+#view-map { display: none; height: 100%; position: relative; }
 /* INCIDENT LIST */
 #incident-list-wrap {
   overflow-y: auto;
@@ -422,7 +440,6 @@ body::after {
   transition: background 0.15s;
 }
 #reply-submit:hover { background: var(--acid-dim); }
-/* EMPTY STATE */
 #empty-board {
   display: flex;
   flex-direction: column;
@@ -434,6 +451,64 @@ body::after {
 }
 #empty-board .big { font-size: 32px; }
 #empty-board p { font-size: 11px; letter-spacing: 2px; }
+/* MAP */
+#map-container {
+  width: 100%;
+  height: 100%;
+  background: #0a0a0b;
+}
+#map-no-geo {
+  display: none;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 500;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 24px 32px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 2px;
+  pointer-events: none;
+}
+/* Leaflet popup dark override */
+.leaflet-popup-content-wrapper {
+  background: #111114 !important;
+  color: #e8e8ea !important;
+  border: 1px solid #1e1e28 !important;
+  border-radius: 2px !important;
+  font-family: 'Courier New', monospace !important;
+  font-size: 12px !important;
+}
+.leaflet-popup-tip { background: #111114 !important; }
+.leaflet-popup-content { margin: 12px 16px !important; }
+.map-popup-title { color: #DFFF00; font-weight: bold; margin-bottom: 6px; font-size: 13px; }
+.map-popup-row { color: #555568; font-size: 10px; margin-bottom: 3px; }
+.map-popup-row span { color: #e8e8ea; }
+.map-popup-btn {
+  display: block;
+  margin-top: 10px;
+  background: #DFFF00;
+  color: #0a0a0b;
+  border: none;
+  padding: 5px 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-align: center;
+}
+/* Urgent pulse animation for Leaflet markers */
+@keyframes urgentPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255,51,51,0.7); }
+  70% { box-shadow: 0 0 0 12px rgba(255,51,51,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,51,51,0); }
+}
+.marker-urgent { animation: urgentPulse 1.4s ease-out infinite; }
 </style>
 </head>
 <body>
@@ -441,10 +516,14 @@ body::after {
   <div id="header">
     <h1>⚡ WAR ROOM</h1>
     <div id="incident-count">0 ACTIVE</div>
+    <div id="tab-bar">
+      <button class="tab-btn active" id="tab-list" onclick="switchTab('list')">LIST</button>
+      <button class="tab-btn" id="tab-map" onclick="switchTab('map')">MAP</button>
+    </div>
     <div id="clock">--:--:--</div>
     <div id="conn-status">● CONNECTING</div>
   </div>
-  <div id="main">
+  <div id="view-list">
     <div id="incident-list-wrap">
       <div id="list-header">
         <span>ACTIVE INCIDENTS</span>
@@ -478,14 +557,36 @@ body::after {
       </div>
     </div>
   </div>
+  <div id="view-map">
+    <div id="map-container"></div>
+    <div id="map-no-geo">NO GEO DATA — INCLUDE lat/lng WHEN CREATING INCIDENTS</div>
+  </div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function() {
   const SLA_HOURS = { urgent: 1, high: 4, normal: 24, low: 48 };
   let incidents = ${incidentsJson};
   let selectedId = null;
   let repliesCache = {};
+
+  // ---- Tab switching ----
+  let currentTab = 'list';
+  let mapInitialized = false;
+  window.switchTab = function(tab) {
+    currentTab = tab;
+    document.getElementById('view-list').style.display = tab === 'list' ? 'grid' : 'none';
+    document.getElementById('view-map').style.display = tab === 'map' ? 'block' : 'none';
+    document.getElementById('tab-list').classList.toggle('active', tab === 'list');
+    document.getElementById('tab-map').classList.toggle('active', tab === 'map');
+    if (tab === 'map' && !mapInitialized) {
+      mapInitialized = true;
+      initMap();
+    } else if (tab === 'map') {
+      leafletMap && leafletMap.invalidateSize();
+    }
+  };
 
   // ---- Clock ----
   function updateClock() {
@@ -541,11 +642,9 @@ body::after {
     }
     empty.style.display = 'none';
 
-    // Preserve existing cards, add new ones
     const existingIds = new Set([...list.querySelectorAll('.incident-card')].map(el => el.dataset.id));
     const incomingIds = new Set(active.map(i => String(i.Id)));
 
-    // Remove closed
     for (const el of list.querySelectorAll('.incident-card')) {
       if (!incomingIds.has(el.dataset.id)) el.remove();
     }
@@ -580,7 +679,6 @@ body::after {
         card.onclick = () => selectIncident(id);
       }
       if (id === selectedId) card.classList.add('selected');
-      loadResponders(id);
     }
   }
 
@@ -588,12 +686,6 @@ body::after {
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  async function loadResponders(ticketId) {
-    // We keep a lightweight approach: list responders from DB once per selection
-    // For the card mini view, just show count if cached
-  }
-
-  // ---- SLA timer tick ----
   setInterval(() => {
     for (const el of document.querySelectorAll('.sla-timer[data-sla-id]')) {
       const id = el.dataset.slaId;
@@ -613,7 +705,6 @@ body::after {
     }
   }, 1000);
 
-  // ---- Select incident ----
   async function selectIncident(id) {
     selectedId = id;
     document.querySelectorAll('.incident-card').forEach(el => {
@@ -639,7 +730,6 @@ body::after {
     document.getElementById('detail-sla').innerHTML =
       'SLA: <span class="sla-val ' + sc + '">' + (rem !== null ? fmtDuration(rem) : '--') + '</span>';
 
-    // Load replies
     await loadReplies(id);
   }
 
@@ -674,7 +764,6 @@ body::after {
     list.scrollTop = list.scrollHeight;
   }
 
-  // ---- Join button ----
   document.getElementById('join-btn').addEventListener('click', async () => {
     if (!selectedId) return;
     const btn = document.getElementById('join-btn');
@@ -695,7 +784,6 @@ body::after {
     }
   });
 
-  // ---- Reply submit ----
   document.getElementById('reply-submit').addEventListener('click', async () => {
     if (!selectedId) return;
     const input = document.getElementById('reply-input');
@@ -715,6 +803,136 @@ body::after {
     } catch {}
   });
 
+  // ---- MAP ----
+  let leafletMap = null;
+  const incidentMarkers = new Map(); // id -> { marker, circle }
+  const responderMarkers = new Map(); // user_id -> marker
+
+  // Priority pin colors (SLA-independent default)
+  const PRIORITY_COLORS = { urgent: '#ff3333', high: '#ff8800', normal: '#00aaff', low: '#555568' };
+  const SLA_COLORS = { ok: '#00ff88', warning: '#ffaa00', breached: '#ff3333' };
+
+  function markerColor(inc) {
+    const sc = slaClass(inc);
+    return SLA_COLORS[sc] || PRIORITY_COLORS[inc.priority] || '#00aaff';
+  }
+
+  function initMap() {
+    leafletMap = L.map('map-container', {
+      zoomControl: true,
+      attributionControl: false,
+    }).setView([20, 0], 2);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(leafletMap);
+
+    const withGeo = incidents.filter(i =>
+      (i.status === 'open' || i.status === 'in_progress') &&
+      i.lat != null && i.lng != null);
+
+    if (withGeo.length === 0) {
+      document.getElementById('map-no-geo').style.display = 'block';
+    } else {
+      document.getElementById('map-no-geo').style.display = 'none';
+      for (const inc of withGeo) addIncidentMarker(inc);
+      fitMapToMarkers();
+    }
+  }
+
+  function makeCircleMarker(inc) {
+    const color = markerColor(inc);
+    const radius = inc.priority === 'urgent' ? 14 : 10;
+    const marker = L.circleMarker([inc.lat, inc.lng], {
+      radius,
+      color,
+      fillColor: color,
+      fillOpacity: 0.85,
+      weight: 2,
+    });
+
+    // For urgent: add CSS pulse via custom pane/className trick
+    // We use a divIcon wrapper for urgent
+    if (inc.priority === 'urgent') {
+      const icon = L.divIcon({
+        className: '',
+        html: '<div class="marker-urgent" style="width:20px;height:20px;border-radius:50%;background:#ff3333;border:2px solid #ff6666;opacity:0.9"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+      });
+      return L.marker([inc.lat, inc.lng], { icon });
+    }
+    return marker;
+  }
+
+  function popupHtml(inc) {
+    const sc = slaClass(inc);
+    const rem = slaRemaining(inc);
+    const slaText = rem !== null ? fmtDuration(rem) : '--';
+    return '<div class="map-popup-title">' + escHtml(inc.title) + '</div>' +
+      '<div class="map-popup-row">PRIORITY: <span class="' + 'priority-' + (inc.priority||'normal') + '">' + (inc.priority||'normal').toUpperCase() + '</span></div>' +
+      '<div class="map-popup-row">SLA: <span style="color:' + (SLA_COLORS[sc]||'#00ff88') + '">' + slaText + '</span></div>' +
+      '<div class="map-popup-row">STATUS: <span>' + (inc.status||'').toUpperCase() + '</span></div>' +
+      (inc.location_name ? '<div class="map-popup-row">LOC: <span>' + escHtml(inc.location_name) + '</span></div>' : '') +
+      '<a href="/v1/incidents/war-room#inc-' + inc.Id + '" class="map-popup-btn" onclick="switchTab(\'list\')">OPEN INCIDENT</a>';
+  }
+
+  function addIncidentMarker(inc) {
+    if (!leafletMap) return;
+    if (inc.lat == null || inc.lng == null) return;
+
+    const marker = makeCircleMarker(inc);
+    marker.addTo(leafletMap).bindPopup(popupHtml(inc), { maxWidth: 260 });
+    incidentMarkers.set(String(inc.Id), marker);
+  }
+
+  function updateIncidentMarker(inc) {
+    if (!leafletMap) return;
+    const id = String(inc.Id);
+    const existing = incidentMarkers.get(id);
+    if (existing) {
+      leafletMap.removeLayer(existing);
+      incidentMarkers.delete(id);
+    }
+    if (inc.lat != null && inc.lng != null &&
+        (inc.status === 'open' || inc.status === 'in_progress')) {
+      addIncidentMarker(inc);
+    }
+    checkGeoEmpty();
+  }
+
+  function removeIncidentMarker(id) {
+    const m = incidentMarkers.get(String(id));
+    if (m && leafletMap) { leafletMap.removeLayer(m); incidentMarkers.delete(String(id)); }
+    checkGeoEmpty();
+  }
+
+  function checkGeoEmpty() {
+    document.getElementById('map-no-geo').style.display =
+      incidentMarkers.size === 0 ? 'block' : 'none';
+  }
+
+  function fitMapToMarkers() {
+    if (!leafletMap || incidentMarkers.size === 0) return;
+    const group = L.featureGroup([...incidentMarkers.values()]);
+    leafletMap.fitBounds(group.getBounds().pad(0.3));
+  }
+
+  function updateResponderDot(user_id, lat, lng) {
+    if (!leafletMap) return;
+    const existing = responderMarkers.get(String(user_id));
+    if (existing) { leafletMap.removeLayer(existing); }
+    const icon = L.divIcon({
+      className: '',
+      html: '<div style="width:10px;height:10px;border-radius:50%;background:#00ffff;border:1px solid #006666;opacity:0.9"></div>',
+      iconSize: [10, 10],
+      iconAnchor: [5, 5],
+    });
+    const m = L.marker([lat, lng], { icon }).addTo(leafletMap);
+    responderMarkers.set(String(user_id), m);
+  }
+
   // ---- SSE ----
   const status = document.getElementById('conn-status');
   function connectSSE() {
@@ -729,10 +947,7 @@ body::after {
       setTimeout(connectSSE, 3000);
     };
     es.onmessage = (e) => {
-      try {
-        const evt = JSON.parse(e.data);
-        handleEvent(evt);
-      } catch {}
+      try { handleEvent(JSON.parse(e.data)); } catch {}
     };
   }
 
@@ -741,19 +956,26 @@ body::after {
     if (type === 'incident.created') {
       incidents.unshift(payload);
       renderList();
-    } else if (type === 'incident.updated' || type === 'incident.breached' || type === 'incident.resolved') {
+      if (mapInitialized && payload.lat != null) { addIncidentMarker(payload); checkGeoEmpty(); }
+    } else if (type === 'incident.updated' || type === 'incident.breached') {
       const idx = incidents.findIndex(i => String(i.Id) === String(payload.Id));
       if (idx >= 0) incidents[idx] = { ...incidents[idx], ...payload };
-      else if (type === 'incident.created') incidents.unshift(payload);
+      else incidents.unshift(payload);
       renderList();
       if (selectedId === String(payload.Id)) selectIncident(selectedId);
+      if (mapInitialized) updateIncidentMarker(payload);
+    } else if (type === 'incident.resolved') {
+      const idx = incidents.findIndex(i => String(i.Id) === String(payload.Id));
+      if (idx >= 0) incidents[idx] = { ...incidents[idx], ...payload };
+      renderList();
+      if (mapInitialized) removeIncidentMarker(payload.Id);
     } else if (type === 'reply.added' && String(payload.ticket_id) === selectedId) {
       const replies = repliesCache[selectedId] || [];
       replies.push(payload.reply);
       repliesCache[selectedId] = replies;
       renderReplies(selectedId);
-    } else if (type === 'responder.joined' || type === 'responder.left') {
-      // Update responder count — lightweight
+    } else if (type === 'responder.moved') {
+      if (mapInitialized) updateResponderDot(payload.user_id, payload.lat, payload.lng);
     }
   }
 

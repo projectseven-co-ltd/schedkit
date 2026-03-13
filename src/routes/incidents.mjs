@@ -265,6 +265,46 @@ export default async function incidentsRoutes(fastify) {
     return reply.code(201).send(replyRow);
   });
 
+  // PATCH /v1/incidents/:id/responders/location — update responder geo position
+  fastify.patch('/incidents/:id/responders/location', {
+    preHandler: requireAuth,
+    schema: {
+      tags: ['Incidents'],
+      summary: 'Update responder location',
+      description: 'Broadcast responder position update. Auth required. Emits `responder.moved` SSE event.',
+      security: [{ apiKey: [] }, { cookieAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } } },
+      body: {
+        type: 'object',
+        required: ['lat', 'lng'],
+        properties: {
+          lat: { type: 'number' },
+          lng: { type: 'number' },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const ticketId = req.params.id;
+    const { lat, lng } = req.body;
+
+    const existing = await db.find(tables.ticket_responders,
+      `(ticket_id,eq,${ticketId})~and(user_id,eq,${req.user.Id})`);
+    if (!existing?.list?.length) return reply.code(404).send({ error: 'Not a responder on this incident' });
+
+    await db.update(tables.ticket_responders, existing.list[0].Id, {
+      lat,
+      lng,
+      last_seen: new Date().toISOString(),
+    });
+
+    broadcastAll({
+      type: 'responder.moved',
+      payload: { ticket_id: ticketId, user_id: req.user.Id, lat, lng },
+    });
+
+    return { ok: true };
+  });
+
   // GET /v1/incidents/:id/replies
   fastify.get('/incidents/:id/replies', {
     schema: {

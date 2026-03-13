@@ -151,6 +151,9 @@ export default async function ticketsRoutes(fastify) {
           priority: { type: 'string', enum: ['low', 'normal', 'high', 'urgent'], default: 'normal' },
           source: { type: 'string', enum: ['api', 'email', 'webhook', 'alert'], default: 'api', description: 'Origin of the record. Use `alert` for automated incident creation, `email` for inbound support, `api` for programmatic creation.' },
           source_ref: { type: 'string', description: 'External reference ID (e.g. email message ID, alert ID)' },
+          lat: { type: 'number', nullable: true, description: 'Incident latitude' },
+          lng: { type: 'number', nullable: true, description: 'Incident longitude' },
+          location_name: { type: 'string', nullable: true, description: 'Human-readable location name' },
         },
       },
       response: {
@@ -167,12 +170,15 @@ export default async function ticketsRoutes(fastify) {
             sla_status: { type: 'string', enum: ['ok', 'warning', 'breached'] },
             customer_token: { type: 'string', description: 'Magic token for the public customer status page' },
             customer_status_url: { type: 'string', description: 'Full URL to public customer status page' },
+            lat: { type: 'number', nullable: true },
+            lng: { type: 'number', nullable: true },
+            location_name: { type: 'string', nullable: true },
           },
         },
       },
     },
   }, async (req, reply) => {
-    const { title, description, priority = 'normal', source = 'api', source_ref } = req.body;
+    const { title, description, priority = 'normal', source = 'api', source_ref, lat, lng, location_name } = req.body;
     const customer_token = nanoid(24);
 
     const ticket = await db.create(tables.tickets, {
@@ -186,6 +192,9 @@ export default async function ticketsRoutes(fastify) {
       sla_due_at: calcSlaDueAt(priority),
       sla_breached: false,
       customer_token,
+      lat: lat ?? null,
+      lng: lng ?? null,
+      location_name: location_name ?? null,
     });
 
     const result = withSlaStatus({
@@ -258,6 +267,9 @@ export default async function ticketsRoutes(fastify) {
           status: { type: 'string', enum: ['open', 'in_progress', 'resolved', 'closed'] },
           priority: { type: 'string', enum: ['low', 'normal', 'high', 'urgent'] },
           assignee_id: { type: 'integer', nullable: true },
+          lat: { type: 'number', nullable: true },
+          lng: { type: 'number', nullable: true },
+          location_name: { type: 'string', nullable: true },
         },
       },
     },
@@ -265,13 +277,16 @@ export default async function ticketsRoutes(fastify) {
     const existing = await db.get(tables.tickets, req.params.id);
     if (!existing || existing.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
 
-    const { title, description, status, priority, assignee_id } = req.body;
+    const { title, description, status, priority, assignee_id, lat, lng, location_name } = req.body;
     const updates = {};
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
     if (status !== undefined) updates.status = status;
     if (priority !== undefined) updates.priority = priority;
     if (assignee_id !== undefined) updates.assignee_id = assignee_id;
+    if (lat !== undefined) updates.lat = lat;
+    if (lng !== undefined) updates.lng = lng;
+    if (location_name !== undefined) updates.location_name = location_name;
 
     if (!Object.keys(updates).length) return reply.code(400).send({ error: 'No fields to update' });
 
