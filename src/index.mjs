@@ -32,6 +32,7 @@ import ticketsRoutes from './routes/tickets.mjs';
 import incidentsRoutes from './routes/incidents.mjs';
 import warRoomRoutes from './routes/warRoom.mjs';
 import incidentStatusRoutes from './routes/incidentStatus.mjs';
+import settingsRoutes from './routes/settings.mjs';
 
 const fastify = Fastify({ logger: true });
 
@@ -60,6 +61,7 @@ await fastify.register(swagger, {
       { name: 'Users', description: 'User profile and API key management.' },
       { name: 'Tickets', description: 'Ticket and incident management. **Tickets and incidents are the same object** — every record is accessible via both `/v1/tickets` (async/helpdesk) and `/v1/incidents` (real-time SSE/dispatch). The `source` field (`api`, `email`, `webhook`, `alert`) and `priority` together imply context. Neither endpoint enforces a use case.' },
       { name: 'Incidents', description: 'Real-time incident coordination layer. **Same underlying records as `/v1/tickets`** — no separate table. Adds SSE streaming, responder management, and reply threads on top of the ticket object. Use `/v1/incidents` for ops war rooms, dispatch systems, or alert pipelines. Use `/v1/tickets` for helpdesk or ITSM flows. Both share identical data.' },
+      { name: 'Settings', description: 'User settings management. Get or update per-user configuration — currently `ntfy_topic` for push notifications via ntfy.sh.' },
     ],
     servers: [{ url: 'https://schedkit.net', description: 'Production' }],
     components: {
@@ -125,6 +127,7 @@ await fastify.register(ticketsRoutes, { prefix: '/v1' });
 await fastify.register(incidentsRoutes, { prefix: '/v1' });
 await fastify.register(warRoomRoutes);
 await fastify.register(incidentStatusRoutes);
+await fastify.register(settingsRoutes, { prefix: '/v1' });
 
 // Page routes (no prefix)
 fastify.get('/login', { schema: { hide: true } }, async (req, reply) => {

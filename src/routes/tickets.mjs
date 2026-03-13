@@ -71,6 +71,27 @@ async function tryNtfy(title, message, priority = 'default') {
   } catch {}
 }
 
+async function tryUserNtfy(userId, title, description, priority, source) {
+  try {
+    const { db: ntfyDb } = await import('../lib/noco.mjs');
+    const { tables: ntfyTables } = await import('../lib/tables.mjs');
+    const user = await ntfyDb.get(ntfyTables.users, userId);
+    const topic = user?.ntfy_topic?.trim();
+    if (!topic) return;
+    const ntfyPriority = priority === 'urgent' ? 'urgent' : priority === 'high' ? 'high' : 'default';
+    await fetch(`https://ntfy.sh/${topic}`, {
+      method: 'POST',
+      headers: {
+        'Title': title,
+        'Priority': ntfyPriority,
+        'Tags': source || 'incident',
+        'Content-Type': 'text/plain',
+      },
+      body: (description || '').slice(0, 200),
+    });
+  } catch {}
+}
+
 const UNIFIED_DESCRIPTION = `
 **Tickets and incidents are the same object.** Every record in this table is accessible via both \`/v1/tickets\` and the real-time \`/v1/incidents\` layer — same NocoDB row, same ID, same fields. No data is duplicated.
 
@@ -207,6 +228,7 @@ export default async function ticketsRoutes(fastify) {
 
     // ntfy push for urgent/high or alert source
     if (priority === 'urgent' || priority === 'high' || source === 'alert') {
+      tryUserNtfy(req.user.Id, title, description, priority, source);
       tryNtfy(
         `🚨 New incident: ${title}`,
         `Priority: ${priority.toUpperCase()}\nSource: ${source}\n${description || ''}`,
