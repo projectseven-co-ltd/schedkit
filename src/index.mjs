@@ -29,6 +29,9 @@ import teamBookingPageRoutes from './routes/teamBookingPage.mjs';
 import calendarRoutes from './routes/calendar.mjs';
 import notificationRoutes from './routes/notifications.mjs';
 import ticketsRoutes from './routes/tickets.mjs';
+import incidentsRoutes from './routes/incidents.mjs';
+import warRoomRoutes from './routes/warRoom.mjs';
+import incidentStatusRoutes from './routes/incidentStatus.mjs';
 
 const fastify = Fastify({ logger: true });
 
@@ -55,7 +58,8 @@ await fastify.register(swagger, {
       { name: 'Organizations', description: 'Multi-user org and team management. Invite members, create shared team event types.' },
       { name: 'Calendar', description: 'Google Calendar OAuth connection for two-way sync.' },
       { name: 'Users', description: 'User profile and API key management.' },
-      { name: 'Tickets', description: 'Support ticket management. Create, update, and track tickets by status and priority.' },
+      { name: 'Tickets', description: 'Ticket and incident management. **Tickets and incidents are the same object** — every record is accessible via both `/v1/tickets` (async/helpdesk) and `/v1/incidents` (real-time SSE/dispatch). The `source` field (`api`, `email`, `webhook`, `alert`) and `priority` together imply context. Neither endpoint enforces a use case.' },
+      { name: 'Incidents', description: 'Real-time incident coordination layer. **Same underlying records as `/v1/tickets`** — no separate table. Adds SSE streaming, responder management, and reply threads on top of the ticket object. Use `/v1/incidents` for ops war rooms, dispatch systems, or alert pipelines. Use `/v1/tickets` for helpdesk or ITSM flows. Both share identical data.' },
     ],
     servers: [{ url: 'https://schedkit.net', description: 'Production' }],
     components: {
@@ -118,6 +122,9 @@ await fastify.register(teamBookingPageRoutes);
 await fastify.register(calendarRoutes, { prefix: '/v1' });
 await fastify.register(notificationRoutes, { prefix: '/v1' });
 await fastify.register(ticketsRoutes, { prefix: '/v1' });
+await fastify.register(incidentsRoutes, { prefix: '/v1' });
+await fastify.register(warRoomRoutes);
+await fastify.register(incidentStatusRoutes);
 
 // Page routes (no prefix)
 fastify.get('/login', { schema: { hide: true } }, async (req, reply) => {

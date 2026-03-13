@@ -1,9 +1,17 @@
-// src/routes/tickets.mjs — Ticketing API
+// src/routes/tickets.mjs — Ticketing / Incident API
+//
+// Tickets and incidents are the SAME object in the same NocoDB table.
+// /v1/tickets and /v1/incidents operate on identical records — no separate table.
+// The "incidents" routes add a real-time layer (SSE, responders, replies) on top.
+// Use /v1/tickets for helpdesk/ITSM flows. Use /v1/incidents + SSE for dispatch/ops flows.
+// The `source` field (api/email/webhook/alert) and `priority` together imply context.
+// Neither endpoint enforces a use case on the caller.
 
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
+import { nanoid } from 'nanoid';
 
 async function requireAuth(req, reply) {
   if (req.headers['x-api-key']) return requireApiKey(req, reply);
@@ -39,19 +47,51 @@ function withSlaStatus(ticket) {
   return { ...ticket, sla_status: slaStatus(ticket) };
 }
 
+// Lazy broadcast — imported after module init to avoid circular issues
+async function tryBroadcast(type, payload) {
+  try {
+    const { broadcastAll } = await import('./incidents.mjs');
+    broadcastAll({ type, payload });
+  } catch {}
+}
+
+async function tryNtfy(title, message, priority = 'default') {
+  try {
+    const topic = process.env.NTFY_DEFAULT_TOPIC || process.env.NTFY_TOPIC || 'schedkit-leads';
+    await fetch(`https://ntfy.sh/${topic}`, {
+      method: 'POST',
+      headers: {
+        'Title': title,
+        'Priority': priority,
+        'Tags': 'schedkit,incident',
+        'Content-Type': 'text/plain',
+      },
+      body: message,
+    });
+  } catch {}
+}
+
+const UNIFIED_DESCRIPTION = `
+**Tickets and incidents are the same object.** Every record in this table is accessible via both \`/v1/tickets\` and the real-time \`/v1/incidents\` layer — same NocoDB row, same ID, same fields. No data is duplicated.
+
+- Use \`/v1/tickets\` for helpdesk, ITSM, or async workflows
+- Use \`/v1/incidents\` + SSE for real-time dispatch, ops war rooms, or alert routing
+- The \`source\` field (\`api\`, \`email\`, \`webhook\`, \`alert\`) and \`priority\` together imply context — neither endpoint enforces a use case on the caller
+`;
+
 export default async function ticketsRoutes(fastify) {
   // GET /v1/tickets — list tickets for authenticated user
   fastify.get('/tickets', {
     preHandler: requireAuth,
     schema: {
       tags: ['Tickets'],
-      summary: 'List tickets',
-      description: 'Returns tickets for the authenticated user. Filter by `status` (`open`, `in_progress`, `resolved`, `closed`) or `priority` (`low`, `normal`, `high`, `urgent`). Paginated.',
+      summary: 'List tickets / incidents',
+      description: UNIFIED_DESCRIPTION + '\nReturns records for the authenticated user. Filter by `status` or `priority`. Paginated.',
       security: [{ apiKey: [] }],
       querystring: {
         type: 'object',
         properties: {
-          status: { type: 'string', enum: ['open', 'in_progress', 'resolved', 'closed'], description: 'Filter by ticket status' },
+          status: { type: 'string', enum: ['open', 'in_progress', 'resolved', 'closed'], description: 'Filter by status' },
           priority: { type: 'string', enum: ['low', 'normal', 'high', 'urgent'], description: 'Filter by priority' },
           limit: { type: 'integer', default: 50 },
           page: { type: 'integer', default: 1 },
@@ -66,9 +106,10 @@ export default async function ticketsRoutes(fastify) {
               items: {
                 type: 'object',
                 properties: {
-                  sla_due_at: { type: 'string', nullable: true, description: 'ISO datetime when SLA is due' },
-                  sla_breached: { type: 'boolean', description: 'Whether SLA has been breached' },
-                  sla_status: { type: 'string', enum: ['ok', 'warning', 'breached'], description: 'Computed SLA status' },
+                  sla_due_at: { type: 'string', nullable: true },
+                  sla_breached: { type: 'boolean' },
+                  sla_status: { type: 'string', enum: ['ok', 'warning', 'breached'] },
+                  customer_token: { type: 'string', description: 'Magic token for public customer status page' },
                 },
               },
             },
@@ -93,28 +134,46 @@ export default async function ticketsRoutes(fastify) {
     return { tickets, total: result.pageInfo?.totalRows || 0 };
   });
 
-  // POST /v1/tickets — create ticket
+  // POST /v1/tickets — create ticket / incident
   fastify.post('/tickets', {
     preHandler: requireAuth,
     schema: {
       tags: ['Tickets'],
-      summary: 'Create ticket',
-      description: 'Creates a new support ticket for the authenticated user. `title` is required. Defaults: `status=open`, `priority=normal`, `source=api`.',
+      summary: 'Create ticket / incident',
+      description: UNIFIED_DESCRIPTION + '\nCreates a new record. `title` is required. Defaults: `status=open`, `priority=normal`, `source=api`. A `customer_token` is generated automatically — use it to share the public status page at `https://schedkit.net/incidents/status/:token`. A real-time SSE event (`incident.created`) is broadcast to all connected staff.',
       security: [{ apiKey: [] }],
       body: {
         type: 'object',
         required: ['title'],
         properties: {
-          title: { type: 'string', description: 'Ticket title (required)' },
-          description: { type: 'string', description: 'Detailed description' },
+          title: { type: 'string' },
+          description: { type: 'string' },
           priority: { type: 'string', enum: ['low', 'normal', 'high', 'urgent'], default: 'normal' },
-          source: { type: 'string', enum: ['api', 'email', 'webhook', 'alert'], default: 'api', description: 'Origin of the ticket' },
-          source_ref: { type: 'string', description: 'External reference ID (e.g. email message ID)' },
+          source: { type: 'string', enum: ['api', 'email', 'webhook', 'alert'], default: 'api', description: 'Origin of the record. Use `alert` for automated incident creation, `email` for inbound support, `api` for programmatic creation.' },
+          source_ref: { type: 'string', description: 'External reference ID (e.g. email message ID, alert ID)' },
+        },
+      },
+      response: {
+        201: {
+          type: 'object',
+          description: 'Created ticket/incident',
+          properties: {
+            Id: { type: 'integer' },
+            title: { type: 'string' },
+            status: { type: 'string' },
+            priority: { type: 'string' },
+            sla_due_at: { type: 'string', nullable: true },
+            sla_breached: { type: 'boolean' },
+            sla_status: { type: 'string', enum: ['ok', 'warning', 'breached'] },
+            customer_token: { type: 'string', description: 'Magic token for the public customer status page' },
+            customer_status_url: { type: 'string', description: 'Full URL to public customer status page' },
+          },
         },
       },
     },
   }, async (req, reply) => {
     const { title, description, priority = 'normal', source = 'api', source_ref } = req.body;
+    const customer_token = nanoid(24);
 
     const ticket = await db.create(tables.tickets, {
       title,
@@ -126,27 +185,47 @@ export default async function ticketsRoutes(fastify) {
       source_ref: source_ref || null,
       sla_due_at: calcSlaDueAt(priority),
       sla_breached: false,
+      customer_token,
     });
 
-    return reply.code(201).send(withSlaStatus(ticket));
+    const result = withSlaStatus({
+      ...ticket,
+      customer_status_url: `https://schedkit.net/incidents/status/${customer_token}`,
+    });
+
+    // SSE broadcast
+    tryBroadcast('incident.created', result);
+
+    // ntfy push for urgent/high or alert source
+    if (priority === 'urgent' || priority === 'high' || source === 'alert') {
+      tryNtfy(
+        `🚨 New incident: ${title}`,
+        `Priority: ${priority.toUpperCase()}\nSource: ${source}\n${description || ''}`,
+        priority === 'urgent' ? 'urgent' : 'high'
+      );
+    }
+
+    return reply.code(201).send(result);
   });
 
-  // GET /v1/tickets/:id — get single ticket
+  // GET /v1/tickets/:id — get single ticket/incident
   fastify.get('/tickets/:id', {
     preHandler: requireAuth,
     schema: {
       tags: ['Tickets'],
-      summary: 'Get ticket',
-      description: 'Returns a single ticket by ID. Only accessible by the owning user.',
+      summary: 'Get ticket / incident',
+      description: UNIFIED_DESCRIPTION + '\nReturns a single record by ID.',
       security: [{ apiKey: [] }],
       params: { type: 'object', properties: { id: { type: 'string' } } },
       response: {
         200: {
           type: 'object',
           properties: {
-            sla_due_at: { type: 'string', nullable: true, description: 'ISO datetime when SLA is due' },
-            sla_breached: { type: 'boolean', description: 'Whether SLA has been breached' },
-            sla_status: { type: 'string', enum: ['ok', 'warning', 'breached'], description: 'Computed SLA status' },
+            sla_due_at: { type: 'string', nullable: true },
+            sla_breached: { type: 'boolean' },
+            sla_status: { type: 'string', enum: ['ok', 'warning', 'breached'] },
+            customer_token: { type: 'string' },
+            customer_status_url: { type: 'string' },
           },
         },
       },
@@ -154,16 +233,21 @@ export default async function ticketsRoutes(fastify) {
   }, async (req, reply) => {
     const row = await db.get(tables.tickets, req.params.id);
     if (!row || row.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
-    return withSlaStatus(row);
+    return {
+      ...withSlaStatus(row),
+      customer_status_url: row.customer_token
+        ? `https://schedkit.net/incidents/status/${row.customer_token}`
+        : null,
+    };
   });
 
-  // PATCH /v1/tickets/:id — update ticket
+  // PATCH /v1/tickets/:id — update ticket/incident
   fastify.patch('/tickets/:id', {
     preHandler: requireAuth,
     schema: {
       tags: ['Tickets'],
-      summary: 'Update ticket',
-      description: 'Update a ticket\'s status, priority, assignee, title, or description. Only accessible by the owning user.',
+      summary: 'Update ticket / incident',
+      description: UNIFIED_DESCRIPTION + '\nUpdate status, priority, assignee, title, or description. Broadcasts `incident.updated` (or `incident.resolved`) to all connected SSE clients.',
       security: [{ apiKey: [] }],
       params: { type: 'object', properties: { id: { type: 'string' } } },
       body: {
@@ -173,7 +257,7 @@ export default async function ticketsRoutes(fastify) {
           description: { type: 'string' },
           status: { type: 'string', enum: ['open', 'in_progress', 'resolved', 'closed'] },
           priority: { type: 'string', enum: ['low', 'normal', 'high', 'urgent'] },
-          assignee_id: { type: 'integer', nullable: true, description: 'User ID of the assignee' },
+          assignee_id: { type: 'integer', nullable: true },
         },
       },
     },
@@ -191,7 +275,6 @@ export default async function ticketsRoutes(fastify) {
 
     if (!Object.keys(updates).length) return reply.code(400).send({ error: 'No fields to update' });
 
-    // SLA breach check: only if not resolving/closing
     const newStatus = status ?? existing.status;
     const isTerminal = newStatus === 'resolved' || newStatus === 'closed';
     if (!isTerminal) {
@@ -200,20 +283,40 @@ export default async function ticketsRoutes(fastify) {
         updates.sla_breached = true;
       }
     }
-    // Never set sla_breached when resolving/closing
 
     await db.update(tables.tickets, existing.Id, updates);
     const updated = await db.get(tables.tickets, existing.Id);
-    return withSlaStatus(updated);
+    const result = {
+      ...withSlaStatus(updated),
+      customer_status_url: updated.customer_token
+        ? `https://schedkit.net/incidents/status/${updated.customer_token}`
+        : null,
+    };
+
+    // Check if SLA just breached
+    if (updates.sla_breached && !existing.sla_breached) {
+      tryBroadcast('incident.breached', result);
+      tryNtfy(
+        `⚠️ SLA breached: ${updated.title}`,
+        `Priority: ${(updated.priority || 'normal').toUpperCase()}\nTicket #${updated.Id}`,
+        'urgent'
+      );
+    } else if (isTerminal) {
+      tryBroadcast('incident.resolved', result);
+    } else {
+      tryBroadcast('incident.updated', result);
+    }
+
+    return result;
   });
 
-  // DELETE /v1/tickets/:id — close ticket (soft close, don't delete)
+  // DELETE /v1/tickets/:id — close ticket (soft)
   fastify.delete('/tickets/:id', {
     preHandler: requireAuth,
     schema: {
       tags: ['Tickets'],
-      summary: 'Close ticket',
-      description: 'Closes a ticket by setting its status to `closed`. Does not delete the record. Only accessible by the owning user.',
+      summary: 'Close ticket / incident',
+      description: 'Sets status to `closed`. Does not delete the record. Broadcasts `incident.resolved` to SSE clients.',
       security: [{ apiKey: [] }],
       params: { type: 'object', properties: { id: { type: 'string' } } },
     },
@@ -223,6 +326,7 @@ export default async function ticketsRoutes(fastify) {
     if (existing.status === 'closed') return reply.code(400).send({ error: 'Ticket is already closed' });
 
     await db.update(tables.tickets, existing.Id, { status: 'closed' });
+    tryBroadcast('incident.resolved', { ...existing, status: 'closed' });
     return { ok: true, status: 'closed', id: existing.Id };
   });
 }
