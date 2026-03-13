@@ -2,7 +2,7 @@
 
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
-import { requireSession } from '../middleware/session.mjs';
+import { requireSession, getSessionUser } from '../middleware/session.mjs';
 
 export default async function warRoomRoutes(fastify) {
   fastify.get('/incidents/war-room', {
@@ -16,6 +16,10 @@ export default async function warRoomRoutes(fastify) {
     await requireSession(req, reply);
     if (reply.sent) return;
 
+    // Get user's API key to inject into SSE URL (EventSource can't set headers)
+    const user = await getSessionUser(req);
+    const apiKey = user?.api_key || '';
+
     // Load active incidents
     let incidents = [];
     try {
@@ -25,13 +29,14 @@ export default async function warRoomRoutes(fastify) {
         new Date(b.CreatedAt || b.created_at) - new Date(a.CreatedAt || a.created_at));
     } catch {}
 
-    const html = buildWarRoom(incidents);
+    const html = buildWarRoom(incidents, apiKey);
     return reply.type('text/html').send(html);
   });
 }
 
-function buildWarRoom(incidents) {
+function buildWarRoom(incidents, apiKey = '') {
   const incidentsJson = JSON.stringify(incidents);
+  const apiKeyJson = JSON.stringify(apiKey);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -938,7 +943,7 @@ body::after {
   function connectSSE() {
     status.textContent = '● CONNECTING';
     status.className = '';
-    const es = new EventSource('/v1/incidents/stream', { withCredentials: true });
+    const es = new EventSource('/v1/incidents/stream?api_key=' + ${apiKeyJson}, { withCredentials: true });
     es.onopen = () => { status.textContent = '● LIVE'; status.className = 'connected'; };
     es.onerror = () => {
       status.textContent = '● DISCONNECTED';
