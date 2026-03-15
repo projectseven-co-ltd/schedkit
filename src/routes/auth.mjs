@@ -193,16 +193,17 @@ export default async function authRoutes(fastify) {
       response: {
         200: {
           type: 'object',
-          example: {
-            Id: 7,
-            name: 'Olson Ops',
-            email: 'ops@schedkit.net',
-            slug: 'olson-ops',
-            timezone: 'America/Chicago',
-            api_key: 'p7s_live_ops_abc123',
-            enterprise: true,
-            ntfy_topic: 'schedkit-ops',
-            plan: 'enterprise',
+          additionalProperties: true,
+          properties: {
+            Id: { type: 'number' },
+            name: { type: 'string' },
+            email: { type: 'string' },
+            slug: { type: 'string' },
+            timezone: { type: 'string' },
+            api_key: { type: 'string' },
+            enterprise: { type: 'boolean' },
+            ntfy_topic: { type: 'string' },
+            plan: { type: 'string' },
           },
         },
       },
