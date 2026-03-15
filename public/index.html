@@ -2736,9 +2736,17 @@ const planConfig = {
 };
 
 function openSignup(plan) {
-  // Paid plans — send to login with redirect back to upgrade flow
+  // Paid plans — check if logged in; if so go straight to upgrade, else login first
   if (plan === 'starter' || plan === 'agency') {
-    window.location.href = '/login?next=' + encodeURIComponent('/dashboard?upgrade=' + plan);
+    fetch('/v1/auth/me', { credentials: 'include' }).then(r => {
+      if (r.ok) {
+        window.location.href = '/dashboard?upgrade=' + plan;
+      } else {
+        window.location.href = '/login?next=' + encodeURIComponent('/dashboard?upgrade=' + plan);
+      }
+    }).catch(() => {
+      window.location.href = '/login?next=' + encodeURIComponent('/dashboard?upgrade=' + plan);
+    });
     return;
   }
 
