@@ -34,9 +34,24 @@ export default async function authRoutes(fastify) {
     const next = String(req.body?.next || '').slice(0, 200) || null;
     if (!email) return { ok: true };
 
-    const result = await db.find(tables.users, `(email,eq,${email})`);
-    // Always return 200 — don't leak whether email exists
-    if (!result.list?.length) return { ok: true };
+    let result = await db.find(tables.users, `(email,eq,${email})`);
+
+    // Auto-create account if email not found (signup flow)
+    if (!result.list?.length) {
+      // Check once more to avoid race-condition duplicates
+      const check = await db.find(tables.users, `(email,eq,${email})`);
+      if (!check.list?.length) {
+        const newUser = await db.create(tables.users, {
+          email,
+          name: '',
+          plan: 'free',
+          created_at: new Date().toISOString(),
+        });
+        result = { list: [newUser] };
+      } else {
+        result = check;
+      }
+    }
 
     const user = result.list[0];
     const code = generateLoginCode();
