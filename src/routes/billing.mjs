@@ -69,7 +69,15 @@ export default async function billingRoutes(fastify) {
       metadata: { user_id: String(user.Id), plan },
     });
 
-    const clientSecret = subscription.latest_invoice.payment_intent.client_secret;
+    const invoice = subscription.latest_invoice;
+    const paymentIntent = typeof invoice === 'object' ? invoice?.payment_intent : null;
+
+    if (!paymentIntent?.client_secret) {
+      fastify.log.error({ sub: subscription.id, invoice_id: subscription.latest_invoice?.id || subscription.latest_invoice, pi: paymentIntent }, 'Billing: no client_secret on subscription');
+      return reply.code(500).send({ error: 'Payment setup failed — could not initialize payment intent. Please try again.' });
+    }
+
+    const clientSecret = paymentIntent.client_secret;
     return { clientSecret, subscriptionId: subscription.id };
   });
 
