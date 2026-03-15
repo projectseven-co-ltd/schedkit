@@ -67,52 +67,27 @@ export default async function billingRoutes(fastify) {
       }
     }
 
-    // Create subscription with payment_behavior=default_incomplete to get a PaymentIntent
+    // Create subscription — use error_if_incomplete so Stripe doesn't auto-pay
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: priceId }],
       payment_behavior: 'default_incomplete',
       payment_settings: { save_default_payment_method: 'on_subscription' },
-      expand: ['latest_invoice.payment_intent'],
       metadata: { user_id: String(user.Id), plan },
     });
 
-    // Retrieve invoice and payment_intent
-    let invoice = subscription.latest_invoice;
-    if (typeof invoice === 'string') {
-      invoice = await stripe.invoices.retrieve(invoice, { expand: ['payment_intent'] });
-    }
-    let paymentIntent = typeof invoice?.payment_intent === 'object' ? invoice.payment_intent : null;
+    // Get the invoice amount and create a PaymentIntent for it
+    const priceData = await stripe.prices.retrieve(priceId);
+    const amount = priceData.unit_amount;
+    const currency = priceData.currency;
 
-    if (!paymentIntent && invoice?.payment_intent) {
-      // payment_intent is a string ID — retrieve it directly
-      paymentIntent = await stripe.paymentIntents.retrieve(invoice.payment_intent);
-    }
-
-    if (!paymentIntent) {
-      // Invoice not yet finalized — finalize to create the PaymentIntent
-      try {
-        const finalized = await stripe.invoices.finalizeInvoice(invoice.id, { expand: ['payment_intent'] });
-        paymentIntent = typeof finalized.payment_intent === 'object'
-          ? finalized.payment_intent
-          : finalized.payment_intent
-            ? await stripe.paymentIntents.retrieve(finalized.payment_intent)
-            : null;
-      } catch(e) {
-        // Already finalized — retrieve payment_intent from invoice directly
-        const inv = await stripe.invoices.retrieve(invoice.id, { expand: ['payment_intent'] });
-        paymentIntent = typeof inv.payment_intent === 'object'
-          ? inv.payment_intent
-          : inv.payment_intent
-            ? await stripe.paymentIntents.retrieve(inv.payment_intent)
-            : null;
-      }
-    }
-
-    if (!paymentIntent?.client_secret) {
-      fastify.log.error({ sub: subscription.id, inv: invoice?.id }, 'Billing: no client_secret after all attempts');
-      return reply.code(500).send({ error: 'Payment setup failed. Please try again.' });
-    }
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency,
+      customer: customerId,
+      setup_future_usage: 'off_session',
+      metadata: { user_id: String(user.Id), plan, subscription_id: subscription.id },
+    });
 
     return { clientSecret: paymentIntent.client_secret, subscriptionId: subscription.id };
   });
@@ -152,6 +127,21 @@ export default async function billingRoutes(fastify) {
     }
 
     const event = req.body;
+
+    if (event.type === 'payment_intent.succeeded') {
+      const pi = event.data.object;
+      const userId = pi.metadata?.user_id;
+      const plan = pi.metadata?.plan;
+      const subId = pi.metadata?.subscription_id;
+      if (userId && plan) {
+        try {
+          await db.update(tables.users, userId, { plan });
+          fastify.log.info(`Billing: user ${userId} activated ${plan} via payment_intent`);
+        } catch (e) {
+          fastify.log.error('Billing: failed to activate plan via PI: ' + e.message);
+        }
+      }
+    }
 
     if (event.type === 'invoice.payment_succeeded') {
       const invoice = event.data.object;
