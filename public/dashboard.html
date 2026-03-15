@@ -3492,8 +3492,175 @@ window.addEventListener('load', () => initPush());
 </script>
 
 <!-- ═══════════════════════════════════════════════════
-     BEACON MODE — floating panel
+     BEACON SCREEN — full-screen overlay when wake lock active
      ═══════════════════════════════════════════════════ -->
+<style>
+#beacon-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: #0a0a0b;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: env(safe-area-inset-top, 20px) env(safe-area-inset-right, 20px) env(safe-area-inset-bottom, 20px) env(safe-area-inset-left, 20px);
+  padding-top: max(env(safe-area-inset-top), 20px);
+  padding-bottom: max(env(safe-area-inset-bottom), 24px);
+  font-family: var(--font-mono, 'Fira Code', monospace);
+}
+#beacon-screen.visible { display: flex; }
+#bscr-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#bscr-title {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--muted, #5a5a6e);
+  text-transform: uppercase;
+}
+#bscr-close {
+  background: none;
+  border: 1px solid var(--border, #1e1e24);
+  color: var(--muted, #5a5a6e);
+  font-family: var(--font-mono, 'Fira Code', monospace);
+  font-size: 10px;
+  padding: 4px 10px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border-radius: 4px;
+}
+#bscr-pulse-ring {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+#bscr-pulse-ring::before,
+#bscr-pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(223,255,0,0.2);
+  animation: bscrPulse 2s ease-out infinite;
+}
+#bscr-pulse-ring::after { animation-delay: 1s; }
+@keyframes bscrPulse {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(1.2); opacity: 0; }
+}
+#bscr-icon {
+  font-size: 56px;
+  z-index: 1;
+  filter: drop-shadow(0 0 20px rgba(223,255,0,0.4));
+}
+#bscr-coords {
+  text-align: center;
+}
+#bscr-coords-main {
+  font-size: 18px;
+  color: var(--accent, #DFFF00);
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+#bscr-coords-sub {
+  font-size: 11px;
+  color: var(--muted, #5a5a6e);
+  letter-spacing: 0.08em;
+}
+#bscr-last-ping {
+  font-size: 11px;
+  color: var(--muted, #5a5a6e);
+  letter-spacing: 0.08em;
+}
+#bscr-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bscr-btn {
+  width: 100%;
+  padding: 16px;
+  font-family: var(--font-mono, 'Fira Code', monospace);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.bscr-btn:active { opacity: 0.7; transform: scale(0.98); }
+#bscr-capture-btn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border, #1e1e24);
+  color: var(--text, #e8e8ea);
+}
+#bscr-alert-btn {
+  background: rgba(255,95,95,0.15);
+  border: 1px solid rgba(255,95,95,0.4);
+  color: #ff5f5f;
+}
+#bscr-stop-btn {
+  background: rgba(223,255,0,0.1);
+  border: 1px solid rgba(223,255,0,0.3);
+  color: var(--accent, #DFFF00);
+}
+/* Feed log inside beacon screen */
+#bscr-feed {
+  width: 100%;
+  max-height: 120px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border, #1e1e24);
+  padding-top: 10px;
+}
+#bscr-feed::-webkit-scrollbar { display: none; }
+.bscr-feed-item {
+  font-size: 10px;
+  color: var(--muted, #5a5a6e);
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  display: flex;
+  gap: 8px;
+}
+.bscr-feed-item .bscr-feed-time { flex-shrink: 0; }
+.bscr-feed-item .bscr-feed-msg { color: var(--text, #e8e8ea); }
+</style>
+
+<div id="beacon-screen">
+  <div id="bscr-header">
+    <div id="bscr-title">📡 SchedKit · Beacon Active</div>
+    <button id="bscr-close" onclick="hideBeaconScreen()">BACK TO DASHBOARD</button>
+  </div>
+
+  <div id="bscr-pulse-ring">
+    <div id="bscr-icon">📡</div>
+  </div>
+
+  <div id="bscr-coords">
+    <div id="bscr-coords-main">Acquiring GPS...</div>
+    <div id="bscr-coords-sub">device <span id="bscr-device-id">—</span></div>
+  </div>
+
+  <div id="bscr-last-ping">—</div>
+
+  <div id="bscr-feed"></div>
+
+  <div id="bscr-actions">
+    <button class="bscr-btn" id="bscr-capture-btn" onclick="triggerCapture()">📷 Capture &amp; Send</button>
+    <button class="bscr-btn" id="bscr-alert-btn" onclick="sendAlertSignal()">🚨 Send Alert</button>
+    <button class="bscr-btn" id="bscr-stop-btn" onclick="stopBeacon(); hideBeaconScreen()">■ Stop Beacon</button>
+  </div>
+</div>
 <style>
 #beacon-fab {
   position: fixed;
@@ -3691,6 +3858,35 @@ function getDeviceId() {
 }
 const DEVICE_ID = getDeviceId();
 
+function showBeaconScreen() {
+  document.getElementById('beacon-screen').classList.add('visible');
+  document.getElementById('bscr-device-id').textContent = DEVICE_ID;
+}
+function hideBeaconScreen() {
+  document.getElementById('beacon-screen').classList.remove('visible');
+}
+// Keep beacon screen coords in sync
+function updateBeaconScreenCoords() {
+  if (!beaconLastCoords) return;
+  const { lat, lng, accuracy } = beaconLastCoords;
+  document.getElementById('bscr-coords-main').textContent =
+    lat.toFixed(5) + ', ' + lng.toFixed(5);
+  document.getElementById('bscr-coords-sub').textContent =
+    '±' + Math.round(accuracy) + 'm · device ' + DEVICE_ID;
+}
+// Push an entry into the beacon screen's mini feed
+function bscrFeedPush(msg) {
+  const feed = document.getElementById('bscr-feed');
+  if (!feed) return;
+  const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  const item = document.createElement('div');
+  item.className = 'bscr-feed-item';
+  item.innerHTML = `<span class="bscr-feed-time">${time}</span><span class="bscr-feed-msg">${esc(msg)}</span>`;
+  feed.insertBefore(item, feed.firstChild);
+  // Keep max 20 entries
+  while (feed.children.length > 20) feed.removeChild(feed.lastChild);
+}
+
 function toggleBeaconPanel() {
   beaconPanelOpen = !beaconPanelOpen;
   document.getElementById('beacon-panel').style.display = beaconPanelOpen ? 'block' : 'none';
@@ -3713,11 +3909,13 @@ async function startBeacon() {
   beaconActive = true;
   updateBeaconUI();
 
-  // Request Wake Lock — keeps screen on while beaconing (field/car mount use case)
+  // Request Wake Lock — keeps screen on while beaconing
   if ('wakeLock' in navigator) {
     try {
       wakeLock = await navigator.wakeLock.request('screen');
       wakeLock.addEventListener('release', () => { wakeLock = null; });
+      // Show dedicated beacon screen when wake lock is active
+      showBeaconScreen();
     } catch {}
   }
 
@@ -3725,9 +3923,10 @@ async function startBeacon() {
   beaconWatchId = navigator.geolocation.watchPosition(
     pos => {
       beaconLastCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
-      document.getElementById('beacon-coords-text').textContent =
-        pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5) +
+      const coordStr = pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5) +
         ' ±' + Math.round(pos.coords.accuracy) + 'm';
+      document.getElementById('beacon-coords-text').textContent = coordStr;
+      updateBeaconScreenCoords();
     },
     err => { console.warn('GPS error:', err); },
     { enableHighAccuracy: true, maximumAge: 5000 }
@@ -3762,7 +3961,13 @@ async function sendBeaconPing() {
     const res = await apiFetch('/v1/signals', { method: 'POST', body: JSON.stringify(body) });
     if (res?.ok) {
       const now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-      document.getElementById('beacon-last-ping').textContent = 'Last ping: ' + now;
+      const pingText = 'Last ping: ' + now;
+      document.getElementById('beacon-last-ping').textContent = pingText;
+      document.getElementById('bscr-last-ping').textContent = pingText;
+      const coordStr = beaconLastCoords
+        ? `${beaconLastCoords.lat.toFixed(4)}, ${beaconLastCoords.lng.toFixed(4)}`
+        : 'no GPS fix';
+      bscrFeedPush(`Beacon ping · ${coordStr}`);
     }
   } catch {}
 }
@@ -3838,6 +4043,7 @@ document.getElementById('beacon-camera-input').addEventListener('change', async 
     if (res?.ok) {
       toast('📷 Capture sent', 'ok');
       sitrepPushFeed('beacon', `📷 Capture sent — device ${DEVICE_ID}`);
+      bscrFeedPush('📷 Capture sent');
     } else {
       toast('Capture failed', 'error');
     }
@@ -3859,6 +4065,7 @@ async function sendAlertSignal() {
   if (res?.ok) {
     toast('🚨 Alert signal sent', 'error');
     sitrepPushFeed('alert', `🚨 ALERT from device ${DEVICE_ID}${note ? ': ' + note : ''}`);
+    bscrFeedPush(`🚨 ALERT sent${note ? ': ' + note : ''}`);
   } else {
     toast('Failed to send alert', 'error');
   }
@@ -3866,8 +4073,13 @@ async function sendAlertSignal() {
 
 // Re-acquire wake lock if page visibility changes while beacon is running
 document.addEventListener('visibilitychange', async () => {
-  if (beaconActive && document.visibilityState === 'visible' && !wakeLock && 'wakeLock' in navigator) {
-    try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+  if (beaconActive && document.visibilityState === 'visible' && 'wakeLock' in navigator) {
+    if (!wakeLock) {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        showBeaconScreen();
+      } catch {}
+    }
   }
 });
 

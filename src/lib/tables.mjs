@@ -3,12 +3,10 @@
 export const tables = {};
 
 // Static table IDs (fallback / reference)
-// tickets: mh3shq07jve4boh
-// ticket_responders: mvmka9czpxr135k
-// ticket_replies: mrnbdc0zi78ki2l
-// push_subscriptions: mbvs3axseplv86g
-tables.tickets = 'mh3shq07jve4boh';
+tables.tickets          = 'mh3shq07jve4boh';
 tables.ticket_responders = 'mvmka9czpxr135k';
-tables.ticket_replies = 'mrnbdc0zi78ki2l';
+tables.ticket_replies   = 'mrnbdc0zi78ki2l';
 tables.pushSubscriptions = 'mbvs3axseplv86g';
-tables.signals = 'mczpstui6uw1n6z';
+tables.signals          = 'm21ubw2908iz01s'; // recreated 2026-03-15 with org_id column
+tables.org_members      = 'mga9c2ltkvdo2iz';
+tables.organizations    = 'mdtcor4xjn6a11d';
