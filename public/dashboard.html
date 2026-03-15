@@ -1717,6 +1717,18 @@ async function loadKitTab(tab) {
   const src = document.getElementById(`section-${tab}`);
   if (src) {
     kitContent.innerHTML = src.innerHTML;
+    // Re-populate settings form after clone (loadUser runs before clone exists)
+    if (tab === 'settings' && currentUser) {
+      const el = id => kitContent.querySelector('#' + id);
+      if (el('settings-name')) el('settings-name').value = currentUser.name || '';
+      if (el('settings-email')) el('settings-email').value = currentUser.email || '';
+      if (el('ntfy-topic')) el('ntfy-topic').value = currentUser.ntfy_topic || '';
+      if (el('settings-booking-url')) el('settings-booking-url').textContent = `https://schedkit.net/book/${currentUser.slug}`;
+      if (el('settings-api-key')) el('settings-api-key').dataset.key = currentUser.api_key;
+      populateTimezones();
+      const tz = kitContent.querySelector('#settings-timezone');
+      if (tz) tz.value = currentUser.timezone || 'UTC';
+    }
   }
 }
 
