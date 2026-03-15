@@ -64,7 +64,7 @@ export default async function signalsRoutes(fastify) {
           note:      { type: 'string' },
           ticket_id: { type: 'number' },
           org_id:    { type: 'number', description: 'Override org — defaults to user primary org' },
-          meta:      { type: 'object' },
+          meta:      { type: 'object', additionalProperties: true },
         },
       },
       response: { 201: { type: 'object', additionalProperties: true } },
