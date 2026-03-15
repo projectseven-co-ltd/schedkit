@@ -148,6 +148,17 @@ tr:hover td{background:var(--surface2)}
 .badge-declined{background:rgba(255,95,95,.08);color:#ff8a8a}
 .badge-active{background:rgba(74,222,128,.1);color:var(--green)}
 .badge-inactive{background:rgba(255,95,95,.1);color:var(--red)}
+.badge-open{background:rgba(223,255,0,.08);color:var(--accent)}
+.badge-in_progress{background:rgba(96,165,250,.12);color:#60a5fa}
+.badge-resolved{background:rgba(74,222,128,.1);color:var(--green)}
+.badge-closed{background:rgba(255,255,255,.06);color:var(--muted)}
+.badge-low{background:rgba(255,255,255,.06);color:var(--muted)}
+.badge-normal{background:rgba(223,255,0,.08);color:var(--accent)}
+.badge-high{background:rgba(251,191,36,.12);color:#fbbf24}
+.badge-urgent{background:rgba(255,95,95,.12);color:var(--red)}
+.badge-ok{background:rgba(74,222,128,.1);color:var(--green)}
+.badge-warning{background:rgba(251,191,36,.12);color:#fbbf24}
+.badge-breached{background:rgba(255,95,95,.12);color:var(--red)}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s;text-decoration:none}
@@ -212,6 +223,22 @@ tr:hover td{background:var(--surface2)}
 .booking-link-box code{font-family:var(--font-mono);font-size:13px;color:var(--accent);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .copy-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;flex-shrink:0;transition:all .15s}
 .copy-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ticket-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.ticket-toolbar select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px}
+.ticket-toolbar .meta{font-size:12px;color:var(--muted)}
+.ticket-title-cell{display:flex;flex-direction:column;gap:6px}
+.ticket-title-cell strong{font-size:14px}
+.ticket-meta-row{display:flex;gap:6px;flex-wrap:wrap}
+.ticket-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.ticket-detail-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px}
+.ticket-detail-card h4{font-size:11px;font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.tier-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
+.tier-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.tier-card.current{border-color:var(--accent-border);box-shadow:0 0 0 1px var(--accent-border) inset}
+.tier-card .tier-name{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-weight:700}
+.tier-card .tier-price{font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-bottom:10px}
+.tier-card ul{margin-left:18px;color:var(--muted);font-size:13px;line-height:1.65}
+@media(min-width:900px){.tier-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 
 /* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 20px;font-size:14px;z-index:200;transform:translateY(80px);opacity:0;transition:all .25s;pointer-events:none}
@@ -348,6 +375,9 @@ tr:hover td{background:var(--surface2)}
     <button class="nav-item" data-section="blackout">
       <span class="nav-icon">🚫</span> Blackout Dates
     </button>
+    <button class="nav-item" data-section="tickets">
+      <span class="nav-icon">🎫</span> Tickets
+    </button>
     <button class="nav-item" data-section="clients">
       <span class="nav-icon">🚨</span> Client Flags
     </button>
@@ -406,6 +436,41 @@ tr:hover td{background:var(--surface2)}
       <div class="table-wrap" id="bookings-table">
         <div class="loading">loading bookings...</div>
       </div>
+    </div>
+
+    <!-- TICKETS -->
+    <div class="section" id="section-tickets">
+      <div class="page-header" style="margin-bottom:16px">
+        <h2>Tickets</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost" onclick="loadTickets()">Refresh</button>
+          <button class="btn btn-primary" onclick="openTicketModal()">+ New Ticket</button>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-label">open</div><div class="stat-value" id="ticket-stat-open">—</div></div>
+        <div class="stat"><div class="stat-label">in progress</div><div class="stat-value" id="ticket-stat-progress" style="color:#60a5fa">—</div></div>
+        <div class="stat"><div class="stat-label">urgent / high</div><div class="stat-value" id="ticket-stat-priority" style="color:#fbbf24">—</div></div>
+        <div class="stat"><div class="stat-label">sla breached</div><div class="stat-value" id="ticket-stat-breached" style="color:#ff5f5f">—</div></div>
+      </div>
+      <div class="ticket-toolbar">
+        <select id="ticket-filter-status" onchange="renderTicketsTable(window._tickets || [])">
+          <option value="all">All statuses</option>
+          <option value="open">Open</option>
+          <option value="in_progress">In progress</option>
+          <option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
+        </select>
+        <select id="ticket-filter-priority" onchange="renderTicketsTable(window._tickets || [])">
+          <option value="all">All priorities</option>
+          <option value="urgent">Urgent</option>
+          <option value="high">High</option>
+          <option value="normal">Normal</option>
+          <option value="low">Low</option>
+        </select>
+        <div class="meta" id="ticket-results-meta">—</div>
+      </div>
+      <div class="table-wrap" id="tickets-table"><div class="loading">loading tickets...</div></div>
     </div>
 
     <!-- EVENT TYPES -->
@@ -532,11 +597,108 @@ tr:hover td{background:var(--surface2)}
           </div>
           <div id="ntfy-status" style="font-size:12px;margin-top:8px;color:var(--muted)"></div>
         </div>
+        <div class="table-wrap" style="padding:28px;margin-top:20px">
+          <h3 style="margin:0 0 6px;font-size:15px">Plan Tiers</h3>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:18px;line-height:1.6">Pricing and plan presentation are now wired into the dashboard so ticketing and future billing gates have a real place to live.</p>
+          <div class="tier-grid" id="plan-tier-grid"></div>
+        </div>
       </div>
     </div>
 
   </div>
 </main>
+
+
+<!-- TICKET MODAL -->
+<div class="modal-overlay" id="ticket-modal">
+  <div class="modal">
+    <h3 id="ticket-modal-title">New Ticket</h3>
+    <div class="form-row">
+      <label>Title</label>
+      <input type="text" id="ticket-title" placeholder="Printer down in the lobby">
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Priority</label>
+        <select id="ticket-priority">
+          <option value="normal">Normal</option>
+          <option value="low">Low</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Source</label>
+        <select id="ticket-source">
+          <option value="api">API / Dashboard</option>
+          <option value="email">Email</option>
+          <option value="webhook">Webhook</option>
+          <option value="alert">Alert</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Description</label>
+      <textarea id="ticket-description" placeholder="Describe what happened, what's blocked, and what needs to happen next."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('ticket-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTicket()">Save Ticket</button>
+    </div>
+  </div>
+</div>
+
+<!-- TICKET DETAIL MODAL -->
+<div class="modal-overlay" id="ticket-detail-modal">
+  <div class="modal" style="max-width:760px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px">
+      <div>
+        <h3 id="ticket-detail-title">Ticket</h3>
+        <div id="ticket-detail-subtitle" style="font-size:12px;color:var(--muted);font-family:var(--font-mono)"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" id="ticket-copy-link-btn">Copy Public Link</button>
+        <button class="btn btn-danger" id="ticket-close-btn">Close Ticket</button>
+      </div>
+    </div>
+    <div class="ticket-detail-grid">
+      <div class="ticket-detail-card">
+        <h4>Status</h4>
+        <div class="form-row" style="margin-bottom:0">
+          <select id="ticket-detail-status">
+            <option value="open">Open</option>
+            <option value="in_progress">In progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+      </div>
+      <div class="ticket-detail-card">
+        <h4>Priority</h4>
+        <div class="form-row" style="margin-bottom:0">
+          <select id="ticket-detail-priority">
+            <option value="low">Low</option>
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Description</label>
+      <textarea id="ticket-detail-description" style="min-height:150px"></textarea>
+    </div>
+    <div class="ticket-detail-grid">
+      <div class="ticket-detail-card"><h4>SLA</h4><div id="ticket-detail-sla" style="font-size:13px;color:var(--muted);line-height:1.7"></div></div>
+      <div class="ticket-detail-card"><h4>Routing</h4><div id="ticket-detail-routing" style="font-size:13px;color:var(--muted);line-height:1.7"></div></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('ticket-detail-modal')">Done</button>
+      <button class="btn btn-primary" onclick="updateTicket()">Save Changes</button>
+    </div>
+  </div>
+</div>
 
 <!-- EVENT TYPE MODAL -->
 <div class="modal-overlay" id="et-modal">
@@ -901,12 +1063,12 @@ async function loadUser() {
 
   // Plan badge + settings card
   const plan = currentUser.plan || 'free';
-  const planNames = { free: 'Free', starter: 'Starter — $29/mo', agency: 'Agency — $99/mo', enterprise: 'Enterprise' };
+  const planNames = { free: 'Free — $0', starter: 'Starter — $29/mo', agency: 'Agency — $99/mo', enterprise: 'Enterprise' };
   const planLimits = {
-    free: 'Event types: 3 &nbsp;·&nbsp; Bookings/mo: 50 &nbsp;·&nbsp; No orgs',
-    starter: 'Event types: 10 &nbsp;·&nbsp; Bookings/mo: Unlimited &nbsp;·&nbsp; No orgs',
-    agency: 'Event types: Unlimited &nbsp;·&nbsp; 1 org · 5 teams · 25 members',
-    enterprise: 'Event types: Unlimited &nbsp;·&nbsp; Unlimited orgs, teams &amp; members',
+    free: 'Event types: 3 &nbsp;·&nbsp; Bookings/mo: 50 &nbsp;·&nbsp; Tickets in dashboard &nbsp;·&nbsp; No orgs',
+    starter: 'Event types: 10 &nbsp;·&nbsp; Bookings/mo: Unlimited &nbsp;·&nbsp; Tickets in dashboard &nbsp;·&nbsp; No orgs',
+    agency: 'Event types: Unlimited &nbsp;·&nbsp; 1 org · 5 teams · 25 members &nbsp;·&nbsp; Tickets + client ops',
+    enterprise: 'Event types: Unlimited &nbsp;·&nbsp; Unlimited orgs, teams &amp; members &nbsp;·&nbsp; Full ticketing foundation',
   };
   const badge = document.getElementById('user-plan-badge');
   if (badge) { badge.textContent = plan; badge.className = `plan-badge ${plan}`; }
@@ -922,6 +1084,7 @@ async function loadUser() {
   document.getElementById('settings-booking-url').textContent = `https://schedkit.net/book/${currentUser.slug}`;
   document.getElementById('settings-api-key').dataset.key = currentUser.api_key;
   document.getElementById('ntfy-topic').value = currentUser.ntfy_topic || '';
+  renderPlanTiers();
 }
 
 // ── Navigation ────────────────────────────────────
@@ -932,7 +1095,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.add('active');
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById('section-' + section).classList.add('active');
-    const titles = { bookings:'Bookings','event-types':'Event Types',availability:'Availability',blackout:'Blackout Dates',clients:'Client Flags',orgs:'Organizations',settings:'Settings' };
+    const titles = { bookings:'Bookings',tickets:'Tickets','event-types':'Event Types',availability:'Availability',blackout:'Blackout Dates',clients:'Client Flags',orgs:'Organizations',settings:'Settings' };
     document.getElementById('page-title').textContent = titles[section] || section;
     loadSection(section);
     closeSidebar(); // close on mobile after nav
@@ -951,6 +1114,7 @@ function closeSidebar() {
 
 async function loadSection(name) {
   if (name === 'bookings') await loadBookings();
+  if (name === 'tickets') await loadTickets();
   if (name === 'event-types') await loadEventTypes();
   if (name === 'availability') await loadAvailability();
   if (name === 'blackout') await loadBlackout();
@@ -1041,6 +1205,157 @@ function renderBookingsTable(bookings) {
     <thead><tr><th>Attendee</th><th>Date & Time</th><th>Status</th><th>Timezone</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
+}
+
+
+// ── Tickets ───────────────────────────────────────
+let editingTicketId = null;
+let activeTicket = null;
+
+function renderPlanTiers() {
+  const plan = currentUser?.plan || 'free';
+  const tiers = [
+    { key: 'free', name: 'Free', price: '$0', bullets: ['3 event types', '50 bookings / month', 'Dashboard ticket intake', 'Solo workflow'] },
+    { key: 'starter', name: 'Starter', price: '$29/mo', bullets: ['10 event types', 'Unlimited bookings', 'Better fit for active operators', 'Ticketing stays in dashboard'] },
+    { key: 'agency', name: 'Agency', price: '$99/mo', bullets: ['Unlimited event types', '1 org, 5 teams, 25 members', 'Client ops + shared workflows', 'Good for internal helpdesk rollout'] },
+    { key: 'enterprise', name: 'Enterprise', price: 'Custom', bullets: ['Unlimited orgs / teams / members', 'Best home for full ticketing rollout', 'API-first responder direction', 'Custom support & expansion'] },
+  ];
+  const el = document.getElementById('plan-tier-grid');
+  if (!el) return;
+  el.innerHTML = tiers.map(t => `
+    <div class="tier-card ${t.key === plan ? 'current' : ''}">
+      <div class="tier-name">${t.name}${t.key === plan ? '<span class="badge badge-normal">current</span>' : ''}</div>
+      <div class="tier-price">${t.price}</div>
+      <ul>${t.bullets.map(b => `<li>${b}</li>`).join('')}</ul>
+    </div>
+  `).join('');
+}
+
+async function loadTickets() {
+  const res = await apiFetch('/v1/tickets?limit=100');
+  if (!res?.ok) return;
+  const { tickets = [], total = 0 } = await res.json();
+  window._tickets = tickets;
+  const open = tickets.filter(t => t.status === 'open').length;
+  const inProgress = tickets.filter(t => t.status === 'in_progress').length;
+  const urgentHigh = tickets.filter(t => t.priority === 'urgent' || t.priority === 'high').length;
+  const breached = tickets.filter(t => t.sla_status === 'breached').length;
+  document.getElementById('ticket-stat-open').textContent = open;
+  document.getElementById('ticket-stat-progress').textContent = inProgress;
+  document.getElementById('ticket-stat-priority').textContent = urgentHigh;
+  document.getElementById('ticket-stat-breached').textContent = breached;
+  document.getElementById('ticket-results-meta').textContent = `${total} total tickets`;
+  renderTicketsTable(tickets);
+}
+
+function renderTicketsTable(tickets) {
+  const statusFilter = document.getElementById('ticket-filter-status')?.value || 'all';
+  const priorityFilter = document.getElementById('ticket-filter-priority')?.value || 'all';
+  const filtered = (tickets || []).filter(t => (statusFilter === 'all' || t.status === statusFilter) && (priorityFilter === 'all' || t.priority === priorityFilter));
+  document.getElementById('ticket-results-meta').textContent = `${filtered.length} shown · ${(tickets || []).length} total`;
+  const el = document.getElementById('tickets-table');
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🎫</div><p>No tickets match this filter yet.</p></div>`;
+    return;
+  }
+  const rows = filtered.map(t => {
+    const created = new Date(t.CreatedAt || t.created_at || Date.now());
+    const publicUrl = t.customer_token ? `https://schedkit.net/incidents/status/${t.customer_token}` : '';
+    return `<tr>
+      <td data-label="Ticket">
+        <div class="ticket-title-cell">
+          <strong>${esc(t.title)}</strong>
+          <div style="font-size:12px;color:var(--muted)">${esc((t.description || '').slice(0, 90))}${(t.description || '').length > 90 ? '…' : ''}</div>
+          <div class="ticket-meta-row">
+            <span class="badge badge-${t.priority}">${esc(t.priority || 'normal')}</span>
+            <span class="badge badge-${t.sla_status || 'ok'}">sla: ${esc(t.sla_status || 'ok')}</span>
+            <span class="badge badge-${t.status}">${esc(t.status || 'open')}</span>
+          </div>
+        </div>
+      </td>
+      <td data-label="Source"><span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">${esc(t.source || 'api')}</span></td>
+      <td data-label="Created">${created.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}<br><span style="color:var(--muted);font-size:12px">${created.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span></td>
+      <td data-label="Actions" style="white-space:nowrap">
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openTicketDetail(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Open</button>
+        ${publicUrl ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="copyText('${publicUrl}')">Copy Link</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<table>
+    <thead><tr><th>Ticket</th><th>Source</th><th>Created</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function openTicketModal() {
+  editingTicketId = null;
+  document.getElementById('ticket-modal-title').textContent = 'New Ticket';
+  document.getElementById('ticket-title').value = '';
+  document.getElementById('ticket-priority').value = 'normal';
+  document.getElementById('ticket-source').value = 'api';
+  document.getElementById('ticket-description').value = '';
+  openModal('ticket-modal');
+}
+
+async function saveTicket() {
+  const body = {
+    title: v('ticket-title'),
+    priority: document.getElementById('ticket-priority').value,
+    source: document.getElementById('ticket-source').value,
+    description: v('ticket-description'),
+  };
+  if (!body.title) return toast('Ticket title required', 'err');
+  const res = await apiFetch('/v1/tickets', { method: 'POST', body: JSON.stringify(body) });
+  if (!res?.ok) return toast('Failed to create ticket', 'err');
+  closeModal('ticket-modal');
+  toast('Ticket created', 'ok');
+  await loadTickets();
+}
+
+function openTicketDetail(ticket) {
+  activeTicket = ticket;
+  const publicUrl = ticket.customer_token ? `https://schedkit.net/incidents/status/${ticket.customer_token}` : '';
+  document.getElementById('ticket-detail-title').textContent = ticket.title || 'Ticket';
+  document.getElementById('ticket-detail-subtitle').textContent = `#${ticket.Id} · ${ticket.source || 'api'} · ${ticket.customer_token ? 'public status page ready' : 'internal only'}`;
+  document.getElementById('ticket-detail-status').value = ticket.status || 'open';
+  document.getElementById('ticket-detail-priority').value = ticket.priority || 'normal';
+  document.getElementById('ticket-detail-description').value = ticket.description || '';
+  document.getElementById('ticket-detail-sla').innerHTML = `
+    <div><strong>Status:</strong> <span class="badge badge-${ticket.sla_status || 'ok'}">${esc(ticket.sla_status || 'ok')}</span></div>
+    <div style="margin-top:8px"><strong>Due:</strong> ${ticket.sla_due_at ? esc(new Date(ticket.sla_due_at).toLocaleString()) : '—'}</div>
+    <div style="margin-top:8px"><strong>Breached:</strong> ${ticket.sla_breached ? 'yes' : 'no'}</div>`;
+  document.getElementById('ticket-detail-routing').innerHTML = `
+    <div><strong>Priority:</strong> ${esc(ticket.priority || 'normal')}</div>
+    <div style="margin-top:8px"><strong>Source:</strong> ${esc(ticket.source || 'api')}</div>
+    <div style="margin-top:8px"><strong>Public URL:</strong> ${publicUrl ? `<a href="${publicUrl}" target="_blank" style="color:var(--accent)">open →</a>` : '—'}</div>`;
+  document.getElementById('ticket-copy-link-btn').onclick = () => publicUrl ? copyText(publicUrl) : toast('No public link on this ticket', 'err');
+  document.getElementById('ticket-close-btn').onclick = () => closeTicket(ticket.Id);
+  openModal('ticket-detail-modal');
+}
+
+async function updateTicket() {
+  if (!activeTicket?.Id) return;
+  const body = {
+    status: document.getElementById('ticket-detail-status').value,
+    priority: document.getElementById('ticket-detail-priority').value,
+    description: document.getElementById('ticket-detail-description').value.trim(),
+  };
+  const res = await apiFetch(`/v1/tickets/${activeTicket.Id}`, { method: 'PATCH', body: JSON.stringify(body) });
+  if (!res?.ok) return toast('Failed to update ticket', 'err');
+  const updated = await res.json();
+  activeTicket = updated;
+  openTicketDetail(updated);
+  toast('Ticket updated', 'ok');
+  await loadTickets();
+}
+
+async function closeTicket(id) {
+  if (!confirm('Close this ticket?')) return;
+  const res = await apiFetch(`/v1/tickets/${id}`, { method: 'DELETE' });
+  if (!res?.ok) return toast('Failed to close ticket', 'err');
+  closeModal('ticket-detail-modal');
+  toast('Ticket closed', 'ok');
+  await loadTickets();
 }
 
 // ── Event Types ───────────────────────────────────
