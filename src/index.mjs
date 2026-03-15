@@ -35,6 +35,7 @@ import incidentsRoutes from './routes/incidents.mjs';
 import warRoomRoutes from './routes/warRoom.mjs';
 import incidentStatusRoutes from './routes/incidentStatus.mjs';
 import settingsRoutes from './routes/settings.mjs';
+import uploadsRoutes from './routes/uploads.mjs';
 
 const fastify = Fastify({ logger: true, bodyLimit: 10 * 1024 * 1024 }); // 10MB for image captures
 
@@ -132,6 +133,13 @@ await fastify.register(incidentsRoutes, { prefix: '/v1' });
 await fastify.register(warRoomRoutes);
 await fastify.register(incidentStatusRoutes);
 await fastify.register(settingsRoutes, { prefix: '/v1' });
+
+// Register binary content type parser for image uploads
+fastify.addContentTypeParser('image/jpeg', { parseAs: 'buffer' }, (_req, body, done) => done(null, body));
+fastify.addContentTypeParser('image/webp', { parseAs: 'buffer' }, (_req, body, done) => done(null, body));
+fastify.addContentTypeParser('image/png', { parseAs: 'buffer' }, (_req, body, done) => done(null, body));
+
+await fastify.register(uploadsRoutes, { prefix: '/v1' });
 
 // Page routes (no prefix)
 fastify.get('/login', { schema: { hide: true } }, async (req, reply) => {

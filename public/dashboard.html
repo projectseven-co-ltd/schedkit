@@ -4319,7 +4319,7 @@ function triggerCapture() {
 }
 
 // Resize image on canvas before sending — keeps payload under ~200KB
-function resizeImageToDataUrl(file, maxPx = 1280) {
+function resizeImageToBlob(file, maxPx = 1280) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -4331,7 +4331,7 @@ function resizeImageToDataUrl(file, maxPx = 1280) {
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('canvas toBlob failed')), 'image/jpeg', 0.82);
     };
     img.onerror = reject;
     img.src = url;
@@ -4345,12 +4345,25 @@ document.getElementById('beacon-camera-input').addEventListener('change', async 
 
   toast('Uploading capture...', 'ok');
   try {
-    const dataUrl = await resizeImageToDataUrl(file);
+    const blob = await resizeImageToBlob(file);
+    // Upload raw JPEG to storage endpoint
+    const upRes = await fetch('/v1/upload/capture', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'image/jpeg' },
+      body: blob,
+    });
+    if (!upRes.ok) {
+      const err = await upRes.json().catch(() => ({}));
+      throw new Error(err.error || `Upload ${upRes.status}`);
+    }
+    const { url: imageUrl } = await upRes.json();
+
     const body = {
       type: 'capture',
       note: 'Field capture',
-      image_url: dataUrl,
-      meta: { device_id: DEVICE_ID, filename: file.name, mime: file.type },
+      image_url: imageUrl,
+      meta: { device_id: DEVICE_ID, filename: file.name, mime: 'image/jpeg' },
     };
     if (beaconLastCoords) {
       body.lat = beaconLastCoords.lat;
