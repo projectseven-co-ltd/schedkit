@@ -4363,7 +4363,9 @@ document.getElementById('beacon-camera-input').addEventListener('change', async 
       sitrepPushFeed('capture', `[▲] Capture · ${DEVICE_ID}`);
       bscrFeedPush('[▲] Capture sent');
     } else {
-      toast('Capture failed', 'error');
+      const errBody = await res?.json().catch(() => ({}));
+      console.error('Capture failed:', res?.status, errBody);
+      toast('Capture failed — ' + (errBody?.error || res?.status || 'unknown'), 'error');
     }
   } catch (err) {
     console.error('Capture error:', err);
