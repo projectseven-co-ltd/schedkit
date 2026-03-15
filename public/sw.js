@@ -26,6 +26,9 @@ self.addEventListener('message', event => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
+  // Skip non-http(s) requests (chrome-extension://, etc.)
+  if (!url.protocol.startsWith('http')) return;
+
   // Network-first for API and auth
   if (url.pathname.startsWith('/v1/') || url.pathname.startsWith('/auth/')) {
     e.respondWith(

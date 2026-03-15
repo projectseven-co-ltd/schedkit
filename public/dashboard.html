@@ -1193,6 +1193,14 @@ let editingEventTypeTeamCtx = null; // { orgSlug, teamSlug } when editing a team
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const TIMEZONES = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : ['UTC','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','Europe/London','Europe/Paris'];
 
+// ── App State ─────────────────────────────────────────
+const appState = {
+  stream: 'stale',   // 'stale' | 'live' | 'offline'
+  updateReady: false,
+  waitingWorker: null,
+  registration: null,
+};
+
 // ── Init ──────────────────────────────────────────
 async function init() {
   await loadUser();
