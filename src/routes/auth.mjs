@@ -36,20 +36,7 @@ export default async function authRoutes(fastify) {
 
     const result = await db.find(tables.users, `(email,eq,${email})`);
     // Always return 200 — don't leak whether email exists
-    if (!result.list?.length) {
-      // Auto-create account for new signups coming from upgrade flow
-      if (next?.includes('upgrade=')) {
-        const newUser = await db.create(tables.users, {
-          email,
-          name: '',
-          plan: 'free',
-          created_at: new Date().toISOString(),
-        });
-        result.list = [newUser];
-      } else {
-        return { ok: true };
-      }
-    }
+    if (!result.list?.length) return { ok: true };
 
     const user = result.list[0];
     const code = generateLoginCode();
