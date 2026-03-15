@@ -1237,7 +1237,7 @@ body::after {
         '<div class="map-popup-row">Device <span>' + shortId + '</span></div>' +
         '<div class="map-popup-row">Time <span>' + time + ' UTC</span></div>';
       if (hasImage) {
-        html += '<img src="' + payload.image_url + '" style="width:100%;max-width:240px;border-radius:4px;margin-top:8px;cursor:pointer;" onclick="window.open(this.src,\'_blank\')">';
+        html += '<img src="' + payload.image_url + '" style="width:100%;max-width:240px;border-radius:4px;margin-top:8px;cursor:pointer;" onclick="window.open(this.src)">';
       }
       popup.setContent(html);
       m.bindPopup(popup).openPopup();
