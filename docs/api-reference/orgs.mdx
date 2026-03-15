@@ -1,8 +1,86 @@
 ---
-title: Orgs
-description: Orgs API reference — full details coming soon.
+title: Units API
+description: Create and manage organizations, teams, and memberships.
 ---
 
-<Note>
-  Full reference coming soon. In the meantime, explore all endpoints interactively at [schedkit.net/docs](https://schedkit.net/docs).
-</Note>
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/orgs` | Create org |
+| `GET` | `/v1/orgs` | List your orgs |
+| `GET` | `/v1/orgs/:org_slug` | Get org |
+| `PATCH` | `/v1/orgs/:org_slug` | Update org |
+| `DELETE` | `/v1/orgs/:org_slug` | Delete org |
+| `POST` | `/v1/orgs/:org_slug/members` | Add member |
+| `PATCH` | `/v1/orgs/:org_slug/members/:user_id` | Update member role |
+| `DELETE` | `/v1/orgs/:org_slug/members/:user_id` | Remove member |
+| `POST` | `/v1/orgs/:org_slug/teams` | Create team |
+| `GET` | `/v1/orgs/:org_slug/teams` | List teams |
+| `PATCH` | `/v1/orgs/:org_slug/teams/:team_slug` | Update team |
+| `DELETE` | `/v1/orgs/:org_slug/teams/:team_slug` | Delete team |
+| `GET` | `/v1/orgs/:org_slug/teams/:team_slug/members` | List team members |
+| `POST` | `/v1/orgs/:org_slug/teams/:team_slug/members` | Add team member |
+
+---
+
+## POST /v1/orgs
+
+Create an organization. Requires Agency or Enterprise plan.
+
+```json
+{
+  "name": "Alpha Response Team",
+  "slug": "alpha",
+  "description": "Primary field response unit"
+}
+```
+
+---
+
+## POST /v1/orgs/:org_slug/members
+
+Invite a user to the org by email. If the user doesn't have an account, an invite is sent.
+
+```json
+{
+  "email": "operator@example.com",
+  "role": "member"
+}
+```
+
+**Roles:** `owner` \| `admin` \| `member`
+
+---
+
+## POST /v1/orgs/:org_slug/teams
+
+Create a team within an org.
+
+```json
+{
+  "name": "Field Ops",
+  "slug": "field-ops",
+  "routing": "round_robin",
+  "description": "Primary field dispatch"
+}
+```
+
+**Routing strategies:**
+
+| Value | Behavior |
+|-------|----------|
+| `round_robin` | Evenly distributes bookings across available members |
+| `random` | Picks a random available member |
+
+---
+
+## Team booking URL
+
+Once a team has members with availability configured:
+
+```
+https://schedkit.net/book/:org_slug/:team_slug/:event_slug
+```
+
+The routing strategy determines which member receives each booking.

@@ -1,8 +1,121 @@
 ---
-title: Bookings
-description: Bookings API reference — full details coming soon.
+title: Bookings API
+description: Create, reschedule, cancel, and manage assignments.
 ---
 
-<Note>
-  Full reference coming soon. In the meantime, explore all endpoints interactively at [schedkit.net/docs](https://schedkit.net/docs).
-</Note>
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/bookings` | List bookings |
+| `GET` | `/v1/bookings/:id` | Get booking |
+| `POST` | `/v1/book/:username/:event_slug` | Create booking (public) |
+| `POST` | `/v1/bookings/:id/reschedule` | Reschedule (authenticated) |
+| `GET` | `/v1/bookings/:confirm_token/confirm` | Confirm pending booking |
+| `GET` | `/v1/bookings/:confirm_token/decline` | Decline pending booking |
+| `POST` | `/v1/cancel/:token/confirm` | Cancel booking |
+
+---
+
+## GET /v1/bookings
+
+List your bookings. Includes past and upcoming.
+
+**Query params**
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `limit` | `50` | Max results |
+| `page` | `1` | Page number |
+
+---
+
+## POST /v1/book/:username/:event_slug
+
+Create a booking on someone's calendar. This endpoint is public — no API key needed if called from a booking page.
+
+**URL params**
+
+| Param | Description |
+|-------|-------------|
+| `username` | Host's slug |
+| `event_slug` | Event type slug |
+
+**Body**
+
+```json
+{
+  "attendee_name": "Jason Johnson",
+  "attendee_email": "jason@example.com",
+  "start_time": "2026-03-20T14:00:00Z",
+  "timezone": "America/Chicago",
+  "notes": "Looking to discuss the enterprise plan"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `attendee_name` | **yes** | Full name |
+| `attendee_email` | **yes** | Email address |
+| `start_time` | **yes** | ISO 8601 UTC |
+| `timezone` | **yes** | IANA timezone string |
+| `notes` | no | Optional message to the host |
+| `answers` | no | Array of `{question_id, answer}` for custom questions |
+
+**Response `201`**
+
+```json
+{
+  "id": 101,
+  "status": "confirmed",
+  "requires_confirmation": false,
+  "attendee_name": "Jason Johnson",
+  "attendee_email": "jason@example.com",
+  "start_time": "2026-03-20T14:00:00Z",
+  "end_time": "2026-03-20T14:30:00Z",
+  "cancel_token": "xyz...",
+  "reschedule_token": "abc..."
+}
+```
+
+When `requires_confirmation: true`, status will be `pending` until the host confirms or declines.
+
+---
+
+## POST /v1/bookings/:id/reschedule
+
+Move a booking to a new time. Requires authentication (host only).
+
+```json
+{
+  "start_time": "2026-03-21T15:00:00Z",
+  "timezone": "America/Chicago"
+}
+```
+
+---
+
+## Confirm / Decline (host)
+
+When `requires_confirmation: true`, the host receives an email with two links:
+
+- `GET /v1/bookings/:confirm_token/confirm` — Approves, emails attendee confirmation
+- `GET /v1/bookings/:confirm_token/decline` — Rejects, emails attendee decline notice
+
+These are browser-navigable (no API key) — they're linked directly from the email.
+
+---
+
+## postMessage events (SDK)
+
+When embedded via `@schedkit/react`, a `schedkit:booked` message fires after successful booking:
+
+```js
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'schedkit:booked') {
+    const { id, status, requires_confirmation, attendee_name, start_time } = e.data.payload;
+  }
+});
+```
+
+`status` is `"confirmed"` or `"pending"` depending on the event type's confirmation setting.

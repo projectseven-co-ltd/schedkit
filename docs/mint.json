@@ -43,10 +43,10 @@
       "group": "Core Concepts",
       "pages": [
         "concepts/signals",
-        "concepts/units",
+        "concepts/beacon",
         "concepts/assignments",
         "concepts/incidents",
-        "concepts/beacon"
+        "concepts/units"
       ]
     },
     {
@@ -60,6 +60,12 @@
         "api-reference/orgs",
         "api-reference/push",
         "api-reference/webhooks"
+      ]
+    },
+    {
+      "group": "AI Integration",
+      "pages": [
+        "agent-tool-guide"
       ]
     }
   ],

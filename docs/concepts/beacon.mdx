@@ -1,72 +1,60 @@
 ---
 title: Beacon Mode
-description: GPS tracking, field captures, and alert signals from mobile devices.
+description: Live GPS tracking, field photo capture, and alert signals from mobile operators.
 ---
 
 ## Overview
 
-Beacon Mode turns any phone or tablet into a field unit. Once activated, the device broadcasts its GPS location every 30 seconds, can send photos with geotags, and has a one-tap alert button that notifies your entire org immediately.
+Beacon Mode turns any mobile browser into a field terminal. Operators activate it from the dashboard — it sends periodic GPS pings, allows photo capture with location, and lets operators fire alert signals with one tap.
 
-## Activating
+No native app required. PWA-installable on Android and iOS.
 
-Tap the **📡 FAB** in the bottom-right of the dashboard. Press **▶ Start Beacon**.
+## How it works
 
-The platform will:
-1. Request GPS permission (if not already granted)
-2. Acquire Wake Lock to prevent auto-screen-lock
-3. Send an initial beacon ping immediately
-4. Switch to the **Beacon Screen**
-5. Continue pinging every 30 seconds
+1. Operator opens the dashboard and taps the `[+]` FAB
+2. Taps **START BEACON** — GPS permission requested
+3. Every 30 seconds, a `beacon` signal is POSTed to `/v1/signals`
+4. Signal fans out via SSE to all War Room viewers in real time
+5. War Room map shows a live dot for each active beacon with accuracy ring
+6. Operator taps **CAPTURE** to attach a photo to the current location
+7. Operator taps **ALERT** to fire a high-priority signal to all org members
+8. Tap **STOP** or navigate away — `DELETE /v1/signals/beacon` fires, War Room removes the dot
 
-## Beacon Screen
+## Device identity
 
-When active, the full-screen Beacon Screen shows:
+Each device gets a stable UUID stored in `localStorage` under `schedkit-device-id`. Format: `dev-xxxxxx-xxxxxxxx`. This ID is included in every beacon payload as `meta.device_id` and shown in the War Room.
 
-- **Radar** — rotating sweep with live GPS fix indicator
-- **Coordinates** — live lat/lng updating as you move, with accuracy radius
-- **Device ID** — identifies this specific device
-- **Activity log** — every ping, capture, and alert sent this session
-- **Action buttons** — Capture, Alert, Stop
+## Capture flow
 
-## Device ID
-
-Each device gets a stable ID on first use (`dev-abc123-xyz` format), stored in `localStorage`. This persists across sessions and lets base operators distinguish:
-
-- `dev-a1b2c3` → Jason's iPhone in the field
-- `dev-x9y8z7` → Laptop at command
+1. Browser `getUserMedia` with `{video:{facingMode:'environment'}}`
+2. Canvas resize to max 1280px, JPEG at 0.82 quality (~150KB)
+3. Upload to `/v1/upload` → returns `image_url`
+4. POST `/v1/signals` with `type: "capture"` + `image_url` + coordinates
+5. War Room drops a purple capture pin — persists permanently on the map
 
 ## Wake Lock
 
-Beacon Mode requests a [Wake Lock](https://developer.mozilla.org/en-US/docs/Web/API/WakeLock) to keep the screen on while broadcasting. This is the recommended approach for car mounts and field tablets.
+Beacon mode acquires a `WakeLock` to prevent the screen sleeping mid-operation. Re-acquired on `visibilitychange` if released by the OS.
 
-<Warning>
-  Wake Lock prevents **auto-lock** (screen timeout) but does NOT override a manual lock (pressing the power button). If the screen is manually locked, JS stops executing and beacons stop. For continuous tracking without interaction, a native app with background location is required.
-</Warning>
+## Display modes in the field
 
-## Captures
+The beacon screen follows the global display mode:
+- **DARK** — default dark interface
+- **NITE** — deep red palette for dark-adapted human eyes
+- **NVG** — near-black blue-grey, minimal luminance for I2 night vision goggles
 
-Tap **📷 Capture & Send** to take a photo with the rear camera. SchedKit automatically:
-- Resizes the image to max 1280px
-- Compresses to JPEG (0.82 quality)
-- Attaches your current GPS coordinates
-- Posts as a `capture` signal to your org stream
+See [Display Modes](/concepts/nvg) for details.
 
-## Alert Signal
+## API calls made by beacon mode
 
-Tap **🚨 Send Alert** to broadcast an urgent signal to your entire org. Every org member receives a push notification immediately, regardless of whether they have the app open.
+| Action | Endpoint |
+|--------|----------|
+| Start beacon | `POST /v1/signals` `{type:"beacon",...}` |
+| Periodic ping | `POST /v1/signals` `{type:"beacon",...}` every 30s |
+| Photo capture | `POST /v1/signals` `{type:"capture", image_url, lat, lng}` |
+| Fire alert | `POST /v1/signals` `{type:"alert", note}` |
+| Stop beacon | `DELETE /v1/signals/beacon` |
 
-## Signal API
-
-All beacon events are stored in the Signals API:
-
-```bash
-# Get recent beacons from your org (last 90 seconds)
-curl "https://schedkit.net/v1/signals?type=beacon&limit=100" \
-  -H "x-api-key: $SCHEDKIT_KEY"
-```
-
-```bash
-# Stop beacon (broadcast beacon_off to stream)
-curl -X DELETE https://schedkit.net/v1/signals/beacon \
-  -H "x-api-key: $SCHEDKIT_KEY"
-```
+<Card title="API Reference → Signals" icon="signal" href="/api-reference/signals">
+  Full endpoint docs including the SSE stream.
+</Card>

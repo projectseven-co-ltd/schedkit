@@ -1,8 +1,73 @@
 ---
-title: Auth
-description: Auth API reference — full details coming soon.
+title: Auth API
+description: Login, logout, and session management.
 ---
 
-<Note>
-  Full reference coming soon. In the meantime, explore all endpoints interactively at [schedkit.net/docs](https://schedkit.net/docs).
-</Note>
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/auth/login` | Login, set session cookie |
+| `POST` | `/v1/auth/logout` | Logout, clear session |
+| `GET` | `/v1/auth/me` | Get current user |
+
+---
+
+## POST /v1/auth/login
+
+```json
+{
+  "email": "you@example.com",
+  "password": "your-password"
+}
+```
+
+**Response `200`** — sets `schedkit_session` HTTP-only cookie
+
+```json
+{
+  "id": 42,
+  "email": "you@example.com",
+  "name": "Your Name",
+  "slug": "yourname",
+  "plan": "starter"
+}
+```
+
+---
+
+## POST /v1/auth/logout
+
+Clears the session cookie. No body required.
+
+**Response `200`**
+
+```json
+{ "ok": true }
+```
+
+---
+
+## GET /v1/auth/me
+
+Returns the currently authenticated user. Works with both cookie and `x-api-key` auth.
+
+**Response `200`**
+
+```json
+{
+  "id": 42,
+  "email": "you@example.com",
+  "name": "Your Name",
+  "slug": "yourname",
+  "plan": "starter",
+  "timezone": "America/Chicago",
+  "created_at": "2026-03-01T00:00:00Z"
+}
+```
+
+**Response `401`** — not authenticated
+
+```json
+{ "error": "Unauthorized" }
+```

@@ -1,42 +1,76 @@
 ---
 title: Errors
-description: Standard error responses from the SchedKit API.
+description: HTTP status codes and error response format.
 ---
 
-All errors return a JSON body with an `error` field and an appropriate HTTP status code.
+## Response format
+
+All errors return JSON with an `error` field:
+
+```json
+{ "error": "Not found" }
+```
+
+Some errors include additional fields:
 
 ```json
 {
-  "error": "not_found",
-  "message": "Event type not found"
+  "error": "Upgrade required",
+  "upgrade": true,
+  "plan_required": "agency"
 }
 ```
 
-## Status Codes
+## Status codes
 
 | Code | Meaning |
 |------|---------|
 | `200` | OK |
 | `201` | Created |
-| `400` | Bad request — check your body/params |
-| `401` | Unauthorized — missing or invalid API key |
-| `403` | Forbidden — valid key but insufficient permissions |
+| `400` | Bad request — missing or invalid fields |
+| `401` | Unauthenticated — missing or invalid API key/session |
+| `403` | Forbidden — valid auth, insufficient permissions or plan |
 | `404` | Not found |
-| `409` | Conflict — e.g. slot already booked |
+| `409` | Conflict — duplicate resource |
 | `422` | Unprocessable — validation failed |
 | `429` | Rate limited |
-| `500` | Server error — we're on it |
+| `500` | Server error |
 
-## Common Errors
+## Common errors
 
-### `401 Unauthorized`
-Missing or invalid `x-api-key`. Check your key and header name.
+### 400 — Validation failed
 
-### `403 Forbidden`
-Your plan doesn't include this feature, or you're trying to access another user's resource.
+```json
+{ "error": "title is required" }
+```
 
-### `409 Conflict`
-The requested time slot is no longer available. Fetch availability again and retry.
+### 401 — No session
 
-### `422 Unprocessable`
-A required field is missing or invalid. The `message` field will tell you which one.
+```json
+{ "error": "Unauthorized" }
+```
+
+### 403 — Plan limit
+
+```json
+{
+  "error": "Free plan allows up to 3 event types",
+  "upgrade": true
+}
+```
+
+### 404 — Resource not found
+
+```json
+{ "error": "Not found" }
+```
+
+### 409 — Slot taken
+
+```json
+{ "error": "Time slot unavailable" }
+```
+
+## Rate limiting
+
+Limits are per API key per minute. If you hit a 429, back off and retry. Headers are not currently exposed but will be added in a future release.

@@ -1,8 +1,85 @@
 ---
 title: Incidents
-description: Incidents — full docs coming soon.
+description: Ticketed issues with SLA timers, threaded replies, and real-time SSE broadcast.
 ---
 
-<Note>
-  Full docs coming soon. See [Introduction](/introduction) for an overview.
-</Note>
+## Overview
+
+Incidents (also called tickets) are the structured response layer in SchedKit. When a signal demands action, an incident tracks it: who opened it, its priority, SLA deadline, reply thread, and resolution status.
+
+Incidents and tickets are the **same underlying resource** — `/v1/tickets` and `/v1/incidents` operate on the same NocoDB table. The naming is interchangeable.
+
+## Lifecycle
+
+```
+open → in_progress → resolved → closed
+```
+
+| Status | Meaning |
+|--------|---------|
+| `open` | Created, awaiting response |
+| `in_progress` | Being actively worked |
+| `resolved` | Fix applied, pending confirmation |
+| `closed` | Fully closed |
+
+## SLA timers
+
+SLA due times are auto-set on creation by priority:
+
+| Priority | SLA |
+|----------|-----|
+| `urgent` | 1 hour |
+| `high` | 4 hours |
+| `normal` | 24 hours |
+| `low` | 48 hours |
+
+Every incident response includes computed SLA fields:
+
+```json
+{
+  "sla_due_at": "2026-03-15T08:00:00Z",
+  "sla_breached": false,
+  "sla_status": "warning"
+}
+```
+
+`sla_status` values: `ok` → `warning` (within 20% of deadline) → `breached`
+
+## Customer status page
+
+Every incident gets a `customer_token` — a 24-char nanoid. Share the public status URL with the affected customer:
+
+```
+https://schedkit.net/incidents/status/:customer_token
+```
+
+No login required. Shows title, status, priority, and reply thread (staff-facing replies are hidden).
+
+## Real-time stream
+
+Subscribe to all incident events for the authenticated user:
+
+```bash
+curl -N https://schedkit.net/v1/incidents/stream \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```
+
+Events broadcast:
+- `incident.created`
+- `incident.updated`
+- `incident.reply`
+
+## Replies
+
+Threaded replies are scoped per incident. Staff and customer replies are differentiated by `author_type`.
+
+```bash
+curl -X POST https://schedkit.net/v1/incidents/42/replies \
+  -H "x-api-key: $SCHEDKIT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"body": "Investigating now. ETA 20 minutes."}'
+```
+
+<Card title="API Reference → Incidents" icon="triangle-exclamation" href="/api-reference/tickets">
+  Full endpoint docs for CRUD, replies, and SSE stream.
+</Card>

@@ -1,52 +1,70 @@
 ---
 title: Authentication
-description: API keys and session-based auth for the SchedKit API.
+description: API keys and session cookies — how to authenticate with SchedKit.
 ---
 
 ## API Keys
 
-All API requests require an `x-api-key` header with your personal API key.
+All API endpoints accept an `x-api-key` header. Get your key from the dashboard under **Kit Config → API Keys**.
 
 ```bash
 curl https://schedkit.net/v1/auth/me \
-  -H "x-api-key: sk_live_your_key_here"
+  -H "x-api-key: sk_live_YOUR_KEY"
 ```
 
-API keys are scoped to your user account and inherit your plan limits.
+Keys are prefixed:
+- `sk_live_` — production key
+- `sk_test_` — test key (same API, isolated data)
 
-<Note>
-  Keep your API key secret. Never expose it in frontend code or public repos. If compromised, rotate it from **Kit Config → API Keys** in the dashboard.
-</Note>
+<Warning>
+  Never expose your API key in client-side code or public repos. Use environment variables.
+</Warning>
 
-## Admin Secret
+## Session Cookies
 
-Certain provisioning endpoints (creating users on behalf of others, admin operations) require an additional `x-admin-secret` header. Contact us for access.
+The dashboard uses HTTP-only session cookies set by `POST /v1/auth/login`. Cookie auth is automatically used by browsers — no header needed.
 
 ```bash
-curl -X POST https://schedkit.net/v1/users \
-  -H "x-admin-secret: your_admin_secret" \
+# Login and save cookie
+curl -c cookies.txt -X POST https://schedkit.net/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{ "email": "operator@yourteam.com", "name": "Field Operator" }'
+  -d '{"email":"you@example.com","password":"..."}'
+
+# Use session cookie
+curl -b cookies.txt https://schedkit.net/v1/auth/me
 ```
 
-## Session Auth (Dashboard)
-
-The web dashboard uses session cookies (`sk_session`). The magic link login flow:
-
-```
-POST /v1/auth/magic    → sends login email
-GET  /v1/auth/verify   → validates token, sets cookie
-```
-
-Session auth is not intended for API use — use API keys instead.
-
-## Auth Endpoints
+## Auth endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/v1/auth/magic` | Request magic link login email |
-| `GET` | `/v1/auth/verify?token=...` | Verify token, set session cookie |
-| `GET` | `/v1/auth/me` | Current user profile |
-| `PATCH` | `/v1/auth/me` | Update profile |
-| `POST` | `/v1/auth/logout` | Destroy session |
-| `GET` | `/v1/auth/google/connect` | Start Google Calendar OAuth |
+| `POST` | `/v1/auth/login` | Login, set session cookie |
+| `POST` | `/v1/auth/logout` | Logout, clear session |
+| `GET`  | `/v1/auth/me` | Get current authenticated user |
+
+### GET /v1/auth/me
+
+```json
+{
+  "id": 42,
+  "email": "you@example.com",
+  "name": "Your Name",
+  "slug": "yourname",
+  "plan": "starter",
+  "timezone": "America/Chicago"
+}
+```
+
+## Error responses
+
+Unauthenticated requests return `401`:
+
+```json
+{ "error": "Unauthorized" }
+```
+
+Insufficient plan returns `403`:
+
+```json
+{ "error": "Upgrade required", "upgrade": true }
+```

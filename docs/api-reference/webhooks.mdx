@@ -1,8 +1,70 @@
 ---
 title: Webhooks
-description: Webhooks API reference — full details coming soon.
+description: Receive SchedKit events in your own system.
 ---
 
-<Note>
-  Full reference coming soon. In the meantime, explore all endpoints interactively at [schedkit.net/docs](https://schedkit.net/docs).
-</Note>
+## Overview
+
+SchedKit can POST events to your endpoint when bookings, incidents, and signals occur. Configure your webhook URL in **Kit Config → Webhooks**.
+
+## Supported events
+
+| Event | Trigger |
+|-------|---------|
+| `booking.confirmed` | Booking confirmed |
+| `booking.cancelled` | Booking cancelled |
+| `booking.rescheduled` | Booking rescheduled |
+| `incident.created` | New incident opened |
+| `incident.updated` | Incident status/priority changed |
+| `incident.reply` | Reply added to incident |
+| `signal.alert` | Alert signal fired |
+
+## Payload format
+
+All webhook payloads follow the same envelope:
+
+```json
+{
+  "event": "booking.confirmed",
+  "timestamp": "2026-03-20T14:00:00Z",
+  "payload": {
+    "id": 101,
+    "attendee_name": "Jason Johnson",
+    "attendee_email": "jason@example.com",
+    "start_time": "2026-03-20T14:00:00Z",
+    "end_time": "2026-03-20T14:30:00Z",
+    "event_type": "30-min intro"
+  }
+}
+```
+
+## Verification
+
+Each request includes an `x-schedkit-signature` header — an HMAC-SHA256 of the raw body signed with your webhook secret. Verify it to reject forged requests:
+
+```js
+const crypto = require('crypto');
+
+function verifyWebhook(rawBody, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+```
+
+## Retries
+
+SchedKit retries failed deliveries (non-2xx or timeout) up to 3 times with exponential backoff: 10s, 60s, 300s. After 3 failures the event is dropped and logged.
+
+## Testing
+
+Use the **Kit Config → Webhooks → Send test** button to fire a sample `booking.confirmed` payload to your endpoint.
+
+<Tip>
+  Tools like [webhook.site](https://webhook.site) or [ngrok](https://ngrok.com) are useful for local development.
+</Tip>

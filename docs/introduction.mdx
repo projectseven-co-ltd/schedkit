@@ -15,11 +15,11 @@ SchedKit connects signal sources to coordination actions:
 
 | Signal In | → | Action Out |
 |-----------|---|------------|
-| Booking request | → | Confirmation email + webhook |
+| Booking request | → | Confirmation email + calendar invite |
 | Support ticket | → | Push notification + SLA timer |
-| Beacon ping | → | Live map update + activity feed |
-| Alert signal | → | Push to all org members |
-| ESP32 sensor | → | Relay trigger + incident creation |
+| GPS beacon ping | → | Live War Room map update + activity feed |
+| Alert signal | → | Push to all org members instantly |
+| ESP32 sensor | → | Relay trigger + auto-incident creation |
 | NOAA weather alert | → | Field team notification |
 
 ## Core concepts
@@ -29,23 +29,29 @@ SchedKit connects signal sources to coordination actions:
     The primitive unit — a typed event from any source (beacon, capture, alert, webhook, sensor).
   </Card>
   <Card title="Units" icon="users" href="/concepts/units">
-    Users and organizations. Signals are scoped to units you belong to.
+    Users and organizations. Signals are scoped to the units you belong to.
   </Card>
   <Card title="Assignments" icon="calendar" href="/concepts/assignments">
     Scheduled coordination events — bookings, meetings, deployments.
   </Card>
   <Card title="Incidents" icon="triangle-exclamation" href="/concepts/incidents">
-    Ticketed issues with SLA timers, thread replies, and status tracking.
+    Ticketed issues with SLA timers, threaded replies, and real-time SSE broadcast.
+  </Card>
+  <Card title="Beacon Mode" icon="location-dot" href="/concepts/beacon">
+    Live GPS tracking from mobile operators. Photo capture. Alert signals.
   </Card>
 </CardGroup>
 
 ## Quick orientation
 
-- **Base URL:** `https://schedkit.net`
-- **API Explorer:** [`schedkit.net/docs`](https://schedkit.net/docs)
-- **Auth:** API key via `x-api-key` header, or session cookie for dashboard
-- **Format:** REST, JSON, no SDK required
+| | |
+|---|---|
+| **Base URL** | `https://schedkit.net` |
+| **API Explorer** | [`schedkit.net/docs`](https://schedkit.net/docs) |
+| **Auth** | `x-api-key` header (API key) or session cookie |
+| **Format** | REST / JSON |
+| **Live stream** | SSE — `/v1/signals/stream`, `/v1/incidents/stream` |
 
 <Card title="Quickstart →" icon="rocket" href="/quickstart">
-  Your first signal in under 5 minutes.
+  Your first signal flowing in under 5 minutes.
 </Card>

@@ -5,58 +5,51 @@ description: The primitive unit of SchedKit — a typed event from any source.
 
 ## What is a Signal?
 
-A **signal** is the atomic unit of SchedKit. Everything is a signal — a GPS ping, a photo from the field, a text note, a human pressing "ALERT."
+A **signal** is the atomic unit of SchedKit. Everything is a signal — a GPS ping, a photo from the field, a text note, a human pressing ALERT.
 
-Signals are typed, org-scoped, and optionally geo-tagged. They flow through the platform in real time via SSE streams and fan out to push notifications, webhooks, and physical devices.
+Signals are typed, org-scoped, and optionally geo-tagged. They flow in real time via SSE and fan out to push notifications, webhooks, and physical devices.
 
-## Signal Types
+## Signal types
 
-| Type | Description |
-|------|-------------|
-| `beacon` | Periodic GPS ping from an active operator (every 30s) |
-| `capture` | Photo or image attached to a location |
-| `note` | Text note with optional coordinates |
-| `checkin` | Manual "I'm here" with location confirmation |
-| `alert` | High-priority signal — pushes to all org members immediately |
+| Type | Description | Persisted |
+|------|-------------|-----------|
+| `beacon` | Periodic GPS ping from an active operator | No — broadcast only |
+| `capture` | Photo or image with location | Yes |
+| `note` | Text note, optional coordinates | Yes |
+| `checkin` | Manual confirmation of presence at location | Yes |
+| `alert` | High-priority — pushes to all org members immediately | Yes |
 
-## Org Scoping
+<Note>
+  `beacon` signals skip the database for performance. They are broadcast-only and do not appear in `GET /v1/signals`. All other types are persisted and queryable.
+</Note>
 
-Every signal is tagged with the sender's `org_id`. The signal stream only delivers signals from orgs you belong to — you never see signals from other organizations.
+## Org scoping
 
-```
-User A (org: Alpha Team) sends beacon ping
-→ Only Alpha Team members receive it in their stream
-→ Beta Team members see nothing
-```
+Every signal is scoped to an organization. When you POST a signal, SchedKit resolves your primary org automatically. Pass `org_id` explicitly to target a different org.
 
-## Device Identity
+## Live stream
 
-Each device (browser/app) has a stable `device_id` generated on first use and stored locally. It's attached to every signal as `meta.device_id`. This lets you distinguish:
-
-- Your phone in the field
-- Your laptop at base
-- An ESP32 sensor
-- A teammate's device
-
-## SSE Stream
-
-Subscribe to live signals from your orgs:
+Subscribe to your org's signal feed via SSE:
 
 ```bash
 curl -N https://schedkit.net/v1/signals/stream \
   -H "x-api-key: $SCHEDKIT_KEY"
 ```
 
-Events are JSON-encoded:
+Events are newline-delimited `data:` payloads:
 
 ```
-data: {"type":"signal.beacon","payload":{"user_id":42,"lat":35.46,"lng":-97.51,"meta":{"device_id":"dev-abc123"}}}
+data: {"type":"connected","org_ids":[3]}
 
-data: {"type":"signal.alert","payload":{"note":"ALERT — operator triggered","lat":35.46,"lng":-97.51}}
+data: {"type":"signal.beacon","payload":{"user_id":42,"lat":35.4676,"lng":-97.5164,...}}
 
-data: {"type":"signal.beacon_off","payload":{"user_id":42}}
+data: {"type":"signal.alert","payload":{"Id":7,"note":"Unit 3 unresponsive",...}}
 ```
 
-## Beacon Mode
+## Beacon fast-path
 
-See [Beacon Mode](/concepts/beacon) for the full field operations flow — GPS tracking, camera capture, and the dedicated tactical screen.
+`beacon` type signals bypass NocoDB writes entirely — they are constructed in memory and broadcast directly to all connected SSE clients. This supports high-frequency pinging (every 30s per device) at scale without DB bottlenecks.
+
+<Card title="API Reference → Signals" icon="signal" href="/api-reference/signals">
+  Full endpoint docs for POST, GET, DELETE, and SSE stream.
+</Card>

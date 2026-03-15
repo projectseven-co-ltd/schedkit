@@ -1,8 +1,163 @@
 ---
-title: Tickets
-description: Tickets API reference — full details coming soon.
+title: Incidents API
+description: Create, update, and reply to incidents (tickets) with SLA tracking and real-time SSE.
 ---
 
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/tickets` | List incidents |
+| `POST` | `/v1/tickets` | Create incident |
+| `GET` | `/v1/tickets/:id` | Get incident |
+| `PATCH` | `/v1/tickets/:id` | Update incident |
+| `DELETE` | `/v1/tickets/:id` | Delete incident |
+| `GET` | `/v1/incidents/stream` | SSE live stream |
+| `GET` | `/v1/incidents/:id/replies` | List replies |
+| `POST` | `/v1/incidents/:id/replies` | Add reply |
+
 <Note>
-  Full reference coming soon. In the meantime, explore all endpoints interactively at [schedkit.net/docs](https://schedkit.net/docs).
+  `/v1/tickets` and `/v1/incidents` both refer to the same resource. The paths are interchangeable.
 </Note>
+
+---
+
+## GET /v1/tickets
+
+List your incidents, newest first.
+
+**Query params**
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `status` | — | `open` \| `in_progress` \| `resolved` \| `closed` |
+| `priority` | — | `low` \| `normal` \| `high` \| `urgent` |
+| `limit` | `50` | Max results |
+| `page` | `1` | Page number |
+
+**Response `200`**
+
+```json
+{
+  "tickets": [
+    {
+      "Id": 42,
+      "title": "Unit 3 unresponsive",
+      "status": "open",
+      "priority": "urgent",
+      "source": "alert",
+      "sla_due_at": "2026-03-15T08:00:00Z",
+      "sla_breached": false,
+      "sla_status": "warning",
+      "customer_token": "abc123xyz...",
+      "lat": 35.4676,
+      "lng": -97.5164,
+      "location_name": "Grid Sector 7",
+      "created_at": "2026-03-15T07:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+## POST /v1/tickets
+
+Create a new incident.
+
+**Body**
+
+```json
+{
+  "title": "Unit 3 unresponsive",
+  "description": "No ping in 5 minutes. Last known: Grid 7.",
+  "priority": "urgent",
+  "source": "alert",
+  "lat": 35.4676,
+  "lng": -97.5164,
+  "location_name": "Grid Sector 7"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | **yes** | Incident title |
+| `description` | string | no | Detail |
+| `priority` | string | no | `low` \| `normal` \| `high` \| `urgent` — default `normal` |
+| `source` | string | no | `api` \| `email` \| `webhook` \| `alert` — default `api` |
+| `source_ref` | string | no | External reference ID |
+| `lat` / `lng` | number | no | Incident coordinates |
+| `location_name` | string | no | Human-readable location |
+
+**Response `201`**
+
+```json
+{
+  "Id": 42,
+  "title": "Unit 3 unresponsive",
+  "status": "open",
+  "priority": "urgent",
+  "sla_due_at": "2026-03-15T08:00:00Z",
+  "sla_breached": false,
+  "sla_status": "ok",
+  "customer_token": "k9mXzQ2pL8wR...",
+  "customer_status_url": "https://schedkit.net/incidents/status/k9mXzQ2pL8wR..."
+}
+```
+
+<Tip>
+  Share `customer_status_url` with affected parties — no login required. Shows title, status, and public replies only.
+</Tip>
+
+---
+
+## PATCH /v1/tickets/:id
+
+Update status, priority, or description.
+
+```json
+{
+  "status": "in_progress",
+  "priority": "high"
+}
+```
+
+Broadcasts `incident.updated` to all SSE subscribers.
+
+---
+
+## DELETE /v1/tickets/:id
+
+Permanently delete an incident and all its replies.
+
+---
+
+## GET /v1/incidents/stream
+
+SSE stream of all incident events for the authenticated user.
+
+```bash
+curl -N https://schedkit.net/v1/incidents/stream \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```
+
+**Events**
+
+| Event | Trigger |
+|-------|---------|
+| `incident.created` | New incident opened |
+| `incident.updated` | Status/priority changed |
+| `incident.reply` | New reply posted |
+
+---
+
+## POST /v1/incidents/:id/replies
+
+Add a reply to an incident thread.
+
+```json
+{ "body": "On scene. Investigating now." }
+```
+
+Broadcasts `incident.reply` to all SSE subscribers.

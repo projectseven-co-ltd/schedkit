@@ -1,143 +1,137 @@
 ---
 title: Signals API
-description: POST, GET, and stream signals from any source.
+description: POST, GET, DELETE signals and subscribe to the live SSE stream.
 ---
 
 ## Endpoints
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/v1/signals` | API key / session | Create a signal |
-| `GET` | `/v1/signals` | API key / session | List signals for your orgs |
-| `DELETE` | `/v1/signals/beacon` | API key / session | Stop beacon, broadcast beacon_off |
-| `GET` | `/v1/signals/stream` | API key / session | SSE stream of live signals |
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/signals` | Create a signal |
+| `GET` | `/v1/signals` | List persisted signals |
+| `DELETE` | `/v1/signals/beacon` | Stop active beacon |
+| `GET` | `/v1/signals/stream` | SSE live stream |
 
 ---
 
 ## POST /v1/signals
 
-Create a signal. Automatically tagged with your `org_id` (resolved from your org memberships).
+Create a signal. `beacon` type is broadcast-only (not persisted). All others are saved and queryable.
 
-### Body
+**Body**
 
 ```json
 {
-  "type": "beacon",
+  "type": "beacon | capture | note | checkin | alert",
   "lat": 35.4676,
   "lng": -97.5164,
   "accuracy": 12.5,
-  "note": "Optional text note",
+  "note": "Optional text",
+  "image_url": "https://...",
   "ticket_id": 42,
   "org_id": 3,
-  "meta": {
-    "device_id": "dev-abc123",
-    "custom_field": "anything"
-  }
+  "meta": {}
 }
 ```
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `type` | string | ✓ | `beacon`, `capture`, `note`, `checkin`, or `alert` |
-| `lat` | number | — | Latitude |
-| `lng` | number | — | Longitude |
-| `accuracy` | number | — | GPS accuracy in meters |
-| `image_url` | string | — | Base64 data URL or remote URL (for `capture` type) |
-| `note` | string | — | Text content |
-| `ticket_id` | number | — | Link to an incident/ticket |
-| `org_id` | number | — | Override org (defaults to your primary org) |
-| `meta` | object | — | Arbitrary JSON metadata |
+| `type` | string | **yes** | Signal type |
+| `lat` | number | no | Latitude |
+| `lng` | number | no | Longitude |
+| `accuracy` | number | no | GPS accuracy in meters |
+| `note` | string | no | Text content (required for `alert`) |
+| `image_url` | string | no | Image URL (for `capture`) |
+| `ticket_id` | number | no | Link to an incident |
+| `org_id` | number | no | Target org — defaults to primary org |
+| `meta` | object | no | Arbitrary metadata (e.g. `device_id`) |
 
-### Alert behavior
-
-When `type` is `alert`, a push notification is sent to all members of the org immediately.
-
-### Response
+**Response `201`**
 
 ```json
 {
-  "Id": 7,
+  "Id": 99,
   "user_id": 42,
   "org_id": 3,
-  "type": "beacon",
+  "type": "note",
   "lat": 35.4676,
   "lng": -97.5164,
-  "accuracy": 12.5,
-  "meta": "{\"device_id\":\"dev-abc123\"}",
-  "created_at": "2026-03-15T05:00:00.000Z",
+  "note": "On site.",
+  "created_at": "2026-03-15T07:00:00Z",
   "user_name": "Jason Johnson"
 }
 ```
+
+<Note>
+  `alert` signals trigger push notifications to all members of the target org.
+  `beacon` signals return the same shape but `Id` will be `null` — they are not persisted.
+</Note>
 
 ---
 
 ## GET /v1/signals
 
-List recent signals from your org memberships.
+List persisted signals for your orgs. Does not include `beacon` signals.
 
-### Query params
+**Query params**
 
-| Param | Type | Description |
-|-------|------|-------------|
-| `type` | string | Filter by signal type |
-| `org_id` | integer | Filter to a specific org |
-| `limit` | integer | Max results (default: 100) |
-| `since` | string | ISO timestamp — only signals after this |
+| Param | Default | Description |
+|-------|---------|-------------|
+| `limit` | `50` | Max results |
+| `page` | `1` | Page number |
+| `type` | — | Filter by type |
+| `org_id` | — | Filter by org |
 
-### Example
+---
 
-```bash
-# Active beacons in the last 90 seconds
-curl "https://schedkit.net/v1/signals?type=beacon&since=2026-03-15T04:58:00Z" \
-  -H "x-api-key: $SCHEDKIT_KEY"
-```
+## DELETE /v1/signals/beacon
+
+Stop the active beacon for the current device. Broadcasts a `beacon_off` event to the org SSE stream so the War Room removes the device dot.
+
+Pass `device_id` in the body to identify the specific device:
 
 ```json
-{
-  "signals": [
-    {
-      "Id": 7,
-      "type": "beacon",
-      "lat": 35.4676,
-      "lng": -97.5164,
-      "meta": "{\"device_id\":\"dev-abc123\"}",
-      "created_at": "2026-03-15T05:00:00Z"
-    }
-  ],
-  "total": 1
-}
+{ "device_id": "dev-4f2a1b-c3d4e5f6" }
+```
+
+**Response `200`**
+
+```json
+{ "ok": true }
 ```
 
 ---
 
 ## GET /v1/signals/stream
 
-Server-Sent Events stream. Delivers real-time signals from all orgs you belong to.
+SSE live stream of all signals for your orgs. Keep-alive with 25s heartbeat comments.
 
 ```bash
-curl -N "https://schedkit.net/v1/signals/stream" \
+curl -N https://schedkit.net/v1/signals/stream \
   -H "x-api-key: $SCHEDKIT_KEY"
 ```
 
-### Event types
+**Event types**
 
-| Event | Description |
-|-------|-------------|
-| `signal.beacon` | GPS ping from an active operator |
-| `signal.capture` | Photo signal received |
-| `signal.note` | Text note signal |
-| `signal.checkin` | Manual checkin |
-| `signal.alert` | High-priority alert |
-| `signal.beacon_off` | Operator stopped their beacon |
-| `connected` | Stream connected, includes `org_ids` array |
+| Event | Trigger |
+|-------|---------|
+| `signal.beacon` | Operator GPS ping |
+| `signal.capture` | Photo captured in field |
+| `signal.note` | Note posted |
+| `signal.checkin` | Manual check-in |
+| `signal.alert` | High-priority alert fired |
+| `beacon_off` | Operator beacon stopped |
 
----
+**Example stream**
 
-## DELETE /v1/signals/beacon
+```
+data: {"type":"connected","org_ids":[3]}
 
-Signals that you have stopped your beacon. Broadcasts `signal.beacon_off` to your org's stream.
+: heartbeat
 
-```bash
-curl -X DELETE https://schedkit.net/v1/signals/beacon \
-  -H "x-api-key: $SCHEDKIT_KEY"
+data: {"type":"signal.beacon","payload":{"user_id":42,"lat":35.4676,"lng":-97.5164,"accuracy":8,"meta":{"device_id":"dev-4f2a-c3d4"},"created_at":"2026-03-15T07:30:00Z","user_name":"Jason Johnson","org_id":3}}
+
+data: {"type":"signal.alert","payload":{"Id":7,"note":"Unit 3 unresponsive","user_id":42,"org_id":3,"created_at":"2026-03-15T07:31:00Z"}}
+
+data: {"type":"beacon_off","payload":{"device_id":"dev-4f2a-c3d4","user_id":42,"org_id":3}}
 ```

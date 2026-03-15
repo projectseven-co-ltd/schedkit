@@ -1,8 +1,76 @@
 ---
 title: Assignments
-description: Assignments — full docs coming soon.
+description: Scheduled coordination events — bookings, meetings, deployments.
 ---
 
-<Note>
-  Full docs coming soon. See [Introduction](/introduction) for an overview.
-</Note>
+## Overview
+
+Assignments are scheduled bookings between two parties — an operator (the host) and an attendee. They're time-bounded coordination events: meetings, dispatch slots, deployment windows, onboarding sessions.
+
+The API uses `/v1/bookings` internally; the dashboard calls them **Assignments** to reflect their operational role in the API-FirstResponder context.
+
+## Booking pages
+
+Every user gets a public booking page at:
+
+```
+https://schedkit.net/book/:username/:event_slug
+```
+
+Team booking pages:
+
+```
+https://schedkit.net/book/:org_slug/:team_slug/:event_slug
+```
+
+## Event types
+
+Event types define the booking rules: duration, location type, availability windows, buffer times, and confirmation requirements.
+
+| Field | Description |
+|-------|-------------|
+| `duration_minutes` | Length of the event |
+| `location_type` | `video`, `phone`, `in_person`, `other` |
+| `requires_confirmation` | If true, booking is `pending` until host confirms |
+| `max_advance_days` | How far ahead bookings can be made |
+| `min_notice_hours` | Minimum notice required |
+
+## Confirmation flow
+
+When `requires_confirmation: true`, a booking is created with `status: pending`. The host receives an email with Accept and Decline links containing a secure token. The attendee is notified of the outcome.
+
+## Booking via API
+
+```bash
+curl -X POST https://schedkit.net/v1/book/:username/:event_slug \
+  -H "Content-Type: application/json" \
+  -d '{
+    "attendee_name": "Jason Johnson",
+    "attendee_email": "jason@example.com",
+    "start_time": "2026-03-20T14:00:00Z",
+    "timezone": "America/Chicago",
+    "notes": "Interested in the enterprise plan"
+  }'
+```
+
+## postMessage SDK
+
+When embedded via the `@schedkit/react` SDK, a `schedkit:booked` event fires after a successful booking:
+
+```js
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'schedkit:booked') {
+    console.log(e.data.payload);
+    // { id, status, requires_confirmation, attendee_name, start_time, ... }
+  }
+});
+```
+
+<CardGroup cols={2}>
+  <Card title="API Reference → Bookings" icon="calendar" href="/api-reference/bookings">
+    Full booking, reschedule, cancel, and confirm endpoints.
+  </Card>
+  <Card title="Embed SDK" icon="code" href="https://www.npmjs.com/package/@schedkit/react">
+    @schedkit/react on npm — inline, popup, and widget modes.
+  </Card>
+</CardGroup>

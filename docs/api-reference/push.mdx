@@ -1,8 +1,78 @@
 ---
-title: Push
-description: Push API reference — full details coming soon.
+title: Push Notifications API
+description: Subscribe devices to web push and send test notifications.
 ---
 
-<Note>
-  Full reference coming soon. In the meantime, explore all endpoints interactively at [schedkit.net/docs](https://schedkit.net/docs).
-</Note>
+## Overview
+
+SchedKit uses Web Push (VAPID) to deliver notifications to subscribed browsers. Notifications fire automatically on `alert` signals, urgent/high incidents, and upcoming assignments.
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/push/vapid-public` | Get VAPID public key |
+| `POST` | `/v1/push/subscribe` | Register a push subscription |
+| `DELETE` | `/v1/push/subscribe` | Remove a push subscription |
+| `POST` | `/v1/push/test` | Send a test notification |
+
+---
+
+## GET /v1/push/vapid-public
+
+Returns the VAPID public key needed to subscribe a browser.
+
+```json
+{ "publicKey": "BIa_HKGuR_doeyRc..." }
+```
+
+---
+
+## POST /v1/push/subscribe
+
+Register a browser's push subscription with SchedKit.
+
+```js
+const reg = await navigator.serviceWorker.ready;
+const sub = await reg.pushManager.subscribe({
+  userVisibleOnly: true,
+  applicationServerKey: vapidPublicKey
+});
+
+await fetch('/v1/push/subscribe', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ subscription: sub.toJSON() })
+});
+```
+
+---
+
+## DELETE /v1/push/subscribe
+
+Unsubscribe the current device. Pass the endpoint to identify the subscription:
+
+```json
+{ "endpoint": "https://fcm.googleapis.com/fcm/send/..." }
+```
+
+---
+
+## POST /v1/push/test
+
+Send a test push notification to all subscriptions for the current user. Useful for verifying the subscription is active.
+
+```json
+{}
+```
+
+---
+
+## Automatic push events
+
+| Trigger | Notification |
+|---------|-------------|
+| `alert` signal | `[~] ALERT SIGNAL — {operator}: {note}` |
+| `urgent` or `high` incident created | `[!] URGENT — {title}` |
+| `alert`-source incident | `[!] {title}` |
+| Upcoming assignment | `[◷] Upcoming: {event} in 15 min` |

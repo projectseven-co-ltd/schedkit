@@ -1,8 +1,60 @@
 ---
 title: Units
-description: Units — full docs coming soon.
+description: Users and organizations — how SchedKit scopes access and signals.
 ---
 
-<Note>
-  Full docs coming soon. See [Introduction](/introduction) for an overview.
-</Note>
+## Users
+
+Every account is a user. Users have a `slug` (used in booking URLs), a `plan`, and belong to one or more organizations.
+
+## Organizations
+
+Organizations (Units) are the coordination scope. Signals, incidents, and War Room visibility are all scoped to orgs you belong to. Each user has a primary org — used by default when no `org_id` is specified.
+
+### Teams
+
+Orgs contain teams. Teams have routing strategies that govern how bookings are distributed across members:
+
+| Routing | Behavior |
+|---------|----------|
+| `round_robin` | Evenly distributes bookings across available members |
+| `random` | Picks a random available member |
+
+## Plans
+
+Plans control what features are available:
+
+| Plan | Event types | Orgs | Teams/org | Members/team |
+|------|-------------|------|-----------|--------------|
+| Free | 3 | — | — | — |
+| Starter $29 | 10 | — | — | — |
+| Agency $99 | unlimited | 1 | 5 | 25 |
+| Enterprise | unlimited | unlimited | unlimited | unlimited |
+
+Over-limit resources are never deleted — oldest N are protected, extras are locked read-only until you upgrade.
+
+## Org membership roles
+
+| Role | Permissions |
+|------|-------------|
+| `owner` | Full control — delete org, manage members, billing |
+| `admin` | Manage members and teams |
+| `member` | Receive signals, join teams, manage own bookings |
+
+## API
+
+```bash
+# Create an org
+curl -X POST https://schedkit.net/v1/orgs \
+  -H "x-api-key: $SCHEDKIT_KEY" \
+  -d '{"name":"Alpha Team","slug":"alpha"}'
+
+# Add a member
+curl -X POST https://schedkit.net/v1/orgs/alpha/members \
+  -H "x-api-key: $SCHEDKIT_KEY" \
+  -d '{"email":"operator@example.com","role":"member"}'
+```
+
+<Card title="API Reference → Units" icon="users" href="/api-reference/orgs">
+  Full org, team, and member management endpoints.
+</Card>

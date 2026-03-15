@@ -1,8 +1,76 @@
 ---
-title: Users
-description: Users API reference — full details coming soon.
+title: Users API
+description: Create users and look up public profiles.
 ---
 
-<Note>
-  Full reference coming soon. In the meantime, explore all endpoints interactively at [schedkit.net/docs](https://schedkit.net/docs).
-</Note>
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/users` | Create user (register) |
+| `GET` | `/v1/users` | List users (admin) |
+| `GET` | `/v1/u/:slug` | Get public user profile |
+
+---
+
+## POST /v1/users
+
+Register a new user account.
+
+```json
+{
+  "email": "operator@example.com",
+  "password": "secure-password",
+  "name": "Jane Operator",
+  "timezone": "America/New_York"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `email` | **yes** | Must be unique |
+| `password` | **yes** | Min 8 characters |
+| `name` | **yes** | Display name |
+| `timezone` | no | IANA timezone — defaults to `UTC` |
+
+**Response `201`**
+
+```json
+{
+  "id": 43,
+  "email": "operator@example.com",
+  "name": "Jane Operator",
+  "slug": "jane-operator",
+  "plan": "free"
+}
+```
+
+---
+
+## GET /v1/u/:slug
+
+Returns a public user profile. Used to populate booking pages.
+
+```bash
+curl https://schedkit.net/v1/u/jason
+```
+
+**Response `200`**
+
+```json
+{
+  "id": 1,
+  "name": "Jason Johnson",
+  "slug": "jason",
+  "timezone": "America/Chicago",
+  "event_types": [
+    {
+      "id": 1,
+      "name": "30-min intro",
+      "slug": "intro",
+      "duration_minutes": 30,
+      "location_type": "video"
+    }
+  ]
+}
+```
