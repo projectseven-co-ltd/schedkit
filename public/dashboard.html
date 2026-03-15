@@ -1293,7 +1293,8 @@ async function init() {
   if (billingResult === 'success') {
     history.replaceState({}, '', '/dashboard');
     const plan = urlParams.get('plan') || '';
-    toast(`[✓] Upgraded to ${plan.charAt(0).toUpperCase()+plan.slice(1)} — welcome aboard.`, 'ok');
+    toast(`[✓] Upgraded to ${plan.charAt(0).toUpperCase()+plan.slice(1)} — welcome aboard.`, 'ok', 5000);
+    await loadUser(); // Refresh plan badge immediately
   }
   if (upgradePlan && (upgradePlan === 'starter' || upgradePlan === 'agency')) {
     history.replaceState({}, '', '/dashboard');
