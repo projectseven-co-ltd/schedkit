@@ -1,0 +1,52 @@
+---
+title: Authentication
+description: API keys and session-based auth for the SchedKit API.
+---
+
+## API Keys
+
+All API requests require an `x-api-key` header with your personal API key.
+
+```bash
+curl https://schedkit.net/v1/auth/me \
+  -H "x-api-key: sk_live_your_key_here"
+```
+
+API keys are scoped to your user account and inherit your plan limits.
+
+<Note>
+  Keep your API key secret. Never expose it in frontend code or public repos. If compromised, rotate it from **Kit Config → API Keys** in the dashboard.
+</Note>
+
+## Admin Secret
+
+Certain provisioning endpoints (creating users on behalf of others, admin operations) require an additional `x-admin-secret` header. Contact us for access.
+
+```bash
+curl -X POST https://schedkit.net/v1/users \
+  -H "x-admin-secret: your_admin_secret" \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "operator@yourteam.com", "name": "Field Operator" }'
+```
+
+## Session Auth (Dashboard)
+
+The web dashboard uses session cookies (`sk_session`). The magic link login flow:
+
+```
+POST /v1/auth/magic    → sends login email
+GET  /v1/auth/verify   → validates token, sets cookie
+```
+
+Session auth is not intended for API use — use API keys instead.
+
+## Auth Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/auth/magic` | Request magic link login email |
+| `GET` | `/v1/auth/verify?token=...` | Verify token, set session cookie |
+| `GET` | `/v1/auth/me` | Current user profile |
+| `PATCH` | `/v1/auth/me` | Update profile |
+| `POST` | `/v1/auth/logout` | Destroy session |
+| `GET` | `/v1/auth/google/connect` | Start Google Calendar OAuth |

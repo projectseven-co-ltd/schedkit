@@ -1,0 +1,96 @@
+---
+title: Quickstart
+description: Get your first signal flowing in under 5 minutes.
+---
+
+## 1. Get an API key
+
+Sign up at [schedkit.net](https://schedkit.net) and grab your API key from the dashboard under **Kit Config → API Keys**.
+
+```bash
+export SCHEDKIT_KEY=sk_live_...
+```
+
+## 2. Check your profile
+
+```bash
+curl https://schedkit.net/v1/auth/me \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```
+
+```json
+{
+  "id": 42,
+  "email": "you@example.com",
+  "name": "Your Name",
+  "plan": "starter"
+}
+```
+
+## 3. Send your first signal
+
+```bash
+curl -X POST https://schedkit.net/v1/signals \
+  -H "x-api-key: $SCHEDKIT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "note",
+    "note": "First signal. Online."
+  }'
+```
+
+```json
+{
+  "Id": 1,
+  "type": "note",
+  "note": "First signal. Online.",
+  "user_id": 42,
+  "created_at": "2026-03-15T05:00:00Z"
+}
+```
+
+## 4. Watch the stream
+
+Open a second terminal and subscribe to your org's live signal feed:
+
+```bash
+curl -N https://schedkit.net/v1/signals/stream \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```
+
+```
+data: {"type":"connected","org_ids":[3]}
+
+data: {"type":"signal.note","payload":{"Id":1,"note":"First signal. Online.",...}}
+```
+
+## 5. Create a booking
+
+```bash
+curl -X POST https://schedkit.net/v1/bookings \
+  -H "x-api-key: $SCHEDKIT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type_id": 1,
+    "attendee_name": "Jason Johnson",
+    "attendee_email": "jason@example.com",
+    "start_time": "2026-03-20T14:00:00Z"
+  }'
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Signals API" icon="signal" href="/api-reference/signals">
+    Full signal types, org scoping, SSE stream.
+  </Card>
+  <Card title="Beacon Mode" icon="location-dot" href="/concepts/beacon">
+    GPS pings, field captures, and alert signals from mobile.
+  </Card>
+  <Card title="Incidents" icon="triangle-exclamation" href="/api-reference/tickets">
+    Create tickets with SLA timers and threaded replies.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/api-reference/webhooks">
+    Receive events in your own system on every booking or signal.
+  </Card>
+</CardGroup>

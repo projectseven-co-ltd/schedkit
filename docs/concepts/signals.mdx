@@ -1,0 +1,62 @@
+---
+title: Signals
+description: The primitive unit of SchedKit — a typed event from any source.
+---
+
+## What is a Signal?
+
+A **signal** is the atomic unit of SchedKit. Everything is a signal — a GPS ping, a photo from the field, a text note, a human pressing "ALERT."
+
+Signals are typed, org-scoped, and optionally geo-tagged. They flow through the platform in real time via SSE streams and fan out to push notifications, webhooks, and physical devices.
+
+## Signal Types
+
+| Type | Description |
+|------|-------------|
+| `beacon` | Periodic GPS ping from an active operator (every 30s) |
+| `capture` | Photo or image attached to a location |
+| `note` | Text note with optional coordinates |
+| `checkin` | Manual "I'm here" with location confirmation |
+| `alert` | High-priority signal — pushes to all org members immediately |
+
+## Org Scoping
+
+Every signal is tagged with the sender's `org_id`. The signal stream only delivers signals from orgs you belong to — you never see signals from other organizations.
+
+```
+User A (org: Alpha Team) sends beacon ping
+→ Only Alpha Team members receive it in their stream
+→ Beta Team members see nothing
+```
+
+## Device Identity
+
+Each device (browser/app) has a stable `device_id` generated on first use and stored locally. It's attached to every signal as `meta.device_id`. This lets you distinguish:
+
+- Your phone in the field
+- Your laptop at base
+- An ESP32 sensor
+- A teammate's device
+
+## SSE Stream
+
+Subscribe to live signals from your orgs:
+
+```bash
+curl -N https://schedkit.net/v1/signals/stream \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```
+
+Events are JSON-encoded:
+
+```
+data: {"type":"signal.beacon","payload":{"user_id":42,"lat":35.46,"lng":-97.51,"meta":{"device_id":"dev-abc123"}}}
+
+data: {"type":"signal.alert","payload":{"note":"ALERT — operator triggered","lat":35.46,"lng":-97.51}}
+
+data: {"type":"signal.beacon_off","payload":{"user_id":42}}
+```
+
+## Beacon Mode
+
+See [Beacon Mode](/concepts/beacon) for the full field operations flow — GPS tracking, camera capture, and the dedicated tactical screen.

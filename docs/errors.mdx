@@ -1,0 +1,42 @@
+---
+title: Errors
+description: Standard error responses from the SchedKit API.
+---
+
+All errors return a JSON body with an `error` field and an appropriate HTTP status code.
+
+```json
+{
+  "error": "not_found",
+  "message": "Event type not found"
+}
+```
+
+## Status Codes
+
+| Code | Meaning |
+|------|---------|
+| `200` | OK |
+| `201` | Created |
+| `400` | Bad request — check your body/params |
+| `401` | Unauthorized — missing or invalid API key |
+| `403` | Forbidden — valid key but insufficient permissions |
+| `404` | Not found |
+| `409` | Conflict — e.g. slot already booked |
+| `422` | Unprocessable — validation failed |
+| `429` | Rate limited |
+| `500` | Server error — we're on it |
+
+## Common Errors
+
+### `401 Unauthorized`
+Missing or invalid `x-api-key`. Check your key and header name.
+
+### `403 Forbidden`
+Your plan doesn't include this feature, or you're trying to access another user's resource.
+
+### `409 Conflict`
+The requested time slot is no longer available. Fetch availability again and retry.
+
+### `422 Unprocessable`
+A required field is missing or invalid. The `message` field will tell you which one.

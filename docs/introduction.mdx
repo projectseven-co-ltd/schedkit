@@ -1,0 +1,51 @@
+---
+title: Introduction
+description: SchedKit is an API-FirstResponder platform. Signal anything. Coordinate everything. Physical or digital.
+---
+
+# SchedKit
+
+**SchedKit** is an API-FirstResponder platform — a signal and coordination layer for scheduling, incidents, field operations, and physical device control.
+
+> *A prayer is always a signal asking for a response. An emergency alert is the same thing with urgency.*
+
+## What it does
+
+SchedKit connects signal sources to coordination actions:
+
+| Signal In | → | Action Out |
+|-----------|---|------------|
+| Booking request | → | Confirmation email + webhook |
+| Support ticket | → | Push notification + SLA timer |
+| Beacon ping | → | Live map update + activity feed |
+| Alert signal | → | Push to all org members |
+| ESP32 sensor | → | Relay trigger + incident creation |
+| NOAA weather alert | → | Field team notification |
+
+## Core concepts
+
+<CardGroup cols={2}>
+  <Card title="Signals" icon="signal" href="/concepts/signals">
+    The primitive unit — a typed event from any source (beacon, capture, alert, webhook, sensor).
+  </Card>
+  <Card title="Units" icon="users" href="/concepts/units">
+    Users and organizations. Signals are scoped to units you belong to.
+  </Card>
+  <Card title="Assignments" icon="calendar" href="/concepts/assignments">
+    Scheduled coordination events — bookings, meetings, deployments.
+  </Card>
+  <Card title="Incidents" icon="triangle-exclamation" href="/concepts/incidents">
+    Ticketed issues with SLA timers, thread replies, and status tracking.
+  </Card>
+</CardGroup>
+
+## Quick orientation
+
+- **Base URL:** `https://schedkit.net`
+- **API Explorer:** [`schedkit.net/docs`](https://schedkit.net/docs)
+- **Auth:** API key via `x-api-key` header, or session cookie for dashboard
+- **Format:** REST, JSON, no SDK required
+
+<Card title="Quickstart →" icon="rocket" href="/quickstart">
+  Your first signal in under 5 minutes.
+</Card>

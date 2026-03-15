@@ -1,0 +1,143 @@
+---
+title: Signals API
+description: POST, GET, and stream signals from any source.
+---
+
+## Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/v1/signals` | API key / session | Create a signal |
+| `GET` | `/v1/signals` | API key / session | List signals for your orgs |
+| `DELETE` | `/v1/signals/beacon` | API key / session | Stop beacon, broadcast beacon_off |
+| `GET` | `/v1/signals/stream` | API key / session | SSE stream of live signals |
+
+---
+
+## POST /v1/signals
+
+Create a signal. Automatically tagged with your `org_id` (resolved from your org memberships).
+
+### Body
+
+```json
+{
+  "type": "beacon",
+  "lat": 35.4676,
+  "lng": -97.5164,
+  "accuracy": 12.5,
+  "note": "Optional text note",
+  "ticket_id": 42,
+  "org_id": 3,
+  "meta": {
+    "device_id": "dev-abc123",
+    "custom_field": "anything"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | ✓ | `beacon`, `capture`, `note`, `checkin`, or `alert` |
+| `lat` | number | — | Latitude |
+| `lng` | number | — | Longitude |
+| `accuracy` | number | — | GPS accuracy in meters |
+| `image_url` | string | — | Base64 data URL or remote URL (for `capture` type) |
+| `note` | string | — | Text content |
+| `ticket_id` | number | — | Link to an incident/ticket |
+| `org_id` | number | — | Override org (defaults to your primary org) |
+| `meta` | object | — | Arbitrary JSON metadata |
+
+### Alert behavior
+
+When `type` is `alert`, a push notification is sent to all members of the org immediately.
+
+### Response
+
+```json
+{
+  "Id": 7,
+  "user_id": 42,
+  "org_id": 3,
+  "type": "beacon",
+  "lat": 35.4676,
+  "lng": -97.5164,
+  "accuracy": 12.5,
+  "meta": "{\"device_id\":\"dev-abc123\"}",
+  "created_at": "2026-03-15T05:00:00.000Z",
+  "user_name": "Jason Johnson"
+}
+```
+
+---
+
+## GET /v1/signals
+
+List recent signals from your org memberships.
+
+### Query params
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `type` | string | Filter by signal type |
+| `org_id` | integer | Filter to a specific org |
+| `limit` | integer | Max results (default: 100) |
+| `since` | string | ISO timestamp — only signals after this |
+
+### Example
+
+```bash
+# Active beacons in the last 90 seconds
+curl "https://schedkit.net/v1/signals?type=beacon&since=2026-03-15T04:58:00Z" \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```
+
+```json
+{
+  "signals": [
+    {
+      "Id": 7,
+      "type": "beacon",
+      "lat": 35.4676,
+      "lng": -97.5164,
+      "meta": "{\"device_id\":\"dev-abc123\"}",
+      "created_at": "2026-03-15T05:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+## GET /v1/signals/stream
+
+Server-Sent Events stream. Delivers real-time signals from all orgs you belong to.
+
+```bash
+curl -N "https://schedkit.net/v1/signals/stream" \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```
+
+### Event types
+
+| Event | Description |
+|-------|-------------|
+| `signal.beacon` | GPS ping from an active operator |
+| `signal.capture` | Photo signal received |
+| `signal.note` | Text note signal |
+| `signal.checkin` | Manual checkin |
+| `signal.alert` | High-priority alert |
+| `signal.beacon_off` | Operator stopped their beacon |
+| `connected` | Stream connected, includes `org_ids` array |
+
+---
+
+## DELETE /v1/signals/beacon
+
+Signals that you have stopped your beacon. Broadcasts `signal.beacon_off` to your org's stream.
+
+```bash
+curl -X DELETE https://schedkit.net/v1/signals/beacon \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```

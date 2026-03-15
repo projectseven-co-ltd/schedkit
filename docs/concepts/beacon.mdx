@@ -1,0 +1,72 @@
+---
+title: Beacon Mode
+description: GPS tracking, field captures, and alert signals from mobile devices.
+---
+
+## Overview
+
+Beacon Mode turns any phone or tablet into a field unit. Once activated, the device broadcasts its GPS location every 30 seconds, can send photos with geotags, and has a one-tap alert button that notifies your entire org immediately.
+
+## Activating
+
+Tap the **📡 FAB** in the bottom-right of the dashboard. Press **▶ Start Beacon**.
+
+The platform will:
+1. Request GPS permission (if not already granted)
+2. Acquire Wake Lock to prevent auto-screen-lock
+3. Send an initial beacon ping immediately
+4. Switch to the **Beacon Screen**
+5. Continue pinging every 30 seconds
+
+## Beacon Screen
+
+When active, the full-screen Beacon Screen shows:
+
+- **Radar** — rotating sweep with live GPS fix indicator
+- **Coordinates** — live lat/lng updating as you move, with accuracy radius
+- **Device ID** — identifies this specific device
+- **Activity log** — every ping, capture, and alert sent this session
+- **Action buttons** — Capture, Alert, Stop
+
+## Device ID
+
+Each device gets a stable ID on first use (`dev-abc123-xyz` format), stored in `localStorage`. This persists across sessions and lets base operators distinguish:
+
+- `dev-a1b2c3` → Jason's iPhone in the field
+- `dev-x9y8z7` → Laptop at command
+
+## Wake Lock
+
+Beacon Mode requests a [Wake Lock](https://developer.mozilla.org/en-US/docs/Web/API/WakeLock) to keep the screen on while broadcasting. This is the recommended approach for car mounts and field tablets.
+
+<Warning>
+  Wake Lock prevents **auto-lock** (screen timeout) but does NOT override a manual lock (pressing the power button). If the screen is manually locked, JS stops executing and beacons stop. For continuous tracking without interaction, a native app with background location is required.
+</Warning>
+
+## Captures
+
+Tap **📷 Capture & Send** to take a photo with the rear camera. SchedKit automatically:
+- Resizes the image to max 1280px
+- Compresses to JPEG (0.82 quality)
+- Attaches your current GPS coordinates
+- Posts as a `capture` signal to your org stream
+
+## Alert Signal
+
+Tap **🚨 Send Alert** to broadcast an urgent signal to your entire org. Every org member receives a push notification immediately, regardless of whether they have the app open.
+
+## Signal API
+
+All beacon events are stored in the Signals API:
+
+```bash
+# Get recent beacons from your org (last 90 seconds)
+curl "https://schedkit.net/v1/signals?type=beacon&limit=100" \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```
+
+```bash
+# Stop beacon (broadcast beacon_off to stream)
+curl -X DELETE https://schedkit.net/v1/signals/beacon \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```
