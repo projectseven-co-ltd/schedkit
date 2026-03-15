@@ -4546,16 +4546,12 @@ async function openBillingModal(plan) {
   if (!meta) return;
   _currentPlan = plan;
 
-  // Populate header + summary
+  // Show modal with loading state
   document.getElementById('bm-sigil').textContent = meta.sigil;
   document.getElementById('bm-title').textContent = `Upgrade to ${meta.label}`;
-  document.getElementById('bm-summary').innerHTML =
-    `<strong>${meta.label}</strong> &nbsp;·&nbsp; ${meta.price}`;
-  document.getElementById('bm-features').innerHTML =
-    meta.features.map(f => `<div class="billing-feature">${f}</div>`).join('');
-  document.getElementById('billing-submit-label').textContent = `[→] Subscribe — ${meta.price}`;
-
-  // Reset
+  document.getElementById('bm-summary').innerHTML = `<strong>${meta.label}</strong> &nbsp;·&nbsp; ${meta.price}`;
+  document.getElementById('bm-features').innerHTML = meta.features.map(f => `<div class="billing-feature">${f}</div>`).join('');
+  document.getElementById('billing-submit-label').textContent = `[→] Redirecting to checkout...`;
   document.getElementById('billing-status').textContent = '';
   document.getElementById('billing-status').className = 'billing-status';
   document.getElementById('billing-loading-state').style.display = 'block';
@@ -4563,38 +4559,23 @@ async function openBillingModal(plan) {
   document.getElementById('billing-modal').style.display = 'flex';
 
   try {
-    // Get subscription clientSecret
     const res = await apiFetch('/v1/billing/subscribe', { method: 'POST', body: JSON.stringify({ plan }) });
     if (!res?.ok) {
       const err = await res.json().catch(() => ({}));
-      setBillingStatus('[!] ' + (err.message || 'Failed to initialize payment'), 'err');
+      setBillingStatus('[!] ' + (err.error || 'Failed to initialize payment'), 'err');
+      document.getElementById('billing-loading-state').style.display = 'none';
       return;
     }
-    const { clientSecret } = await res.json();
-    _clientSecret = clientSecret;
-
-    // Init Stripe Elements
-    if (!_stripe) _stripe = Stripe(STRIPE_PK);
-    if (_elements) { _cardNumber.destroy(); _cardExpiry.destroy(); _cardCvc.destroy(); }
-    _elements = _stripe.elements();
-
-    _cardNumber = _elements.create('cardNumber', { style: STRIPE_ELEMENT_STYLE, showIcon: false });
-    _cardExpiry = _elements.create('cardExpiry', { style: STRIPE_ELEMENT_STYLE });
-    _cardCvc    = _elements.create('cardCvc',    { style: STRIPE_ELEMENT_STYLE });
-
-    _cardNumber.mount('#stripe-card-number');
-    _cardExpiry.mount('#stripe-card-expiry');
-    _cardCvc.mount('#stripe-card-cvc');
-
-    // Show form
-    document.getElementById('billing-loading-state').style.display = 'none';
-    document.getElementById('billing-form-wrap').style.display = 'flex';
-    document.getElementById('billing-name').focus();
-
+    const { url } = await res.json();
+    if (url) {
+      window.location.href = url;
+    } else {
+      setBillingStatus('[!] No checkout URL returned', 'err');
+      document.getElementById('billing-loading-state').style.display = 'none';
+    }
   } catch(e) {
     setBillingStatus('[!] ' + e.message, 'err');
     document.getElementById('billing-loading-state').style.display = 'none';
-    document.getElementById('billing-form-wrap').style.display = 'flex';
   }
 }
 

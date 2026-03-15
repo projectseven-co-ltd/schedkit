@@ -33,8 +33,7 @@ export default async function billingRoutes(fastify) {
         200: {
           type: 'object',
           properties: {
-            clientSecret: { type: 'string' },
-            subscriptionId: { type: 'string' },
+            url: { type: 'string' },
           },
         },
       },
@@ -67,29 +66,17 @@ export default async function billingRoutes(fastify) {
       }
     }
 
-    // Create subscription — use error_if_incomplete so Stripe doesn't auto-pay
-    const subscription = await stripe.subscriptions.create({
+    // Create Stripe Checkout Session — handles card collection, 3DS, etc.
+    const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      items: [{ price: priceId }],
-      payment_behavior: 'default_incomplete',
-      payment_settings: { save_default_payment_method: 'on_subscription' },
-      metadata: { user_id: String(user.Id), plan },
+      mode: 'subscription',
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `https://schedkit.net/dashboard?billing=success&plan=${plan}`,
+      cancel_url: `https://schedkit.net/dashboard`,
+      subscription_data: { metadata: { user_id: String(user.Id), plan } },
     });
 
-    // Get the invoice amount and create a PaymentIntent for it
-    const priceData = await stripe.prices.retrieve(priceId);
-    const amount = priceData.unit_amount;
-    const currency = priceData.currency;
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency,
-      customer: customerId,
-      setup_future_usage: 'off_session',
-      metadata: { user_id: String(user.Id), plan, subscription_id: subscription.id },
-    });
-
-    return { clientSecret: paymentIntent.client_secret, subscriptionId: subscription.id };
+    return { url: session.url };
   });
 
   // GET /v1/billing/portal — Stripe Customer Portal
@@ -129,6 +116,24 @@ export default async function billingRoutes(fastify) {
 
     const event = req.body;
     fastify.log.info({ type: event.type }, 'Stripe webhook received');
+
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      if (session.mode === 'subscription' && session.subscription) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(session.subscription);
+          const userId = sub.metadata?.user_id;
+          const plan = sub.metadata?.plan;
+          fastify.log.info({ userId, plan, subId: sub.id }, 'Billing: checkout.session.completed');
+          if (userId && plan) {
+            await db.update(tables.users, userId, { plan });
+            fastify.log.info(`Billing: user ${userId} activated ${plan}`);
+          }
+        } catch (e) {
+          fastify.log.error({ err: e.message }, 'Billing: failed to activate plan on checkout');
+        }
+      }
+    }
 
     if (event.type === 'payment_intent.succeeded') {
       const pi = event.data.object;
