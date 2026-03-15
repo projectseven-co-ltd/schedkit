@@ -61,11 +61,10 @@ export default async function authRoutes(fastify) {
       user_id: String(user.Id),
       expires_at: expiresAt,
       used: false,
-      next: next || null,
       created_at: new Date().toISOString(),
     });
 
-    const link = `https://${BASE_DOMAIN}/v1/auth/verify?token=${token}`;
+    const link = `https://${BASE_DOMAIN}/v1/auth/verify?token=${token}${next ? '&next=' + encodeURIComponent(next) : ''}`;
     await sendMagicLink({ to: email, name: user.name, link, code });
 
     return { ok: true };
@@ -121,7 +120,7 @@ export default async function authRoutes(fastify) {
 
     if (!match) return reply.code(400).send({ ok: false, error: 'invalid_code' });
 
-    await consumeLoginAndCreateSession(reply, match, user, { redirect: false });
+    await consumeLoginAndCreateSession(reply, match, user, { redirect: false, next: null });
   });
 
   // GET /v1/auth/verify?token=... — verify magic link, issue session cookie
@@ -144,6 +143,7 @@ export default async function authRoutes(fastify) {
     },
   }, async (req, reply) => {
     const token = String(req.query?.token || '');
+    const next = String(req.query?.next || '').slice(0, 200) || null;
     if (!token) return reply.code(400).send('Missing token');
 
     const result = await db.find(tables.magic_links, `(token,eq,${token})`);
@@ -154,7 +154,7 @@ export default async function authRoutes(fastify) {
     if (new Date(link.expires_at) < new Date()) return renderError(reply, 'This link has expired. Please request a new one.');
 
     const user = await db.get(tables.users, link.user_id);
-    await consumeLoginAndCreateSession(reply, link, user, { redirect: true });
+    await consumeLoginAndCreateSession(reply, link, user, { redirect: true, next });
   });
 
   // POST /v1/auth/logout
@@ -264,7 +264,7 @@ function generateLoginCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-async function consumeLoginAndCreateSession(reply, link, user, { redirect }) {
+async function consumeLoginAndCreateSession(reply, link, user, { redirect, next }) {
   await db.update(tables.magic_links, link.Id, { used: true });
 
   const sessionToken = nanoid(48);
@@ -276,7 +276,7 @@ async function consumeLoginAndCreateSession(reply, link, user, { redirect }) {
     created_at: new Date().toISOString(),
   });
 
-  const destination = link.next || ((!user?.name) ? '/onboarding' : '/dashboard');
+  const destination = next || ((!user?.name) ? '/onboarding' : '/dashboard');
   reply.header('Set-Cookie', `sk_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}; Secure`);
 
   if (redirect) return reply.redirect(destination);
