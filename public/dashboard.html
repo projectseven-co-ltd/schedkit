@@ -247,7 +247,9 @@ tr:hover td{background:var(--surface2)}
 .sitrep-feed-dot.assignment{background:var(--accent)}
 .sitrep-feed-dot.incident{background:#60a5fa}
 .sitrep-feed-dot.alert{background:#ff5f5f}
-.sitrep-feed-dot.reply{background:#4ade80}
+.sitrep-feed-dot.reply,.sitrep-feed-dot.ok{background:#4ade80}
+.sitrep-feed-dot.beacon{background:#00ffcc}
+.sitrep-feed-dot.capture{background:#a78bfa}
 .sitrep-feed-text{flex:1;line-height:1.4;color:var(--text)}
 .sitrep-feed-time{font-size:11px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap;margin-top:2px}
 .sitrep-feed-empty{padding:24px 16px;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono)}
@@ -1568,38 +1570,39 @@ async function loadSitrep() {
 const _origTicketStreamHandler = null;
 function sitrepHandleSSE(type, payload) {
   if (type === 'incident.created') {
-    sitrepPushFeed('incident', `Incident opened — ${payload.title || 'Untitled'} · ${(payload.priority||'normal').toUpperCase()}`, payload.CreatedAt || payload.created_at);
+    sitrepPushFeed('incident', `🔴 Incident · ${payload.title || 'Untitled'} · ${(payload.priority||'normal').toUpperCase()}`, payload.CreatedAt || payload.created_at);
     // Refresh incident tile count live
     const el = document.getElementById('sitrep-incidents-open');
     if (el) el.textContent = parseInt(el.textContent||0,10) + 1;
   }
   if (type === 'incident.updated' || type === 'incident.resolved') {
-    sitrepPushFeed('incident', `Incident ${type === 'incident.resolved' ? 'resolved' : 'updated'} — ${payload.title || 'Untitled'}`, new Date().toISOString());
+    sitrepPushFeed(type === 'incident.resolved' ? 'ok' : 'incident', `${type === 'incident.resolved' ? '✅ Resolved' : '🔄 Updated'} · ${payload.title || 'Untitled'}`, new Date().toISOString());
   }
   if (type === 'incident.breached') {
-    sitrepPushFeed('alert', `⚠ SLA breached — ${payload.title || 'Untitled'}`, new Date().toISOString());
+    sitrepPushFeed('alert', `⚠️ SLA breach · ${payload.title || '#' + payload.Id}`, new Date().toISOString());
     const slaTile = document.getElementById('sitrep-tile-sla');
     if (slaTile) slaTile.className = 'sitrep-stat crit';
     const slaEl = document.getElementById('sitrep-sla-status');
     if (slaEl) { slaEl.textContent = 'BREACH'; slaEl.style.color = 'var(--red)'; }
   }
   if (type === 'reply.added') {
-    sitrepPushFeed('reply', `Reply added — incident #${payload.ticket_id}`, new Date().toISOString());
+    sitrepPushFeed('reply', `💬 Reply · #${payload.ticket_id}`, new Date().toISOString());
   }
   if (type === 'signal.beacon') {
     const dev = payload.meta ? (JSON.parse(payload.meta||'{}').device_id || 'unknown') : 'unknown';
-    sitrepPushFeed('beacon', `📡 Beacon ping — device ${dev}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`, payload.created_at);
+    sitrepPushFeed('beacon', `📡 Beacon · ${dev}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`, payload.created_at);
   }
   if (type === 'signal.beacon_off') {
     const offDev = payload.device_id || (payload.meta ? (JSON.parse(payload.meta||'{}').device_id || null) : null) || `user-${payload.user_id}`;
-    sitrepPushFeed('beacon', `📡 Beacon stopped — device ${offDev}`, new Date().toISOString());
+    sitrepPushFeed('beacon', `📡 Offline · ${offDev}`, new Date().toISOString());
   }
   if (type === 'signal.capture') {
     const dev = payload.meta ? (JSON.parse(payload.meta||'{}').device_id || 'unknown') : 'unknown';
-    sitrepPushFeed('beacon', `📷 Capture received — device ${dev}`, payload.created_at);
+    sitrepPushFeed('capture', `📷 Capture · ${dev}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`, payload.created_at);
   }
   if (type === 'signal.alert') {
-    sitrepPushFeed('alert', `🚨 ALERT — ${payload.note || 'operator triggered'}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`, payload.created_at);
+    const dev2 = payload.device_id || (payload.meta ? (JSON.parse(payload.meta||'{}').device_id || null) : null) || `user-${payload.user_id}`;
+    sitrepPushFeed('alert', `🚨 Alert · ${dev2}${payload.note ? ` · ${payload.note}` : ''}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`, payload.created_at);
   }
 }
 
@@ -4137,7 +4140,7 @@ function stopBeacon() {
   apiFetch('/v1/signals/beacon', { method: 'DELETE', body: JSON.stringify({ device_id: DEVICE_ID }) }).catch(() => {});
   updateBeaconUI();
   document.getElementById('beacon-last-ping').textContent = 'Beacon stopped';
-  sitrepPushFeed('beacon', `📡 Beacon stopped — device ${DEVICE_ID}`);
+  sitrepPushFeed('beacon', `📡 Offline · ${DEVICE_ID}`);
 }
 
 async function sendBeaconPing() {
@@ -4175,7 +4178,7 @@ function updateBeaconUI() {
     status.textContent = 'Active — broadcasting every 30s';
     btn.textContent = '■ Stop Beacon';
     btn.classList.remove('off');
-    sitrepPushFeed('beacon', `📡 Beacon started — device ${DEVICE_ID}`);
+    sitrepPushFeed('beacon', `📡 Beacon · ${DEVICE_ID} · online`);
   } else {
     fab.classList.remove('active');
     dot.classList.remove('active');
@@ -4233,7 +4236,7 @@ document.getElementById('beacon-camera-input').addEventListener('change', async 
     const res = await apiFetch('/v1/signals', { method: 'POST', body: JSON.stringify(body) });
     if (res?.ok) {
       toast('📷 Capture sent', 'ok');
-      sitrepPushFeed('beacon', `📷 Capture sent — device ${DEVICE_ID}`);
+      sitrepPushFeed('capture', `📷 Capture · ${DEVICE_ID}`);
       bscrFeedPush('📷 Capture sent');
     } else {
       toast('Capture failed', 'error');
@@ -4255,7 +4258,7 @@ async function sendAlertSignal() {
   const res = await apiFetch('/v1/signals', { method: 'POST', body: JSON.stringify(body) });
   if (res?.ok) {
     toast('🚨 Alert signal sent', 'error');
-    sitrepPushFeed('alert', `🚨 ALERT from device ${DEVICE_ID}${note ? ': ' + note : ''}`);
+    sitrepPushFeed('alert', `🚨 Alert · ${DEVICE_ID}${note ? ` · ${note}` : ''}`);
     bscrFeedPush(`🚨 ALERT sent${note ? ': ' + note : ''}`);
   } else {
     toast('Failed to send alert', 'error');

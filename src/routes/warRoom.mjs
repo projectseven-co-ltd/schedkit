@@ -1202,18 +1202,18 @@ body::after {
           updateBeaconDot(deviceId, payload.user_id, +payload.lat, +payload.lng, payload.accuracy, deviceId);
         }
       }
-      addFeedItem('beacon', '📡 ' + shortId + (payload.lat ? ' · ' + (+payload.lat).toFixed(4) + ', ' + (+payload.lng).toFixed(4) : ''));
+      addFeedItem('beacon', '📡 Beacon · ' + shortId + (payload.lat ? ' · ' + (+payload.lat).toFixed(4) + ', ' + (+payload.lng).toFixed(4) : ''));
     } else if (type === 'signal.beacon_off') {
       removeBeaconDot(deviceId, payload.user_id);
-      addFeedItem('muted', '📡 ' + shortId + ' offline');
+      addFeedItem('muted', '📡 Offline · ' + shortId);
     } else if (type === 'signal.alert') {
       if (payload.lat != null && mapInitialized) flashAlert(+payload.lat, +payload.lng, payload.note);
-      addFeedItem('alert', '🚨 ALERT · ' + shortId + ' · ' + (payload.note || 'operator triggered'));
+      addFeedItem('alert', '🚨 Alert · ' + shortId + (payload.note ? ' · ' + payload.note : ''));
     } else if (type === 'signal.capture') {
       if (payload.lat != null && mapInitialized) addCapturePin(payload, deviceId);
       addFeedItem('capture', '📷 Capture · ' + shortId + (payload.lat ? ' · ' + (+payload.lat).toFixed(4) + ', ' + (+payload.lng).toFixed(4) : ''));
     } else if (type === 'signal.note') {
-      addFeedItem('beacon', '📝 ' + shortId + ' · ' + (payload.note || '').slice(0, 60));
+      addFeedItem('muted', '📝 Note · ' + shortId + ' · ' + (payload.note || '').slice(0, 60));
     }
   }
 
@@ -1247,7 +1247,7 @@ body::after {
     const feed = document.getElementById('wr-feed');
     if (!feed) return;
     const now = new Date().toISOString().slice(11,19);
-    const dot = kind === 'alert' ? '#ff5f5f' : kind === 'capture' ? '#a78bfa' : kind === 'muted' ? 'var(--muted,#5a5a6e)' : '#00ffcc';
+    const dot = kind === 'alert' ? '#ff5f5f' : kind === 'capture' ? '#a78bfa' : kind === 'ok' ? '#4ade80' : kind === 'muted' ? 'var(--muted,#5a5a6e)' : kind === 'incident' ? '#60a5fa' : '#00ffcc';
     const item = document.createElement('div');
     item.className = 'sitrep-feed-item';
     item.innerHTML = \`<div class="sitrep-feed-dot" style="background:\${dot}"></div><div style="flex:1"><span style="color:var(--muted);font-family:'Fira Code',monospace;font-size:10px;">\${now} </span><span style="font-size:12px;">\${text}</span></div>\`;
@@ -1261,7 +1261,7 @@ body::after {
       incidents.unshift(payload);
       renderList();
       if (mapInitialized && payload.lat != null) { addIncidentMarker(payload); fitMapToMarkers(true); checkGeoEmpty(); }
-      addFeedItem('incident', '🔴 Incident · ' + (payload.title || payload.subject || '#' + payload.Id));
+      addFeedItem('incident', '🔴 Incident · ' + (payload.title || payload.subject || '#' + payload.Id) + ' · ' + (payload.priority || 'normal').toUpperCase());
     } else if (type === 'incident.updated' || type === 'incident.breached') {
       const idx = incidents.findIndex(i => String(i.Id) === String(payload.Id));
       if (idx >= 0) incidents[idx] = { ...incidents[idx], ...payload };
@@ -1269,13 +1269,13 @@ body::after {
       renderList();
       if (selectedId === String(payload.Id)) selectIncident(selectedId);
       if (mapInitialized) updateIncidentMarker(payload);
-      if (type === 'incident.breached') addFeedItem('alert', '⚠️ SLA breached · #' + payload.Id);
+      if (type === 'incident.breached') addFeedItem('alert', '⚠️ SLA breach · ' + (payload.title || '#' + payload.Id));
     } else if (type === 'incident.resolved') {
       const idx = incidents.findIndex(i => String(i.Id) === String(payload.Id));
       if (idx >= 0) incidents[idx] = { ...incidents[idx], ...payload };
       renderList();
       if (mapInitialized) { removeIncidentMarker(payload.Id); fitMapToMarkers(true); }
-      addFeedItem('beacon', '✅ Resolved · #' + payload.Id);
+      addFeedItem('ok', '✅ Resolved · ' + (payload.title || '#' + payload.Id));
     } else if (type === 'reply.added' && String(payload.ticket_id) === selectedId) {
       const replies = repliesCache[selectedId] || [];
       replies.push(payload.reply);
