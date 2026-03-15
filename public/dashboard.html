@@ -3501,7 +3501,24 @@ window.addEventListener('load', () => initPush());
   position: fixed;
   inset: 0;
   z-index: 2000;
+  /* On desktop: dim backdrop, centered card */
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fira Code', monospace;
+}
+#beacon-screen.visible { display: flex; }
+
+/* Inner card — mobile-sized, centered on desktop */
+#bscr-card {
   background: #05080a;
+  width: 100%;
+  max-width: 420px;
+  height: 100%;
+  max-height: 100svh;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
@@ -3509,13 +3526,21 @@ window.addEventListener('load', () => initPush());
   padding-bottom: max(env(safe-area-inset-bottom, 0px), 24px);
   padding-left: max(env(safe-area-inset-left, 0px), 20px);
   padding-right: max(env(safe-area-inset-right, 0px), 20px);
-  font-family: 'Fira Code', monospace;
+  position: relative;
   overflow: hidden;
 }
-#beacon-screen.visible { display: flex; }
+/* On wider screens: card gets rounded corners + shadow */
+@media (min-width: 480px) {
+  #bscr-card {
+    max-height: min(800px, 95svh);
+    border-radius: 16px;
+    border: 1px solid rgba(223,255,0,0.15);
+    box-shadow: 0 0 80px rgba(0,0,0,0.8), 0 0 40px rgba(223,255,0,0.05);
+  }
+}
 
-/* Subtle grid background */
-#beacon-screen::before {
+/* Grid background (on the card, not the overlay) */
+#bscr-card::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -3524,6 +3549,7 @@ window.addEventListener('load', () => initPush());
     linear-gradient(90deg, rgba(223,255,0,0.03) 1px, transparent 1px);
   background-size: 40px 40px;
   pointer-events: none;
+  border-radius: inherit;
 }
 
 /* ── Header ─────────────────────────────────────── */
@@ -3750,6 +3776,7 @@ window.addEventListener('load', () => initPush());
 </style>
 
 <div id="beacon-screen">
+  <div id="bscr-card">
   <!-- Header -->
   <div id="bscr-header">
     <div id="bscr-title">
@@ -3814,6 +3841,7 @@ window.addEventListener('load', () => initPush());
     <button class="bscr-btn" id="bscr-alert-btn" onclick="sendAlertSignal()">[ 🚨 Send Alert ]</button>
     <button class="bscr-btn" id="bscr-stop-btn" onclick="stopBeacon(); hideBeaconScreen()">[ ■ Stop Beacon ]</button>
   </div>
+  </div><!-- /bscr-card -->
 </div>
 <style>
 #beacon-fab {
@@ -4013,7 +4041,10 @@ function getDeviceId() {
 const DEVICE_ID = getDeviceId();
 
 function showBeaconScreen() {
-  document.getElementById('beacon-screen').classList.add('visible');
+  const scr = document.getElementById('beacon-screen');
+  scr.classList.add('visible');
+  // Click backdrop (outside card) to dismiss on desktop
+  scr.onclick = (e) => { if (e.target === scr) hideBeaconScreen(); };
   document.getElementById('bscr-device-id').textContent = DEVICE_ID;
 }
 function hideBeaconScreen() {
