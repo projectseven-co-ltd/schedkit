@@ -3,7 +3,7 @@
 set -e
 
 APP_DIR="/var/www/vhosts/schedkit.net/httpdocs"
-GIT_DIR_BARE="/var/www/vhosts/schedkit.net/git/p7-scheduler.git"
+GIT_DIR_BARE="/var/www/vhosts/schedkit.net/git/schedkit.git"
 NODE="/opt/plesk/node/22/bin/node"
 NPM="/opt/plesk/node/22/bin/npm"
 NODE_BIN_DIR="/opt/plesk/node/22/bin"
