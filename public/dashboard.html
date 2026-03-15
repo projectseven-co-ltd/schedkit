@@ -1287,6 +1287,20 @@ async function init() {
     populateTimezones();
     return;
   }
+  // Billing redirect — auto-trigger Stripe Checkout
+  const upgradePlan = urlParams.get('upgrade');
+  const billingResult = urlParams.get('billing');
+  if (billingResult === 'success') {
+    history.replaceState({}, '', '/dashboard');
+    const plan = urlParams.get('plan') || '';
+    toast(`[✓] Upgraded to ${plan.charAt(0).toUpperCase()+plan.slice(1)} — welcome aboard.`, 'ok');
+  }
+  if (upgradePlan && (upgradePlan === 'starter' || upgradePlan === 'agency')) {
+    history.replaceState({}, '', '/dashboard');
+    toast('[~] Redirecting to checkout...', 'ok');
+    const res = await apiFetch('/v1/billing/checkout', { method: 'POST', body: JSON.stringify({ plan: upgradePlan }) });
+    if (res?.ok) { const d = await res.json(); if (d.url) window.location.href = d.url; }
+  }
 
   await loadSection('sitrep');
   populateTimezones();

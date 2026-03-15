@@ -1096,7 +1096,7 @@ setNvgDemo('dark');
         <li class="no">Custom domains</li>
         <li>Email support</li>
       </ul>
-      <button onclick="openSignup('starter')" class="plan-cta cta-solid">Request access →</button>
+      <button onclick="openSignup('starter')" class="plan-cta cta-solid">Subscribe — $29/mo →</button>
     </div>
 
     <div class="pricing-card featured">
@@ -1114,7 +1114,7 @@ setNvgDemo('dark');
         <li>Priority support</li>
         <li>Early access to new features</li>
       </ul>
-      <button onclick="openSignup('agency')" class="plan-cta cta-accent">Request access →</button>
+      <button onclick="openSignup('agency')" class="plan-cta cta-accent">Subscribe — $99/mo →</button>
     </div>
 
     <div class="pricing-card">
@@ -2286,7 +2286,7 @@ setNvgDemo('dark');
         <li class="no">Custom domains</li>
         <li>Email support</li>
       </ul>
-      <button onclick="openSignup('starter')" class="plan-cta cta-solid">Request access →</button>
+      <button onclick="openSignup('starter')" class="plan-cta cta-solid">Subscribe — $29/mo →</button>
     </div>
 
     <div class="pricing-card featured">
@@ -2304,7 +2304,7 @@ setNvgDemo('dark');
         <li>Priority support</li>
         <li>Early access to new features</li>
       </ul>
-      <button onclick="openSignup('agency')" class="plan-cta cta-accent">Request access →</button>
+      <button onclick="openSignup('agency')" class="plan-cta cta-accent">Subscribe — $99/mo →</button>
     </div>
 
     <div class="pricing-card">
@@ -2736,6 +2736,28 @@ const planConfig = {
 };
 
 function openSignup(plan) {
+  // Paid plans — try checkout directly if logged in, else send to dashboard login first
+  if (plan === 'starter' || plan === 'agency') {
+    const btn = event?.target;
+    const orig = btn?.textContent;
+    if (btn) { btn.textContent = 'Redirecting...'; btn.disabled = true; }
+    fetch('/v1/billing/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ plan }),
+    }).then(r => r.json()).then(d => {
+      if (d.url) { window.location.href = d.url; }
+      else {
+        // Not logged in — send to dashboard which will prompt login then redirect back
+        window.location.href = '/dashboard?upgrade=' + plan;
+      }
+    }).catch(() => {
+      window.location.href = '/dashboard?upgrade=' + plan;
+    });
+    return;
+  }
+
   const modal = document.getElementById("signupModal");
   modal.style.display = "flex";
 

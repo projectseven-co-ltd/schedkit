@@ -19,6 +19,7 @@
     "nanoid": "^5.0.7",
     "node-mailjet": "^6.0.11",
     "pm2": "^6.0.14",
+    "stripe": "^20.4.1",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

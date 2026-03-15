@@ -36,11 +36,18 @@ import warRoomRoutes from './routes/warRoom.mjs';
 import incidentStatusRoutes from './routes/incidentStatus.mjs';
 import settingsRoutes from './routes/settings.mjs';
 import uploadsRoutes from './routes/uploads.mjs';
+import billingRoutes from './routes/billing.mjs';
 
 const fastify = Fastify({ logger: true, bodyLimit: 10 * 1024 * 1024 }); // 10MB for image captures
 
 await fastify.register(cors, { origin: true });
 await fastify.register(formbody);
+
+// Raw body access for Stripe webhook signature verification
+fastify.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
+  req.rawBody = body;
+  try { done(null, JSON.parse(body)); } catch (e) { done(e); }
+});
 
 // Swagger
 await fastify.register(swagger, {
@@ -140,6 +147,7 @@ fastify.addContentTypeParser('image/webp', { parseAs: 'buffer' }, (_req, body, d
 fastify.addContentTypeParser('image/png', { parseAs: 'buffer' }, (_req, body, done) => done(null, body));
 
 await fastify.register(uploadsRoutes, { prefix: '/v1' });
+await fastify.register(billingRoutes, { prefix: '/v1' });
 
 // Page routes (no prefix)
 fastify.get('/login', { schema: { hide: true } }, async (req, reply) => {
