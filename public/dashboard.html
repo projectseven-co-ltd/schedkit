@@ -1480,7 +1480,7 @@ async function loadSitrep() {
       .slice(0, 5)
       .forEach(b => sitrepFeed.push({
         kind: 'assignment',
-        text: `Assignment confirmed — ${b.attendee_name || 'Attendee'} · ${b.event_type_name || 'Event'}`,
+        text: `[✓] Assignment · ${b.attendee_name || 'Attendee'} · ${b.event_type_name || 'Event'}`,
         ts: b.created_at || b.CreatedAt,
       }));
   }
@@ -1524,7 +1524,7 @@ async function loadSitrep() {
       .slice(0, 5)
       .forEach(t => sitrepFeed.push({
         kind: 'incident',
-        text: `Incident opened — ${t.title || 'Untitled'} · ${(t.priority||'normal').toUpperCase()}`,
+        text: `[■] Incident · ${t.title || 'Untitled'} · ${(t.priority||'normal').toUpperCase()}`,
         ts: t.CreatedAt || t.created_at,
       }));
   }
