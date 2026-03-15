@@ -1591,7 +1591,8 @@ function sitrepHandleSSE(type, payload) {
     sitrepPushFeed('beacon', `📡 Beacon ping — device ${dev}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`, payload.created_at);
   }
   if (type === 'signal.beacon_off') {
-    sitrepPushFeed('beacon', `📡 Beacon stopped — user ${payload.user_id}`, new Date().toISOString());
+    const offDev = payload.device_id || (payload.meta ? (JSON.parse(payload.meta||'{}').device_id || null) : null) || `user-${payload.user_id}`;
+    sitrepPushFeed('beacon', `📡 Beacon stopped — device ${offDev}`, new Date().toISOString());
   }
   if (type === 'signal.capture') {
     const dev = payload.meta ? (JSON.parse(payload.meta||'{}').device_id || 'unknown') : 'unknown';
