@@ -97,19 +97,25 @@ export default async function signalsRoutes(fastify) {
     }
     // ── End beacon fast-path ──────────────────────────────────────────────
 
-    const signal = await db.create(tables.signals, {
-      user_id:    req.user.Id,
-      org_id:     orgId,
-      type,
-      lat:        lat ?? null,
-      lng:        lng ?? null,
-      accuracy:   accuracy ?? null,
-      image_url:  image_url ?? null,
-      note:       note ?? null,
-      ticket_id:  ticket_id ?? null,
-      meta:       meta ? JSON.stringify(meta) : null,
-      created_at: new Date().toISOString(),
-    });
+    let signal;
+    try {
+      signal = await db.create(tables.signals, {
+        user_id:    req.user.Id,
+        org_id:     orgId,
+        type,
+        lat:        lat ?? null,
+        lng:        lng ?? null,
+        accuracy:   accuracy ?? null,
+        image_url:  image_url ?? null,
+        note:       note ?? null,
+        ticket_id:  ticket_id ?? null,
+        meta:       meta ? JSON.stringify(meta) : null,
+        created_at: new Date().toISOString(),
+      });
+    } catch (e) {
+      fastify.log.error('signals create error: ' + e.message);
+      return reply.code(500).send({ error: 'Failed to save signal: ' + e.message });
+    }
 
     const result = {
       ...signal,
