@@ -1,4 +1,4 @@
-const CACHE = 'schedkit-v1';
+const CACHE = 'schedkit-v2';
 const SHELL = ['/', '/dashboard', '/incidents/war-room', '/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -13,6 +13,10 @@ self.addEventListener('activate', e => {
     ))
   );
   self.clients.claim();
+});
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {

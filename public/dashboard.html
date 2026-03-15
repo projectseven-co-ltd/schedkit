@@ -259,6 +259,18 @@ tr:hover td{background:var(--surface2)}
 .toast.show{transform:translateY(0);opacity:1}
 .toast.ok{border-color:var(--accent);color:var(--accent)}
 .toast.err{border-color:var(--red);color:var(--red)}
+.app-chip{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--font-mono);font-size:11px;letter-spacing:.05em;cursor:pointer;transition:all .15s;white-space:nowrap}
+.app-chip:hover{border-color:var(--accent-border);color:var(--text)}
+.app-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 0 transparent;transition:all .2s}
+.app-chip.live{color:var(--accent);border-color:var(--accent-border)}
+.app-chip.live .dot{background:var(--green);box-shadow:0 0 12px rgba(74,222,128,.45)}
+.app-chip.stale{color:#fbbf24;border-color:rgba(251,191,36,.25)}
+.app-chip.stale .dot{background:#fbbf24;box-shadow:0 0 12px rgba(251,191,36,.35)}
+.app-chip.update{color:var(--accent);border-color:var(--accent)}
+.app-chip.update .dot{background:var(--accent);box-shadow:0 0 14px rgba(223,255,0,.45)}
+.app-chip.offline{color:var(--red);border-color:rgba(255,95,95,.25)}
+.app-chip.offline .dot{background:var(--red);box-shadow:0 0 12px rgba(255,95,95,.35)}
+.app-chip button{background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:0}
 
 /* LOADING */
 .loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);font-family:var(--font-mono);font-size:13px}
@@ -427,7 +439,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div style="display:flex;align-items:center;gap:12px">
       <button class="lights-btn" id="lightsBtn"><span>🔦</span><span id="lightsBtnLabel">LIGHTS ON</span></button>
-      <div id="topbar-actions"></div>
+      <div id="topbar-actions"><button class="app-chip stale" id="app-status-chip" onclick="handleAppChipClick()"><span class="dot"></span><span id="app-status-label">SYNC STATE</span></button></div>
     </div>
   </div>
   <div class="content">
@@ -1058,6 +1070,94 @@ async function init() {
   await loadSection('bookings');
   populateTimezones();
   connectTicketStream();
+  setupPwaControls();
+  updateAppChip();
+}
+
+
+function updateAppChip() {
+  const chip = document.getElementById('app-status-chip');
+  const label = document.getElementById('app-status-label');
+  if (!chip || !label) return;
+  let mode = appState.stream || 'stale';
+  let text = 'SYNC STATE';
+  if (appState.updateReady) {
+    mode = 'update';
+    text = 'UPDATE AVAILABLE';
+  } else if (!navigator.onLine || appState.stream === 'offline') {
+    mode = 'offline';
+    text = 'OFFLINE / RETRY';
+  } else if (appState.stream === 'live') {
+    mode = 'live';
+    text = 'LIVE / PULL LATEST';
+  } else {
+    mode = 'stale';
+    text = 'SYNC STATE';
+  }
+  chip.className = `app-chip ${mode}`;
+  label.textContent = text;
+}
+
+function handleAppChipClick() {
+  if (appState.updateReady) return applyAppUpdate();
+  if (!navigator.onLine) return window.location.reload();
+  refreshAppState();
+}
+
+async function refreshAppState() {
+  try {
+    await Promise.allSettled([
+      loadUser(),
+      loadSection(document.querySelector('.nav-item.active')?.dataset.section || 'bookings')
+    ]);
+    toast('State synced', 'ok');
+  } catch {
+    toast('Refresh failed', 'err');
+  }
+}
+
+async function applyAppUpdate() {
+  if (appState.waitingWorker) {
+    appState.waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    toast('Reloading latest app…', 'ok');
+    return;
+  }
+  window.location.reload();
+}
+
+function bindServiceWorkerRegistration(reg) {
+  appState.registration = reg;
+  if (reg.waiting) {
+    appState.waitingWorker = reg.waiting;
+    appState.updateReady = true;
+    updateAppChip();
+  }
+  reg.addEventListener('updatefound', () => {
+    const worker = reg.installing;
+    if (!worker) return;
+    worker.addEventListener('statechange', () => {
+      if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+        appState.waitingWorker = reg.waiting || worker;
+        appState.updateReady = true;
+        updateAppChip();
+        toast('Update ready — tap the chip to reload', 'ok', 5000);
+      }
+    });
+  });
+}
+
+function setupPwaControls() {
+  window.addEventListener('online', () => {
+    if (!appState.updateReady) appState.stream = ticketStream ? 'live' : 'stale';
+    updateAppChip();
+  });
+  window.addEventListener('offline', () => {
+    appState.stream = 'offline';
+    updateAppChip();
+  });
+  navigator.serviceWorker?.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
 }
 
 async function apiFetch(path, opts = {}) {
@@ -1359,7 +1459,13 @@ function mergeTicketIntoCache(ticket) {
 
 function connectTicketStream() {
   if (ticketStream) return;
+  appState.stream = navigator.onLine ? 'stale' : 'offline';
+  updateAppChip();
   ticketStream = new EventSource('/v1/incidents/stream', { withCredentials: true });
+  ticketStream.onopen = () => {
+    appState.stream = 'live';
+    updateAppChip();
+  };
   ticketStream.onmessage = (e) => {
     try {
       const evt = JSON.parse(e.data);
@@ -1385,6 +1491,8 @@ function connectTicketStream() {
   ticketStream.onerror = () => {
     try { ticketStream.close(); } catch {}
     ticketStream = null;
+    appState.stream = navigator.onLine ? 'stale' : 'offline';
+    updateAppChip();
     setTimeout(connectTicketStream, 3000);
   };
 }
@@ -2801,7 +2909,7 @@ init();
 </div>
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.register('/sw.js').then(bindServiceWorkerRegistration).catch(() => {});
 }
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', e => {
