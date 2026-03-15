@@ -59,6 +59,14 @@ export default async function billingRoutes(fastify) {
       customerId = customer.id;
     }
 
+    // Cancel any lingering incomplete subscriptions for this customer/price
+    const existing = await stripe.subscriptions.list({ customer: customerId, status: 'incomplete', limit: 10 });
+    for (const s of existing.data) {
+      if (s.items.data.some(i => i.price.id === priceId)) {
+        await stripe.subscriptions.cancel(s.id);
+      }
+    }
+
     // Create subscription with payment_behavior=default_incomplete to get a PaymentIntent
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
