@@ -232,6 +232,20 @@ tr:hover td{background:var(--surface2)}
 .ticket-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
 .ticket-detail-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px}
 .ticket-detail-card h4{font-size:11px;font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.ticket-thread{margin-top:18px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px}
+.ticket-thread-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.ticket-thread-head h4{font-size:11px;font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+.ticket-thread-list{display:flex;flex-direction:column;gap:10px;max-height:320px;overflow:auto;padding-right:4px}
+.ticket-thread-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.ticket-thread-item.staff{border-color:var(--accent-border)}
+.ticket-thread-item.activity{border-style:dashed}
+.ticket-thread-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px}
+.ticket-thread-author{color:var(--text);font-family:var(--font-sans);font-size:13px;font-weight:600}
+.ticket-thread-body{font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.ticket-reply-box{margin-top:12px;display:flex;flex-direction:column;gap:10px}
+.ticket-reply-box textarea{min-height:90px}
+.ticket-reply-actions{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ticket-thread-empty{color:var(--muted);font-size:12px;padding:8px 0}
 .tier-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
 .tier-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
 .tier-card.current{border-color:var(--accent-border);box-shadow:0 0 0 1px var(--accent-border) inset}
@@ -693,6 +707,20 @@ tr:hover td{background:var(--surface2)}
       <div class="ticket-detail-card"><h4>SLA</h4><div id="ticket-detail-sla" style="font-size:13px;color:var(--muted);line-height:1.7"></div></div>
       <div class="ticket-detail-card"><h4>Routing</h4><div id="ticket-detail-routing" style="font-size:13px;color:var(--muted);line-height:1.7"></div></div>
     </div>
+    <div class="ticket-thread">
+      <div class="ticket-thread-head">
+        <h4>Thread & Activity</h4>
+        <div id="ticket-thread-meta" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">Loading…</div>
+      </div>
+      <div class="ticket-thread-list" id="ticket-thread-list"></div>
+      <div class="ticket-reply-box">
+        <textarea id="ticket-reply-input" placeholder="Add an internal reply or update for this ticket..."></textarea>
+        <div class="ticket-reply-actions">
+          <div style="font-size:12px;color:var(--muted)">Replies are stored on the incident thread and visible in the real-time incident layer.</div>
+          <button class="btn btn-primary" id="ticket-reply-submit" onclick="sendTicketReply()">Send Reply</button>
+        </div>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('ticket-detail-modal')">Done</button>
       <button class="btn btn-primary" onclick="updateTicket()">Save Changes</button>
@@ -1029,6 +1057,7 @@ async function init() {
 
   await loadSection('bookings');
   populateTimezones();
+  connectTicketStream();
 }
 
 async function apiFetch(path, opts = {}) {
@@ -1211,6 +1240,8 @@ function renderBookingsTable(bookings) {
 // ── Tickets ───────────────────────────────────────
 let editingTicketId = null;
 let activeTicket = null;
+let ticketRepliesCache = {};
+let ticketStream = null;
 
 function renderPlanTiers() {
   const plan = currentUser?.plan || 'free';
@@ -1229,6 +1260,133 @@ function renderPlanTiers() {
       <ul>${t.bullets.map(b => `<li>${b}</li>`).join('')}</ul>
     </div>
   `).join('');
+}
+
+
+function fmtTicketTime(ts) {
+  const d = new Date(ts || Date.now());
+  return d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+}
+
+function synthesizeTicketActivity(ticket, replies = []) {
+  const items = [];
+  const createdAt = ticket.CreatedAt || ticket.created_at;
+  if (createdAt) {
+    items.push({
+      kind: 'activity',
+      created_at: createdAt,
+      author_name: ticket.source === 'email' ? 'Inbound email' : 'SchedKit',
+      body: `Ticket created as ${ticket.priority || 'normal'} priority via ${ticket.source || 'api'}.`,
+      label: 'created'
+    });
+  }
+  if (ticket.sla_due_at) {
+    items.push({
+      kind: 'activity',
+      created_at: ticket.sla_due_at,
+      author_name: 'SLA',
+      body: `SLA due ${fmtTicketTime(ticket.sla_due_at)}${ticket.sla_breached ? ' · breached' : ''}.`,
+      label: 'sla'
+    });
+  }
+  if (ticket.status === 'resolved' || ticket.status === 'closed') {
+    items.push({
+      kind: 'activity',
+      created_at: ticket.UpdatedAt || ticket.updated_at || Date.now(),
+      author_name: 'SchedKit',
+      body: `Ticket is currently marked ${ticket.status}.`,
+      label: 'status'
+    });
+  } else if (ticket.status === 'in_progress') {
+    items.push({
+      kind: 'activity',
+      created_at: ticket.UpdatedAt || ticket.updated_at || Date.now(),
+      author_name: 'SchedKit',
+      body: 'Ticket is currently in progress.',
+      label: 'status'
+    });
+  }
+  for (const r of replies) items.push({ ...r, kind: 'reply' });
+  return items.sort((a,b) => new Date(a.created_at || a.CreatedAt || 0) - new Date(b.created_at || b.CreatedAt || 0));
+}
+
+function renderTicketThread(ticket) {
+  const list = document.getElementById('ticket-thread-list');
+  const meta = document.getElementById('ticket-thread-meta');
+  if (!list || !ticket) return;
+  const replies = ticketRepliesCache[ticket.Id] || [];
+  const items = synthesizeTicketActivity(ticket, replies);
+  meta.textContent = `${replies.length} repl${replies.length === 1 ? 'y' : 'ies'} · live sync on`;
+  if (!items.length) {
+    list.innerHTML = `<div class="ticket-thread-empty">No activity yet.</div>`;
+    return;
+  }
+  list.innerHTML = items.map(item => {
+    const staff = !!item.is_staff;
+    const klass = item.kind === 'activity' ? 'ticket-thread-item activity' : `ticket-thread-item${staff ? ' staff' : ''}`;
+    const who = item.author_name || (staff ? 'Staff' : 'Customer');
+    const tag = item.kind === 'activity'
+      ? `<span class="badge badge-normal">${esc(item.label || 'activity')}</span>`
+      : (staff ? '<span class="badge badge-normal">staff</span>' : '<span class="badge badge-open">customer</span>');
+    return `<div class="${klass}">
+      <div class="ticket-thread-meta">
+        <span class="ticket-thread-author">${esc(who)}</span>
+        ${tag}
+        <span>${esc(fmtTicketTime(item.created_at || item.CreatedAt))}</span>
+      </div>
+      <div class="ticket-thread-body">${esc(item.body || '')}</div>
+    </div>`;
+  }).join('');
+  list.scrollTop = list.scrollHeight;
+}
+
+async function loadTicketReplies(ticketId) {
+  const res = await apiFetch(`/v1/incidents/${ticketId}/replies`);
+  if (!res?.ok) return [];
+  const data = await res.json();
+  ticketRepliesCache[ticketId] = data.replies || [];
+  return ticketRepliesCache[ticketId];
+}
+
+function mergeTicketIntoCache(ticket) {
+  const list = window._tickets || [];
+  const idx = list.findIndex(t => String(t.Id) === String(ticket.Id));
+  if (idx >= 0) list[idx] = { ...list[idx], ...ticket };
+  else list.unshift(ticket);
+  window._tickets = list;
+  renderTicketsTable(window._tickets);
+}
+
+function connectTicketStream() {
+  if (ticketStream) return;
+  ticketStream = new EventSource('/v1/incidents/stream', { withCredentials: true });
+  ticketStream.onmessage = (e) => {
+    try {
+      const evt = JSON.parse(e.data);
+      const { type, payload } = evt || {};
+      if (type === 'incident.created' || type === 'incident.updated' || type === 'incident.breached' || type === 'incident.resolved') {
+        mergeTicketIntoCache(payload);
+        if (activeTicket && String(activeTicket.Id) === String(payload.Id)) {
+          activeTicket = { ...activeTicket, ...payload };
+          openTicketDetail(activeTicket, { preserveOpen: true, skipReplyLoad: true });
+        }
+      }
+      if (type === 'reply.added') {
+        const id = String(payload.ticket_id);
+        const existing = ticketRepliesCache[id] || [];
+        if (!existing.find(r => String(r.Id) === String(payload.reply.Id))) {
+          existing.push(payload.reply);
+          ticketRepliesCache[id] = existing;
+        }
+        if (activeTicket && String(activeTicket.Id) === id) renderTicketThread(activeTicket);
+      }
+    } catch {}
+  };
+  ticketStream.onerror = () => {
+    try { ticketStream.close(); } catch {}
+    ticketStream = null;
+    setTimeout(connectTicketStream, 3000);
+  };
 }
 
 async function loadTickets() {
@@ -1312,7 +1470,7 @@ async function saveTicket() {
   await loadTickets();
 }
 
-function openTicketDetail(ticket) {
+async function openTicketDetail(ticket, opts = {}) {
   activeTicket = ticket;
   const publicUrl = ticket.customer_token ? `https://schedkit.net/incidents/status/${ticket.customer_token}` : '';
   document.getElementById('ticket-detail-title').textContent = ticket.title || 'Ticket';
@@ -1320,6 +1478,7 @@ function openTicketDetail(ticket) {
   document.getElementById('ticket-detail-status').value = ticket.status || 'open';
   document.getElementById('ticket-detail-priority').value = ticket.priority || 'normal';
   document.getElementById('ticket-detail-description').value = ticket.description || '';
+  document.getElementById('ticket-reply-input').value = '';
   document.getElementById('ticket-detail-sla').innerHTML = `
     <div><strong>Status:</strong> <span class="badge badge-${ticket.sla_status || 'ok'}">${esc(ticket.sla_status || 'ok')}</span></div>
     <div style="margin-top:8px"><strong>Due:</strong> ${ticket.sla_due_at ? esc(new Date(ticket.sla_due_at).toLocaleString()) : '—'}</div>
@@ -1330,7 +1489,9 @@ function openTicketDetail(ticket) {
     <div style="margin-top:8px"><strong>Public URL:</strong> ${publicUrl ? `<a href="${publicUrl}" target="_blank" style="color:var(--accent)">open →</a>` : '—'}</div>`;
   document.getElementById('ticket-copy-link-btn').onclick = () => publicUrl ? copyText(publicUrl) : toast('No public link on this ticket', 'err');
   document.getElementById('ticket-close-btn').onclick = () => closeTicket(ticket.Id);
-  openModal('ticket-detail-modal');
+  if (!opts.skipReplyLoad) await loadTicketReplies(ticket.Id);
+  renderTicketThread(ticket);
+  if (!opts.preserveOpen) openModal('ticket-detail-modal');
 }
 
 async function updateTicket() {
@@ -1344,9 +1505,35 @@ async function updateTicket() {
   if (!res?.ok) return toast('Failed to update ticket', 'err');
   const updated = await res.json();
   activeTicket = updated;
-  openTicketDetail(updated);
+  mergeTicketIntoCache(updated);
+  await openTicketDetail(updated, { preserveOpen: true, skipReplyLoad: true });
   toast('Ticket updated', 'ok');
   await loadTickets();
+}
+
+async function sendTicketReply() {
+  if (!activeTicket?.Id) return;
+  const input = document.getElementById('ticket-reply-input');
+  const btn = document.getElementById('ticket-reply-submit');
+  const body = input.value.trim();
+  if (!body) return toast("Reply can't be empty", 'err');
+  btn.disabled = true;
+  try {
+    const res = await apiFetch(`/v1/incidents/${activeTicket.Id}/replies`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    });
+    if (!res?.ok) return toast('Failed to send reply', 'err');
+    const reply = await res.json();
+    const existing = ticketRepliesCache[activeTicket.Id] || [];
+    if (!existing.find(r => String(r.Id) === String(reply.Id))) existing.push(reply);
+    ticketRepliesCache[activeTicket.Id] = existing;
+    input.value = '';
+    renderTicketThread(activeTicket);
+    toast('Reply added', 'ok');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function closeTicket(id) {
