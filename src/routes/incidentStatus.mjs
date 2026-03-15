@@ -516,7 +516,7 @@ ${ticket.sla_due_at ? `
   function connectSSE() {
     liveDot.textContent = 'CONNECTING';
     liveDot.className = '';
-    const es = new EventSource('/v1/incidents/' + TICKET_ID + '/public-stream?customer_token=' + TOKEN);
+    const es = new EventSource('/v1/incidents/' + TOKEN + '/public-stream');
     es.onopen = () => { liveDot.textContent = 'LIVE'; liveDot.className = 'live'; };
     es.onerror = () => {
       liveDot.textContent = 'OFFLINE';

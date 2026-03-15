@@ -439,7 +439,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div style="display:flex;align-items:center;gap:12px">
       <button class="lights-btn" id="lightsBtn"><span>🔦</span><span id="lightsBtnLabel">LIGHTS ON</span></button>
-      <div id="topbar-actions"><button class="app-chip stale" id="app-status-chip" onclick="handleAppChipClick()"><span class="dot"></span><span id="app-status-label">SYNC STATE</span></button></div>
+      <div id="topbar-actions"><button class="app-chip stale" id="app-status-chip" onclick="handleAppChipClick()"><span class="dot"></span><span id="app-status-label">REFRESH APP</span></button></div>
     </div>
   </div>
   <div class="content">
@@ -1080,7 +1080,7 @@ function updateAppChip() {
   const label = document.getElementById('app-status-label');
   if (!chip || !label) return;
   let mode = appState.stream || 'stale';
-  let text = 'SYNC STATE';
+  let text = 'REFRESH APP';
   if (appState.updateReady) {
     mode = 'update';
     text = 'UPDATE AVAILABLE';
@@ -1089,7 +1089,7 @@ function updateAppChip() {
     text = 'OFFLINE / RETRY';
   } else if (appState.stream === 'live') {
     mode = 'live';
-    text = 'LIVE / PULL LATEST';
+    text = 'LIVE / REFRESH';
   } else {
     mode = 'stale';
     text = 'SYNC STATE';
@@ -1100,20 +1100,8 @@ function updateAppChip() {
 
 function handleAppChipClick() {
   if (appState.updateReady) return applyAppUpdate();
-  if (!navigator.onLine) return window.location.reload();
-  refreshAppState();
-}
-
-async function refreshAppState() {
-  try {
-    await Promise.allSettled([
-      loadUser(),
-      loadSection(document.querySelector('.nav-item.active')?.dataset.section || 'bookings')
-    ]);
-    toast('State synced', 'ok');
-  } catch {
-    toast('Refresh failed', 'err');
-  }
+  toast('Refreshing app…', 'ok', 1200);
+  setTimeout(() => window.location.reload(), 150);
 }
 
 async function applyAppUpdate() {
