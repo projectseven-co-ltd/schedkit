@@ -108,7 +108,7 @@ form.addEventListener('submit', async e => {
     const res = await fetch('/v1/auth/magic', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ email: emailInput.value }),
+      body: JSON.stringify({ email: emailInput.value, next: _isUpgrade ? _nextUrl : undefined }),
     });
     if (!res.ok) throw new Error();
     ok.textContent = '✓ Check your email — use the magic link or enter the 6-digit code below.';

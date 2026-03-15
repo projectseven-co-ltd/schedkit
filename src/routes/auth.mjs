@@ -18,7 +18,7 @@ export default async function authRoutes(fastify) {
       body: {
         type: 'object',
         required: ['email'],
-        properties: { email: { type: 'string', format: 'email' } },
+        properties: { email: { type: 'string', format: 'email' }, next: { type: 'string' } },
         examples: [{ email: 'ops@schedkit.net' }],
       },
       response: {
@@ -31,11 +31,25 @@ export default async function authRoutes(fastify) {
     },
   }, async (req) => {
     const email = String(req.body?.email || '').toLowerCase().trim();
+    const next = String(req.body?.next || '').slice(0, 200) || null;
     if (!email) return { ok: true };
 
     const result = await db.find(tables.users, `(email,eq,${email})`);
     // Always return 200 — don't leak whether email exists
-    if (!result.list?.length) return { ok: true };
+    if (!result.list?.length) {
+      // Auto-create account for new signups coming from upgrade flow
+      if (next?.includes('upgrade=')) {
+        const newUser = await db.create(tables.users, {
+          email,
+          name: '',
+          plan: 'free',
+          created_at: new Date().toISOString(),
+        });
+        result.list = [newUser];
+      } else {
+        return { ok: true };
+      }
+    }
 
     const user = result.list[0];
     const code = generateLoginCode();
@@ -47,11 +61,12 @@ export default async function authRoutes(fastify) {
       user_id: String(user.Id),
       expires_at: expiresAt,
       used: false,
+      next: next || null,
       created_at: new Date().toISOString(),
     });
 
     const link = `https://${BASE_DOMAIN}/v1/auth/verify?token=${token}`;
-    await sendMagicLink({ to: user.email, name: user.name, link, code });
+    await sendMagicLink({ to: email, name: user.name, link, code });
 
     return { ok: true };
   });
@@ -261,7 +276,7 @@ async function consumeLoginAndCreateSession(reply, link, user, { redirect }) {
     created_at: new Date().toISOString(),
   });
 
-  const destination = (!user?.name) ? '/onboarding' : '/dashboard';
+  const destination = link.next || ((!user?.name) ? '/onboarding' : '/dashboard');
   reply.header('Set-Cookie', `sk_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}; Secure`);
 
   if (redirect) return reply.redirect(destination);
