@@ -4001,7 +4001,7 @@ window.addEventListener('load', () => initPush());
 <div id="beacon-panel">
   <div id="beacon-panel-header">
     <div id="beacon-panel-title">📡 Beacon Mode</div>
-    <button onclick="toggleBeaconPanel()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">×</button>
+    <button onclick="beaconPanelOpen=false;document.getElementById('beacon-panel').style.display='none';" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">×</button>
   </div>
   <div id="beacon-status-row">
     <div id="beacon-status-dot"></div>
