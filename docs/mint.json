@@ -46,6 +46,12 @@
       ]
     },
     {
+      "group": "Platform",
+      "pages": [
+        "architecture"
+      ]
+    },
+    {
       "group": "Core Concepts",
       "pages": [
         "concepts/signals",
