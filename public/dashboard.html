@@ -94,7 +94,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
 }
 .nav-item:hover{background:var(--surface2);color:var(--text)}
 .nav-item.active{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)}
-.nav-icon{font-size:16px;width:20px;text-align:center}
+.nav-icon{font-size:11px;width:28px;text-align:center;font-family:var(--font-mono);letter-spacing:0.05em;color:var(--muted)}
 .sidebar-footer{padding:16px 10px;border-top:1px solid var(--border)}
 .user-chip{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:var(--surface2)}
 .user-chip .avatar{width:30px;height:30px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--accent);font-weight:700;flex-shrink:0}
@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
 
 /* EMPTY */
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
-.empty-icon{font-size:36px;margin-bottom:12px}
+.empty-icon{font-size:22px;margin-bottom:12px;font-family:var(--font-mono);color:var(--muted);letter-spacing:0.05em}
 .empty p{font-size:14px}
 
 /* NAV DIVIDER */
@@ -235,7 +235,7 @@ tr:hover td{background:var(--surface2)}
 .sitrep-stat-label{font-size:10px;font-family:var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .sitrep-stat-value{font-size:32px;font-weight:800;color:var(--text);line-height:1}
 .sitrep-stat-sub{font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:2px}
-.sitrep-stat-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:28px;opacity:.15}
+.sitrep-stat-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:18px;opacity:.2;font-family:var(--font-mono);letter-spacing:0.05em}
 .sitrep-lower{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .sitrep-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .sitrep-panel-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
@@ -264,7 +264,7 @@ tr:hover td{background:var(--surface2)}
 
 /* PLACEHOLDER sections */
 .placeholder-section{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;gap:16px;text-align:center;color:var(--muted)}
-.placeholder-section .ph-icon{font-size:48px;opacity:.4}
+.placeholder-section .ph-icon{font-size:24px;opacity:.4;font-family:var(--font-mono);letter-spacing:0.05em}
 .placeholder-section h3{font-size:16px;color:var(--text);margin:0}
 .placeholder-section p{font-size:13px;max-width:340px;line-height:1.6;margin:0}
 .placeholder-section .ph-badge{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;padding:4px 10px;border:1px solid var(--border);border-radius:20px;text-transform:uppercase}
@@ -463,23 +463,23 @@ tr:hover td{background:var(--surface2)}
   <div class="sidebar-logo"><a href="/dashboard"><svg width="26" height="26" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#0A0A0B"/><line x1="128" y1="96" x2="208" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/></svg>sched<span>kit</span></a></div>
   <nav class="sidebar-nav">
     <button class="nav-item active" data-section="sitrep">
-      <span class="nav-icon">📡</span> SITREP
+      <span class="nav-icon">[+]</span> SITREP
     </button>
     <button class="nav-item" data-section="assignments">
-      <span class="nav-icon">📋</span> Assignments
+      <span class="nav-icon">[■]</span> Assignments
     </button>
     <button class="nav-item" data-section="tickets">
-      <span class="nav-icon">🎫</span> Incidents
+      <span class="nav-icon">[×]</span> Incidents
     </button>
     <button class="nav-item" data-section="signals">
-      <span class="nav-icon">⚡</span> Signals
+      <span class="nav-icon">[~]</span> Signals
     </button>
     <div class="nav-divider"></div>
     <button class="nav-item" data-section="kit">
-      <span class="nav-icon">🧰</span> Kit Config
+      <span class="nav-icon">[◆]</span> Kit Config
     </button>
     <button class="nav-item" data-section="orgs">
-      <span class="nav-icon">🏢</span> Units
+      <span class="nav-icon">[▶]</span> Units
     </button>
   </nav>
   <div class="sidebar-footer">
@@ -506,7 +506,7 @@ tr:hover td{background:var(--surface2)}
       <h1 id="page-title">SITREP</h1>
     </div>
     <div style="display:flex;align-items:center;gap:12px">
-      <button class="lights-btn" id="lightsBtn"><span>🔦</span><span id="lightsBtnLabel">LIGHTS ON</span></button>
+      <button class="lights-btn" id="lightsBtn"><span>[◑]</span><span id="lightsBtnLabel">LIGHTS ON</span></button>
       <div id="topbar-actions"></div>
     </div>
   </div>
@@ -524,25 +524,25 @@ tr:hover td{background:var(--surface2)}
           <div class="sitrep-stat-label">Assignments Today</div>
           <div class="sitrep-stat-value" id="sitrep-assignments-today">—</div>
           <div class="sitrep-stat-sub" id="sitrep-assignments-sub">loading...</div>
-          <div class="sitrep-stat-icon">📋</div>
+          <div class="sitrep-stat-icon">[■]</div>
         </div>
         <div class="sitrep-stat info" id="sitrep-tile-incidents">
           <div class="sitrep-stat-label">Open Incidents</div>
           <div class="sitrep-stat-value" id="sitrep-incidents-open">—</div>
           <div class="sitrep-stat-sub" id="sitrep-incidents-sub">loading...</div>
-          <div class="sitrep-stat-icon">🎫</div>
+          <div class="sitrep-stat-icon">[×]</div>
         </div>
         <div class="sitrep-stat" id="sitrep-tile-signals">
           <div class="sitrep-stat-label">Active Signals</div>
           <div class="sitrep-stat-value" id="sitrep-signals-active">—</div>
           <div class="sitrep-stat-sub">alerts api coming soon</div>
-          <div class="sitrep-stat-icon">⚡</div>
+          <div class="sitrep-stat-icon">[~]</div>
         </div>
         <div class="sitrep-stat ok" id="sitrep-tile-sla">
           <div class="sitrep-stat-label">SLA Health</div>
           <div class="sitrep-stat-value" id="sitrep-sla-status">OK</div>
           <div class="sitrep-stat-sub" id="sitrep-sla-sub">loading...</div>
-          <div class="sitrep-stat-icon">🛡️</div>
+          <div class="sitrep-stat-icon">[+]</div>
         </div>
       </div>
       <div class="sitrep-lower">
@@ -670,7 +670,7 @@ tr:hover td{background:var(--surface2)}
         <button class="btn btn-primary" onclick="openCreateOrgModal()">+ New Org</button>
       </div>
       <div id="org-enterprise-notice" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:24px">
-        <p style="margin:0 0 6px;font-weight:600;color:var(--text)">🏢 Organizations require an Enterprise account</p>
+        <p style="margin:0 0 6px;font-weight:600;color:var(--text)">[■] Organizations require an Enterprise account</p>
         <p style="margin:0;font-size:13px;color:var(--muted)">Contact support to enable Organizations & Teams on your account.</p>
       </div>
       <div id="orgs-list"><div class="loading">loading...</div></div>
@@ -680,7 +680,7 @@ tr:hover td{background:var(--surface2)}
     <!-- SIGNALS (placeholder) -->
     <div class="section" id="section-signals">
       <div class="placeholder-section">
-        <div class="ph-icon">⚡</div>
+        <div class="ph-icon">[~]</div>
         <h3>Signals</h3>
         <p>The Signals API is coming soon. Wire any inbound signal — weather alerts, sensor readings, webhooks, booking events — to any outbound action. Physical or digital.</p>
         <span class="ph-badge">Coming in Phase 2</span>
@@ -998,7 +998,7 @@ tr:hover td{background:var(--surface2)}
         <label>New date &amp; time</label>
         <input type="datetime-local" id="rs-override-dt" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%" oninput="onOverrideDtChange()">
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-top:-8px;font-family:var(--font-mono)">⚠️ Override ignores availability rules. The attendee will be notified of the new time.</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:-8px;font-family:var(--font-mono)">[!] Override ignores availability rules. The attendee will be notified of the new time.</div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('reschedule-modal')">Cancel</button>
@@ -1019,19 +1019,19 @@ tr:hover td{background:var(--surface2)}
     <div class="form-row">
       <label>Risk Level</label>
       <select id="flag-risk">
-        <option value="ok">✅ No Risk</option>
-        <option value="caution">⚠️ Caution — watch this client</option>
-        <option value="high">🚨 High Risk — get payment first</option>
-        <option value="blocked">🚫 Blocked — refuse service</option>
+        <option value="ok">[✓] No Risk</option>
+        <option value="caution">[!] Caution — watch this client</option>
+        <option value="high">[×] High Risk — get payment first</option>
+        <option value="blocked">[■] Blocked — refuse service</option>
       </select>
     </div>
     <div class="form-row">
       <label>Discount / Trust Tier</label>
       <select id="flag-discount">
         <option value="">None</option>
-        <option value="vet">🎖️ Vet / First Responder</option>
-        <option value="realtor">🏠 Realtor</option>
-        <option value="partner">🤝 Partner</option>
+        <option value="vet">[★] Vet / First Responder</option>
+        <option value="realtor">[◆] Realtor</option>
+        <option value="partner">[▶] Partner</option>
       </select>
     </div>
     <div class="form-row">
@@ -1684,14 +1684,14 @@ function toggleCancelled() {
 
 function renderAssignmentsTable(bookings) {
   if (!bookings?.length) {
-    document.getElementById('bookings-table').innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>No assignments yet. Share your booking link to get started.</p></div>`;
+    document.getElementById('bookings-table').innerHTML = `<div class="empty"><div class="empty-icon">[-]</div><p>No assignments yet. Share your booking link to get started.</p></div>`;
     return;
   }
 
   const visible = window._showCancelled ? bookings : bookings.filter(b => b.status !== 'cancelled');
 
   if (!visible.length) {
-    document.getElementById('bookings-table').innerHTML = `<div class="empty"><div class="empty-icon">✅</div><p>No active assignments. <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;display:inline" onclick="toggleCancelled()">Show cancelled</button></p></div>`;
+    document.getElementById('bookings-table').innerHTML = `<div class="empty"><div class="empty-icon">[✓]</div><p>No active assignments. <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;display:inline" onclick="toggleCancelled()">Show cancelled</button></p></div>`;
     return;
   }
 
@@ -1707,10 +1707,10 @@ function renderAssignmentsTable(bookings) {
       isPending ? `<button class="btn" style="font-size:12px;padding:6px 12px;background:rgba(255,95,95,.08);color:#ff5f5f;border:1px solid rgba(255,95,95,.2)" onclick='declineBooking(${JSON.stringify(b.confirm_token||'').replace(/'/g,"&#39;")}, ${JSON.stringify(b).replace(/'/g,"&#39;")})'>✕ Decline</button>` : '',
       canReschedule ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openRescheduleModal(${JSON.stringify(b).replace(/'/g,"&#39;")})'>Reschedule</button>` : '',
       canCancel ? `<button class="btn" style="font-size:12px;padding:6px 12px;background:rgba(255,95,95,.08);color:#ff5f5f;border:1px solid rgba(255,95,95,.2)" onclick='openCancelAssignmentModal(${JSON.stringify(b).replace(/'/g,"&#39;")})'>Cancel</button>` : '',
-      `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openFlagModal(${JSON.stringify(window._clientFlags?.[b.attendee_email]||{email:b.attendee_email}).replace(/'/g,"&#39;")})'>${window._clientFlags?.[b.attendee_email] ? '🚨 Edit Flag' : '🏴 Flag'}</button>`,
+      `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openFlagModal(${JSON.stringify(window._clientFlags?.[b.attendee_email]||{email:b.attendee_email}).replace(/'/g,"&#39;")})'>${window._clientFlags?.[b.attendee_email] ? '[×] Edit Flag' : '[+] Flag'}</button>`,
     ].filter(Boolean).join(' ');
     return `<tr>
-      <td data-label="Attendee"><strong>${esc(b.attendee_name)}</strong><br><span style="color:var(--muted);font-size:12px">${esc(b.attendee_email)}</span>${(() => { const f = window._clientFlags?.[b.attendee_email]; let badges = ''; if (f && f.risk_level && f.risk_level !== 'ok') { const c = {caution:'#f5a623',high:'#ff5f5f',blocked:'#ff1744'}[f.risk_level]||'#f5a623'; const l = {caution:'⚠️ Caution',high:'🚨 High Risk',blocked:'🚫 Blocked'}[f.risk_level]||f.risk_level; badges += `<br><span style="font-size:11px;font-family:var(--font-mono);color:${c};cursor:pointer" title="${esc(f.notes||'')}" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>${l}</span>`; } if (f && f.discount_flag) { const dl = {vet:'🎖️ Vet/First Responder',realtor:'🏠 Realtor',partner:'🤝 Partner'}[f.discount_flag]||f.discount_flag; badges += `<br><span style="font-size:11px;font-family:var(--font-mono);color:#4ade80;cursor:pointer" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>${dl}</span>`; } return badges; })()}</td>
+      <td data-label="Attendee"><strong>${esc(b.attendee_name)}</strong><br><span style="color:var(--muted);font-size:12px">${esc(b.attendee_email)}</span>${(() => { const f = window._clientFlags?.[b.attendee_email]; let badges = ''; if (f && f.risk_level && f.risk_level !== 'ok') { const c = {caution:'#f5a623',high:'#ff5f5f',blocked:'#ff1744'}[f.risk_level]||'#f5a623'; const l = {caution:'[!] Caution',high:'[×] High Risk',blocked:'[■] Blocked'}[f.risk_level]||f.risk_level; badges += `<br><span style="font-size:11px;font-family:var(--font-mono);color:${c};cursor:pointer" title="${esc(f.notes||'')}" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>${l}</span>`; } if (f && f.discount_flag) { const dl = {vet:'[★] Vet/Responder',realtor:'[◆] Realtor',partner:'[▶] Partner'}[f.discount_flag]||f.discount_flag; badges += `<br><span style="font-size:11px;font-family:var(--font-mono);color:#4ade80;cursor:pointer" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>${dl}</span>`; } return badges; })()}</td>
       <td data-label="Date &amp; Time">${dateStr}<br><span style="color:var(--muted);font-size:12px">${timeStr}</span></td>
       <td data-label="Status"><span class="badge badge-${b.status}">${b.status}</span></td>
       <td data-label="Timezone" style="color:var(--muted);font-size:12px">${esc(b.attendee_timezone || '')}</td>
@@ -1931,7 +1931,7 @@ function renderTicketsTable(tickets) {
   document.getElementById('ticket-results-meta').textContent = `${filtered.length} shown · ${(tickets || []).length} total`;
   const el = document.getElementById('tickets-table');
   if (!filtered.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🎫</div><p>No tickets match this filter yet.</p></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon">[×]</div><p>No tickets match this filter yet.</p></div>`;
     return;
   }
   const rows = filtered.map(t => {
@@ -2070,7 +2070,7 @@ async function loadEventTypes() {
   const { event_types } = await res.json();
 
   if (!event_types.length) {
-    document.getElementById('event-types-list').innerHTML = `<div class="empty"><div class="empty-icon">⚡</div><p>No event types yet. Create one to start accepting assignments.</p></div>`;
+    document.getElementById('event-types-list').innerHTML = `<div class="empty"><div class="empty-icon">[~]</div><p>No event types yet. Create one to start accepting assignments.</p></div>`;
     return;
   }
 
@@ -2320,7 +2320,7 @@ async function loadBlackout() {
   const { blackout } = await res.json();
 
   if (!blackout.length) {
-    document.getElementById('blackout-list').innerHTML = `<div class="empty"><div class="empty-icon">✅</div><p>No blackout dates set. You're available on all scheduled days.</p></div>`;
+    document.getElementById('blackout-list').innerHTML = `<div class="empty"><div class="empty-icon">[✓]</div><p>No blackout dates set. You're available on all scheduled days.</p></div>`;
     return;
   }
 
@@ -2335,7 +2335,7 @@ async function loadBlackout() {
       : `${startStr} → ${endStr}`;
     return `<div class="blackout-item">
       <div class="blackout-info">
-        <div class="date">🚫 ${dateLabel}</div>
+        <div class="date">[×] ${dateLabel}</div>
         ${b.reason ? `<div class="reason">${esc(b.reason)}</div>` : ''}
       </div>
       <button class="btn btn-danger" onclick="deleteBlackout(${b.Id})">Remove</button>
@@ -2404,12 +2404,12 @@ async function loadClients() {
   const { flags } = await res.json();
   const el = document.getElementById('clients-table');
   if (!flags.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🏴</div><p>No flagged clients yet.</p></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon">[+]</div><p>No flagged clients yet.</p></div>`;
     return;
   }
   const riskColors = { caution: '#f5a623', high: '#ff5f5f', blocked: '#ff1744', ok: '#4ade80' };
-  const riskLabels = { caution: '⚠️ Caution', high: '🚨 High Risk', blocked: '🚫 Blocked', ok: '✅ Cleared' };
-  const discountLabels = { vet: '🎖️ Vet/First Responder', realtor: '🏠 Realtor', partner: '🤝 Partner' };
+  const riskLabels = { caution: '[!] Caution', high: '[×] High Risk', blocked: '[■] Blocked', ok: '[✓] Cleared' };
+  const discountLabels = { vet: '[★] Vet/Responder', realtor: '[◆] Realtor', partner: '[▶] Partner' };
   const rows = flags.map(f => `<tr>
     <td style="font-family:var(--font-mono);font-size:13px">${esc(f.email)}</td>
     <td><span style="font-size:12px;font-weight:600;color:${riskColors[f.risk_level]||'#f5a623'}">${riskLabels[f.risk_level]||f.risk_level}</span>${f.discount_flag ? `<br><span style="font-size:11px;color:#4ade80">${discountLabels[f.discount_flag]||f.discount_flag}</span>` : ''}</td>
@@ -2490,7 +2490,7 @@ async function loadOrgs() {
     if (!canCreateOrg) {
       document.getElementById('org-enterprise-notice').style.display = '';
     } else {
-      container.innerHTML = '<div class="empty"><div class="empty-icon">🏢</div><p>No organizations yet. Create one to get started.</p></div>';
+      container.innerHTML = '<div class="empty"><div class="empty-icon">[▶]</div><p>No organizations yet. Create one to get started.</p></div>';
     }
     return;
   }
@@ -2503,12 +2503,12 @@ async function loadOrgs() {
             const locked = orgLimit !== Infinity && i >= orgLimit;
             return `
             <tr style="${locked ? 'opacity:0.5' : ''}">
-              <td><strong>${esc(o.name)}</strong>${locked ? ' <span title="Read-only on your plan" style="font-size:11px;color:var(--muted);margin-left:6px">🔒 read-only</span>' : ''}</td>
+              <td><strong>${esc(o.name)}</strong>${locked ? ' <span title="Read-only on your plan" style="font-size:11px;color:var(--muted);margin-left:6px">[⊘] read-only</span>' : ''}</td>
               <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">${esc(o.slug)}</span></td>
               <td><span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${o.api_key?.slice(0,12)}…</span></td>
               <td style="text-align:right">
                 ${locked
-                  ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;opacity:0.5" onclick="window.open('https://schedkit.net/#pricing','_blank')">🔒 Upgrade →</button>`
+                  ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;opacity:0.5" onclick="window.open('https://schedkit.net/#pricing','_blank')">[⊘] Upgrade →</button>`
                   : `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="loadOrgDetail('${esc(o.slug)}')">Manage →</button>`
                 }
               </td>
@@ -2587,7 +2587,7 @@ async function loadOrgDetail(orgSlug) {
                     <strong>${esc(t.name)}</strong>
                     <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">/book/${esc(org.slug)}/${esc(t.slug)}/…</div>
                   </td>
-                  <td><span class="badge">${t.routing === 'round_robin' ? '🔄 Round Robin' : '🎲 Random'}</span></td>
+                  <td><span class="badge">${t.routing === 'round_robin' ? '[↺] Round Robin' : '[?] Random'}</span></td>
                   <td style="text-align:right;white-space:nowrap">
                     ${isAdmin ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="openManageTeamModal('${esc(org.slug)}','${esc(t.slug)}')">Manage</button>` : ''}
                     ${isAdmin ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;color:var(--red)" onclick="deleteTeam('${esc(org.slug)}','${esc(t.slug)}')">Delete</button>` : ''}
@@ -2727,7 +2727,7 @@ async function openManageTeamModal(orgSlug, teamSlug) {
   showOrgModal(`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <h3>Manage Team: ${esc(team?.name || teamSlug)}</h3>
-      <span class="badge" style="font-size:11px">${team?.routing === 'round_robin' ? '🔄 Round Robin' : '🎲 Random'}</span>
+      <span class="badge" style="font-size:11px">${team?.routing === 'round_robin' ? '[↺] Round Robin' : '[?] Random'}</span>
     </div>
     <p style="color:var(--muted);font-size:12px;font-family:var(--font-mono);margin-bottom:20px">Booking URL: <a href="/book/${orgSlug}/${teamSlug}" target="_blank" style="color:var(--accent)">/book/${orgSlug}/${teamSlug}/&lt;event-slug&gt;</a></p>
 
@@ -3313,7 +3313,7 @@ init();
 <!-- PWA: install banner (Android) + iOS instructions -->
 <div id="pwa-install-bar" style="display:none;position:fixed;bottom:16px;left:16px;right:16px;z-index:999;background:#111114;border:1px solid #DFFF00;border-radius:12px;padding:14px 16px;font-family:'Fira Code',monospace;font-size:12px;color:#e8e8ea;box-shadow:0 8px 32px rgba(0,0,0,0.6);max-width:420px;margin:0 auto;">
   <div style="display:flex;align-items:center;gap:12px">
-    <span style="font-size:20px">📡</span>
+    <span style="font-family:var(--font-mono);font-size:14px;letter-spacing:0.05em;color:var(--accent)">[+]</span>
     <div style="flex:1">
       <div style="font-weight:700;color:#DFFF00;margin-bottom:2px">Install SchedKit</div>
       <div id="pwa-install-desc" style="color:#5a5a6e;font-size:11px">Add to home screen for the full field ops experience</div>
@@ -3355,7 +3355,7 @@ init();
 
 <!-- Push notification prompt -->
 <div id="push-prompt-bar" style="display:none;position:fixed;top:16px;left:16px;right:16px;z-index:999;background:#111114;border:1px solid rgba(223,255,0,0.3);border-radius:12px;padding:14px 16px;font-family:'Fira Code',monospace;font-size:12px;color:#e8e8ea;box-shadow:0 8px 32px rgba(0,0,0,0.6);align-items:center;gap:12px;max-width:420px;margin:0 auto;">
-  <span style="font-size:20px">🔔</span>
+  <span style="font-family:var(--font-mono);font-size:14px;letter-spacing:0.05em;color:var(--accent)">[~]</span>
   <div style="flex:1">
     <div style="font-weight:700;color:#DFFF00;margin-bottom:2px">Enable Push Alerts</div>
     <div style="color:#5a5a6e;font-size:11px">Get notified on SLA breaches, urgent incidents, and assignments</div>
@@ -3841,8 +3841,8 @@ window.addEventListener('load', () => initPush());
 
   <!-- Actions -->
   <div id="bscr-actions">
-    <button class="bscr-btn" id="bscr-capture-btn" onclick="triggerCapture()">[ 📷 Capture &amp; Send ]</button>
-    <button class="bscr-btn" id="bscr-alert-btn" onclick="sendAlertSignal()">[ 🚨 Send Alert ]</button>
+    <button class="bscr-btn" id="bscr-capture-btn" onclick="triggerCapture()">[ ▲ Capture &amp; Send ]</button>
+    <button class="bscr-btn" id="bscr-alert-btn" onclick="sendAlertSignal()">[ ! Send Alert ]</button>
     <button class="bscr-btn" id="bscr-stop-btn" onclick="stopBeacon(); hideBeaconScreen()">[ ■ Stop Beacon ]</button>
   </div>
   </div><!-- /bscr-card -->
@@ -3999,12 +3999,12 @@ window.addEventListener('load', () => initPush());
 </style>
 
 <!-- FAB button -->
-<button id="beacon-fab" title="Beacon Mode" onclick="toggleBeaconPanel()">📡</button>
+<button id="beacon-fab" title="Beacon Mode" onclick="toggleBeaconPanel()" style="font-family:var(--font-mono);font-size:13px;letter-spacing:0.05em">[+]</button>
 
 <!-- Panel -->
 <div id="beacon-panel">
   <div id="beacon-panel-header">
-    <div id="beacon-panel-title">📡 Beacon Mode</div>
+    <div id="beacon-panel-title">[+] Beacon Mode</div>
     <button onclick="beaconPanelOpen=false;document.getElementById('beacon-panel').style.display='none';if(beaconActive)showBeaconScreen();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">×</button>
   </div>
   <div id="beacon-status-row">
@@ -4016,8 +4016,8 @@ window.addEventListener('load', () => initPush());
   </div>
   <div id="beacon-actions">
     <button id="beacon-toggle-btn" class="off" onclick="toggleBeacon()">▶ Start Beacon</button>
-    <button id="beacon-capture-btn" onclick="triggerCapture()">📷 Capture &amp; Send</button>
-    <button id="beacon-alert-btn" onclick="sendAlertSignal()">🚨 Send Alert</button>
+    <button id="beacon-capture-btn" onclick="triggerCapture()">[▲] Capture &amp; Send</button>
+    <button id="beacon-alert-btn" onclick="sendAlertSignal()">[!] Send Alert</button>
   </div>
   <div id="beacon-last-ping">—</div>
 </div>
@@ -4235,9 +4235,9 @@ document.getElementById('beacon-camera-input').addEventListener('change', async 
     }
     const res = await apiFetch('/v1/signals', { method: 'POST', body: JSON.stringify(body) });
     if (res?.ok) {
-      toast('📷 Capture sent', 'ok');
+      toast('[▲] Capture sent', 'ok');
       sitrepPushFeed('capture', `[▲] Capture · ${DEVICE_ID}`);
-      bscrFeedPush('📷 Capture sent');
+      bscrFeedPush('[▲] Capture sent');
     } else {
       toast('Capture failed', 'error');
     }
@@ -4257,9 +4257,9 @@ async function sendAlertSignal() {
   }
   const res = await apiFetch('/v1/signals', { method: 'POST', body: JSON.stringify(body) });
   if (res?.ok) {
-    toast('🚨 Alert signal sent', 'error');
+    toast('[!] Alert sent', 'error');
     sitrepPushFeed('alert', `[!] Alert · ${DEVICE_ID}${note ? ` · ${note}` : ''}`);
-    bscrFeedPush(`🚨 ALERT sent${note ? ': ' + note : ''}`);
+    bscrFeedPush(`[!] ALERT sent${note ? ': ' + note : ''}`);
   } else {
     toast('Failed to send alert', 'error');
   }

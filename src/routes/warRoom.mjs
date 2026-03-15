@@ -43,7 +43,7 @@ function buildWarRoom(incidents, apiKey = '') {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>⚡ WAR ROOM — SchedKit</title>
+<title>[!] WAR ROOM — SchedKit</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -592,7 +592,7 @@ body::after {
 <body>
 <div id="app">
   <div id="header">
-    <h1>⚡ WAR ROOM</h1>
+    <h1>[!] WAR ROOM</h1>
     <div id="incident-count">0 ACTIVE</div>
     <div id="tab-bar">
       <button class="tab-btn active" id="tab-list" onclick="switchTab('list')">LIST</button>
@@ -608,7 +608,7 @@ body::after {
       </div>
       <div id="incident-list"></div>
       <div id="empty-board" style="display:none">
-        <div class="big">✓</div>
+        <div class="big">[✓]</div>
         <p>ALL CLEAR — NO ACTIVE INCIDENTS</p>
       </div>
     </div>
@@ -621,7 +621,7 @@ body::after {
           <div id="detail-title"></div>
           <div id="detail-badges"></div>
           <div id="detail-sla"></div>
-          <button id="join-btn">⚡ JOIN INCIDENT</button>
+          <button id="join-btn">[+] JOIN INCIDENT</button>
         </div>
         <div id="detail-desc"></div>
         <div id="replies-section">
@@ -803,7 +803,7 @@ body::after {
     selectedId = id;
     // Reset join button state
     const btn = document.getElementById('join-btn');
-    btn.textContent = '⚡ JOIN INCIDENT';
+    btn.textContent = '[+] JOIN INCIDENT';
     btn.disabled = false;
     document.querySelectorAll('.incident-card').forEach(el => {
       el.classList.toggle('selected', el.dataset.id === id);
@@ -871,11 +871,11 @@ body::after {
         method: 'POST'
       });
       if (res.ok) {
-        btn.textContent = '✓ JOINED';
+        btn.textContent = '[✓] JOINED';
       } else {
         const j = await res.json();
         btn.textContent = j.error || 'ERROR';
-        setTimeout(() => { btn.textContent = '⚡ JOIN INCIDENT'; btn.disabled = false; }, 2000);
+        setTimeout(() => { btn.textContent = '[+] JOIN INCIDENT'; btn.disabled = false; }, 2000);
       }
     } catch {
       btn.disabled = false;
@@ -1072,7 +1072,7 @@ body::after {
     });
     const marker = L.marker([lat, lng], { icon }).addTo(leafletMap);
     marker.bindPopup(\`
-      <div class="map-popup-title">📡 Beacon</div>
+      <div class="map-popup-title">[+] Beacon</div>
       <div class="map-popup-row">Device <span>\${displayLabel}</span></div>
       <div class="map-popup-row">Coords <span>\${lat.toFixed(5)}, \${lng.toFixed(5)}</span></div>
       \${accuracy ? \`<div class="map-popup-row">Accuracy <span>±\${Math.round(accuracy)}m</span></div>\` : ''}
