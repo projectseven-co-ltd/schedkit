@@ -110,9 +110,9 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
 
   const flagColors = { caution: '#f5a623', high: '#ff5f5f', blocked: '#ff1744' };
   const flagLabels = {
-    caution: '⚠️ CAUTION',
-    high: '🚨 HIGH RISK — Get payment before the appointment',
-    blocked: '🚫 BLOCKED CLIENT — Consider refusing this booking',
+    caution: '[!] CAUTION',
+    high: '[!] HIGH RISK — Get payment before the appointment',
+    blocked: '[⊘] BLOCKED CLIENT — Consider refusing this booking',
   };
   const flagBanner = flag && flag.risk_level !== 'ok' ? `
     <table width="100%" cellpadding="0" cellspacing="0" style="background:${flagColors[flag.risk_level]}22;border:1px solid ${flagColors[flag.risk_level]};border-radius:8px;margin-bottom:20px;">
@@ -165,7 +165,7 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
         Messages: [{
           From: { Email: FROM_EMAIL, Name: FROM_NAME },
           To: [{ Email: host_email, Name: host_name }],
-          Subject: `${flag && flag.risk_level !== 'ok' ? `⚠️ [${flag.risk_level.toUpperCase()}] ` : ''}New booking: ${attendee_name} — ${event_title}`,
+          Subject: `${flag && flag.risk_level !== 'ok' ? `[!] [${flag.risk_level.toUpperCase()}] ` : ''}New booking: ${attendee_name} — ${event_title}`,
           HTMLPart: hostHtml,
         }],
       });

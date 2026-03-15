@@ -128,7 +128,7 @@ export default async function signalsRoutes(fastify) {
         const members = await db.find(tables.org_members, `(org_id,eq,${orgId})`);
         const memberIds = (members.list || []).map(m => m.user_id);
         await Promise.allSettled(memberIds.map(uid => sendPushToUser(uid, {
-          title: '⚡ ALERT SIGNAL',
+          title: '[~] ALERT SIGNAL',
           body: `${req.user.name || 'Operator'}: ${note || 'Alert signal received'}`,
           url: '/incidents/war-room',
           tag: 'signal-alert-' + signal.Id,

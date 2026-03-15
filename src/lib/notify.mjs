@@ -12,7 +12,7 @@ export async function notifyNewBooking(user, booking, eventType) {
   });
   const message = `${booking.attendee_name} (${booking.attendee_email})\n${startLocal}`;
 
-  await sendNtfy(ntfyTopic, title, message, '📅', 'high');
+  await sendNtfy(ntfyTopic, title, message, '[◷]', 'high');
 }
 
 export async function notifyBookingCancelled(user, booking, eventType) {
@@ -27,10 +27,10 @@ export async function notifyBookingCancelled(user, booking, eventType) {
   });
   const message = `${booking.attendee_name}\n${startLocal}`;
 
-  await sendNtfy(ntfyTopic, title, message, '❌', 'default');
+  await sendNtfy(ntfyTopic, title, message, '[×]', 'default');
 }
 
-async function sendNtfy(topic, title, message, emoji = '📅', priority = 'default') {
+async function sendNtfy(topic, title, message, emoji = '[◷]', priority = 'default') {
   // Support both full URLs (https://ntfy.sh/mytopic) and bare topics (mytopic → ntfy.sh)
   const url = topic.startsWith('http') ? topic : `https://ntfy.sh/${topic}`;
   try {

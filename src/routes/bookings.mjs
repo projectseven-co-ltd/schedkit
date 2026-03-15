@@ -374,9 +374,9 @@ export default async function bookingsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const result = await db.find(tables.bookings, `(cancel_token,eq,${req.params.token})`);
-    if (!result.list?.length) return reply.type('text/html').send(resultPage('⚠️', 'Invalid or expired cancellation link.', null));
+    if (!result.list?.length) return reply.type('text/html').send(resultPage('[!]', 'Invalid or expired cancellation link.', null));
     const booking = result.list[0];
-    if (booking.status === 'cancelled') return reply.type('text/html').send(resultPage('⚠️', 'This booking has already been cancelled.', booking));
+    if (booking.status === 'cancelled') return reply.type('text/html').send(resultPage('[!]', 'This booking has already been cancelled.', booking));
     const et = await db.get(tables.event_types, booking.event_type_id);
     return reply.type('text/html').send(confirmCancelPage(booking, et));
   });
@@ -391,9 +391,9 @@ export default async function bookingsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const result = await db.find(tables.bookings, `(cancel_token,eq,${req.params.token})`);
-    if (!result.list?.length) return reply.type('text/html').send(resultPage('⚠️', 'Invalid or expired cancellation link.', null));
+    if (!result.list?.length) return reply.type('text/html').send(resultPage('[!]', 'Invalid or expired cancellation link.', null));
     const booking = result.list[0];
-    if (booking.status === 'cancelled') return reply.type('text/html').send(resultPage('⚠️', 'Already cancelled.', booking));
+    if (booking.status === 'cancelled') return reply.type('text/html').send(resultPage('[!]', 'Already cancelled.', booking));
     await db.update(tables.bookings, booking.Id, { status: 'cancelled' });
     const et = await db.get(tables.event_types, booking.event_type_id);
     const user = await db.get(tables.users, booking.user_id);
@@ -406,7 +406,7 @@ export default async function bookingsRoutes(fastify) {
         start_time: booking.start_time, timezone: booking.attendee_timezone || 'UTC',
       });
     } catch(e) { fastify.log.error('Cancel email (confirm) failed:', e.message); }
-    return reply.type('text/html').send(resultPage('✅', 'Your booking has been cancelled.', booking));
+    return reply.type('text/html').send(resultPage('[✓]', 'Your booking has been cancelled.', booking));
   });
 
   // PUBLIC: Reschedule (GET — shows booking page with context)
@@ -419,14 +419,14 @@ export default async function bookingsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const result = await db.find(tables.bookings, `(reschedule_token,eq,${req.params.token})`);
-    if (!result.list?.length) return reply.type('text/html').send(resultPage('⚠️', 'Invalid or expired reschedule link.', null));
+    if (!result.list?.length) return reply.type('text/html').send(resultPage('[!]', 'Invalid or expired reschedule link.', null));
     const booking = result.list[0];
-    if (booking.status === 'cancelled') return reply.type('text/html').send(resultPage('⚠️', 'This booking has been cancelled and cannot be rescheduled.', booking));
+    if (booking.status === 'cancelled') return reply.type('text/html').send(resultPage('[!]', 'This booking has been cancelled and cannot be rescheduled.', booking));
 
     // Look up user slug and event slug
     const user = await db.get(tables.users, booking.user_id);
     const et = await db.get(tables.event_types, booking.event_type_id);
-    if (!user || !et) return reply.type('text/html').send(resultPage('⚠️', 'Booking details not found.', null));
+    if (!user || !et) return reply.type('text/html').send(resultPage('[!]', 'Booking details not found.', null));
 
     return reply.type('text/html').send(reschedulePage(booking, user, et, req.params.token));
   });
@@ -557,10 +557,10 @@ async function registerConfirmDeclineRoutes(fastify) {
     const { confirm_token } = req.params;
     const result = await db.find(tables.bookings, `(confirm_token,eq,${confirm_token})`);
     const booking = result.list?.[0];
-    if (!booking) return reply.type('text/html').send(resultPage('❌', 'Booking not found.', null));
-    if (booking.status === 'confirmed') return reply.type('text/html').send(resultPage('✅', 'Already confirmed.', booking));
+    if (!booking) return reply.type('text/html').send(resultPage('[×]', 'Booking not found.', null));
+    if (booking.status === 'confirmed') return reply.type('text/html').send(resultPage('[✓]', 'Already confirmed.', booking));
     if (booking.status === 'declined' || booking.status === 'cancelled') {
-      return reply.type('text/html').send(resultPage('⚠️', 'This booking has already been actioned.', booking));
+      return reply.type('text/html').send(resultPage('[!]', 'This booking has already been actioned.', booking));
     }
 
     await db.update(tables.bookings, booking.Id, { status: 'confirmed' });
@@ -584,7 +584,7 @@ async function registerConfirmDeclineRoutes(fastify) {
     } catch(e) { fastify.log.error('Confirmed-by-host email failed:', e.message); }
 
     return reply.type('text/html').send(shell('Booking Confirmed', `
-      <div class="icon">✅</div>
+      <div class="icon">[✓]</div>
       <h2>Booking confirmed</h2>
       <p class="sub">${booking.attendee_name} has been notified.</p>
       <div class="uid">Booking ID: ${booking.uid}</div>
@@ -602,10 +602,10 @@ async function registerConfirmDeclineRoutes(fastify) {
     const { confirm_token } = req.params;
     const result = await db.find(tables.bookings, `(confirm_token,eq,${confirm_token})`);
     const booking = result.list?.[0];
-    if (!booking) return reply.type('text/html').send(resultPage('❌', 'Booking not found.', null));
-    if (booking.status === 'confirmed') return reply.type('text/html').send(resultPage('⚠️', 'This booking was already confirmed.', booking));
+    if (!booking) return reply.type('text/html').send(resultPage('[×]', 'Booking not found.', null));
+    if (booking.status === 'confirmed') return reply.type('text/html').send(resultPage('[!]', 'This booking was already confirmed.', booking));
     if (booking.status === 'declined' || booking.status === 'cancelled') {
-      return reply.type('text/html').send(resultPage('⚠️', 'This booking has already been actioned.', booking));
+      return reply.type('text/html').send(resultPage('[!]', 'This booking has already been actioned.', booking));
     }
 
     await db.update(tables.bookings, booking.Id, { status: 'declined' });
@@ -639,7 +639,7 @@ function confirmCancelPage(booking, et) {
     hour: '2-digit', minute: '2-digit', timeZone: booking.attendee_timezone || 'UTC',
   });
   return shell('Cancel Booking', `
-    <div class="icon">🗓️</div>
+    <div class="icon">[◷]</div>
     <h2>Cancel this booking?</h2>
     <p class="sub">You're about to cancel your meeting with <strong>${et?.title || 'your host'}</strong>.</p>
     <div class="time">${startLocal}<br><small style="color:#5a5a6e">${booking.attendee_timezone || 'UTC'}</small></div>
@@ -668,7 +668,7 @@ function reschedulePage(booking, user, et, token) {
     hour: '2-digit', minute: '2-digit', timeZone: booking.attendee_timezone || 'UTC',
   });
   return shell('Reschedule Booking', `
-    <div class="icon">🔄</div>
+    <div class="icon">[↺]</div>
     <h2>Reschedule your booking</h2>
     <p class="sub">Currently scheduled for:</p>
     <div class="time">${startLocal}</div>

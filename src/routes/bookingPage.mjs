@@ -144,7 +144,10 @@ html, body {
   background: var(--surface2);
   border: 1px solid var(--border2);
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px;
+  font-size: 12px;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  color: var(--accent);
+  letter-spacing: 0.05em;
   margin-bottom: 12px;
   flex-shrink: 0;
 }
@@ -174,7 +177,7 @@ html, body {
   font-size: 13px;
   color: var(--text2);
 }
-.meta-icon {
+.meta-icon { font-family: 'Fira Code', 'Courier New', monospace; color: var(--accent); letter-spacing: 0.04em;
   font-size: 14px;
   flex-shrink: 0;
   opacity: 0.7;
@@ -293,7 +296,7 @@ html, body {
   margin-top: 20px;
   display: flex; align-items: center; gap: 8px;
 }
-.tz-globe { font-size: 14px; color: var(--text2); flex-shrink: 0; }
+.tz-globe { font-size: 11px; font-family: 'Fira Code', monospace; color: var(--accent); letter-spacing: 0.04em; flex-shrink: 0; }
 .tz-select {
   background: transparent;
   border: none; color: var(--text2);
@@ -454,7 +457,7 @@ html, body {
   padding: 13px 16px; border-bottom: 1px solid var(--border);
 }
 .confirm-row:last-child { border-bottom: none; }
-.confirm-row-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.confirm-row-icon { font-size: 11px; font-family: 'Fira Code', monospace; color: var(--accent); letter-spacing: 0.04em; flex-shrink: 0; margin-top: 1px; }
 .confirm-row-lbl { font-size: 10px; color: var(--text2); font-family: var(--font-mono); margin-bottom: 1px; }
 .confirm-row-val { font-size: 13px; font-weight: 600; }
 .confirm-uid { font-size: 11px; font-family: var(--font-mono); color: var(--muted); margin-top: 4px; }
@@ -656,16 +659,16 @@ html, body {
 
       <!-- INFO PANEL -->
       <div class="info-panel">
-        <div class="info-avatar" id="info-avatar">📅</div>
+        <div class="info-avatar" id="info-avatar">[◷]</div>
         <div class="info-name" id="info-name">Loading...</div>
         <div class="info-title" id="info-title"></div>
         <div class="info-meta" id="info-meta"></div>
         <div class="info-desc" id="info-desc" style="display:none"></div>
-        <div id="reschedule-badge" style="display:none"><div class="reschedule-badge">🔄 Rescheduling</div></div>
+        <div id="reschedule-badge" style="display:none"><div class="reschedule-badge">[↺] Rescheduling</div></div>
         <div class="info-spacer"></div>
         <div class="info-footer">
           <button class="lights-btn" id="lightsBtn">
-            <span>🔦</span><span id="lightsBtnLabel">LIGHTS ON</span>
+            <span>[◑]</span><span id="lightsBtnLabel">LIGHTS ON</span>
           </button>
         </div>
       </div>
@@ -683,7 +686,7 @@ html, body {
           </div>
           <div class="cal-grid" id="cal-grid"></div>
           <div class="tz-row">
-            <span class="tz-globe">🌍</span>
+            <span class="tz-globe">[◷]</span>
             <select class="tz-select" id="tz-select"></select>
             <span class="tz-chevron">▾</span>
           </div>
@@ -705,7 +708,7 @@ html, body {
     <div id="form-pane" class="form-pane" style="display:none">
       <button class="form-back" id="btn-back">← Back</button>
       <div class="selected-slot-card">
-        <span style="font-size:22px">🕐</span>
+        <span style="font-size:22px">[◷]</span>
         <div>
           <div class="selected-slot-time" id="selected-slot-time"></div>
           <div class="selected-slot-meta" id="selected-slot-meta"></div>
@@ -753,7 +756,7 @@ html, body {
           Embed
         </button>
         <button class="lights-btn mobile-lights" id="lightsBtnMobile">
-          <span>🔦</span><span id="lightsBtnLabelMobile">LIGHTS ON</span>
+          <span>[◑]</span><span id="lightsBtnLabelMobile">LIGHTS ON</span>
         </button>
       </div>
     </div>
@@ -901,7 +904,7 @@ html, body {
       if (data.event_type) {
         eventType = data.event_type;
         const label = eventType.appointment_label || 'meeting';
-        const locIcon = { video:'📹', phone:'📞', in_person:'📍', other:'📌' }[eventType.location_type] || '📅';
+        const locIcon = { video:'[▶]', phone:'[~]', in_person:'[+]', other:'[◆]' }[eventType.location_type] || '[◷]';
         const locLabel = eventType.location || ({ video:'Video call', phone:'Phone call', in_person:'In person' }[eventType.location_type] || 'Meeting');
 
         document.getElementById('info-avatar').textContent = locIcon;
@@ -1132,9 +1135,9 @@ html, body {
       });
       document.getElementById('confirm-email').textContent = emailVal;
       document.getElementById('confirm-detail').innerHTML = \`
-        <div class="confirm-row"><div class="confirm-row-icon">📅</div><div><div class="confirm-row-lbl">Date & Time</div><div class="confirm-row-val">\${startLocal}</div></div></div>
-        <div class="confirm-row"><div class="confirm-row-icon">🌍</div><div><div class="confirm-row-lbl">Timezone</div><div class="confirm-row-val">\${timezone}</div></div></div>
-        <div class="confirm-row"><div class="confirm-row-icon">👤</div><div><div class="confirm-row-lbl">With</div><div class="confirm-row-val">\${USERNAME}</div></div></div>
+        <div class="confirm-row"><div class="confirm-row-icon">[◷]</div><div><div class="confirm-row-lbl">Date & Time</div><div class="confirm-row-val">\${startLocal}</div></div></div>
+        <div class="confirm-row"><div class="confirm-row-icon">[◷]</div><div><div class="confirm-row-lbl">Timezone</div><div class="confirm-row-val">\${timezone}</div></div></div>
+        <div class="confirm-row"><div class="confirm-row-icon">[+]</div><div><div class="confirm-row-lbl">With</div><div class="confirm-row-val">\${USERNAME}</div></div></div>
       \`;
       document.getElementById('confirm-uid').textContent = 'Booking ID: ' + data.uid;
 

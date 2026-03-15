@@ -258,7 +258,10 @@ html, body {
   background: var(--surface2);
   border: 1px solid var(--border2);
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px;
+  font-size: 12px;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  color: var(--accent);
+  letter-spacing: 0.05em;
   margin-bottom: 12px;
   flex-shrink: 0;
 }
@@ -266,7 +269,7 @@ html, body {
 .info-title { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.2; margin-bottom: 16px; }
 .info-meta { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 .meta-row { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--text2); }
-.meta-icon { font-size: 14px; flex-shrink: 0; opacity: 0.7; }
+.meta-icon { font-family: 'Fira Code', 'Courier New', monospace; color: var(--accent); letter-spacing: 0.04em; font-size: 14px; flex-shrink: 0; opacity: 0.7; }
 .info-desc { font-size: 12px; color: var(--text2); line-height: 1.65; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px; }
 .info-spacer { flex: 1; }
 .info-footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
@@ -315,7 +318,7 @@ html, body {
 .cal-day.selected::after { display: none; }
 
 .tz-row { margin-top: 20px; display: flex; align-items: center; gap: 8px; }
-.tz-globe { font-size: 14px; color: var(--text2); flex-shrink: 0; }
+.tz-globe { font-size: 11px; font-family: 'Fira Code', monospace; color: var(--accent); letter-spacing: 0.04em; flex-shrink: 0; }
 .tz-select {
   background: transparent; border: none; color: var(--text2);
   font-family: var(--font-sans); font-size: 13px;
@@ -394,7 +397,7 @@ html, body {
 .confirm-detail { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--r); overflow: hidden; width: 100%; max-width: 480px; margin-bottom: 16px; }
 .confirm-row { display: flex; gap: 12px; align-items: flex-start; padding: 13px 16px; border-bottom: 1px solid var(--border); }
 .confirm-row:last-child { border-bottom: none; }
-.confirm-row-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.confirm-row-icon { font-size: 11px; font-family: 'Fira Code', monospace; color: var(--accent); letter-spacing: 0.04em; flex-shrink: 0; margin-top: 1px; }
 .confirm-row-lbl { font-size: 10px; color: var(--text2); font-family: var(--font-mono); margin-bottom: 1px; }
 .confirm-row-val { font-size: 13px; font-weight: 600; }
 .confirm-uid { font-size: 11px; font-family: var(--font-mono); color: var(--muted); margin-top: 4px; }
@@ -444,7 +447,7 @@ html, body {
 
       <!-- INFO PANEL -->
       <div class="info-panel">
-        <div class="info-avatar" id="info-avatar">👥</div>
+        <div class="info-avatar" id="info-avatar">[▶]</div>
         <div class="info-name" id="info-name">Loading...</div>
         <div class="info-title" id="info-title"></div>
         <div class="info-meta" id="info-meta"></div>
@@ -452,7 +455,7 @@ html, body {
         <div class="info-spacer"></div>
         <div class="info-footer">
           <button class="lights-btn" id="lightsBtn">
-            <span>🔦</span><span id="lightsBtnLabel">LIGHTS ON</span>
+            <span>[◑]</span><span id="lightsBtnLabel">LIGHTS ON</span>
           </button>
         </div>
       </div>
@@ -468,7 +471,7 @@ html, body {
           </div>
           <div class="cal-grid" id="cal-grid"></div>
           <div class="tz-row">
-            <span class="tz-globe">🌍</span>
+            <span class="tz-globe">[◷]</span>
             <select class="tz-select" id="tz-select"></select>
             <span class="tz-chevron">▾</span>
           </div>
@@ -488,7 +491,7 @@ html, body {
     <div id="form-pane" class="form-pane" style="display:none">
       <button class="form-back" id="btn-back">← Back</button>
       <div class="selected-slot-card">
-        <span style="font-size:22px">🕐</span>
+        <span style="font-size:22px">[◷]</span>
         <div>
           <div class="selected-slot-time" id="selected-slot-time"></div>
           <div class="selected-slot-meta" id="selected-slot-meta"></div>
@@ -531,7 +534,7 @@ html, body {
           schedkit.net
         </a>
         <button class="lights-btn mobile-lights" id="lightsBtnMobile" style="display:none">
-          <span>🔦</span><span id="lightsBtnLabelMobile">LIGHTS ON</span>
+          <span>[◑]</span><span id="lightsBtnLabelMobile">LIGHTS ON</span>
         </button>
       </div>
     </div>
@@ -566,15 +569,15 @@ html, body {
       const data = await res.json();
       if (data.event_type) {
         eventType = data.event_type;
-        const locIcon = { video:'📹', phone:'📞', in_person:'📍', other:'📌' }[eventType.location_type] || '📅';
+        const locIcon = { video:'[▶]', phone:'[~]', in_person:'[+]', other:'[◆]' }[eventType.location_type] || '[◷]';
         const locLabel = eventType.location || ({ video:'Video call', phone:'Phone call', in_person:'In person' }[eventType.location_type] || 'Meeting');
-        document.getElementById('info-avatar').textContent = '👥';
+        document.getElementById('info-avatar').textContent = '[▶]';
         document.getElementById('info-name').textContent = TEAM_SLUG;
         document.getElementById('info-title').textContent = eventType.title;
         document.getElementById('info-meta').innerHTML = \`
           <div class="meta-row"><span class="meta-icon">⏱</span>\${eventType.duration_minutes} min</div>
           <div class="meta-row"><span class="meta-icon">\${locIcon}</span>\${locLabel}</div>
-          <div class="meta-row"><span class="meta-icon">👥</span>Team booking</div>
+          <div class="meta-row"><span class="meta-icon">[▶]</span>Team booking</div>
         \`;
         document.title = 'Book: ' + eventType.title;
         if (eventType.description) { const d = document.getElementById('info-desc'); d.textContent = eventType.description; d.style.display = ''; }
@@ -709,9 +712,9 @@ html, body {
       const startLocal = new Date(data.start_time).toLocaleString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: timezone });
       document.getElementById('confirm-email').textContent = emailVal;
       document.getElementById('confirm-detail').innerHTML =
-        '<div class="confirm-row"><div class="confirm-row-icon">📅</div><div><div class="confirm-row-lbl">Date &amp; Time</div><div class="confirm-row-val">' + startLocal + '</div></div></div>' +
-        '<div class="confirm-row"><div class="confirm-row-icon">🌍</div><div><div class="confirm-row-lbl">Timezone</div><div class="confirm-row-val">' + timezone + '</div></div></div>' +
-        '<div class="confirm-row"><div class="confirm-row-icon">👥</div><div><div class="confirm-row-lbl">Team</div><div class="confirm-row-val">' + (data.assigned_to ? 'With ' + data.assigned_to : TEAM_SLUG) + '</div></div></div>';
+        '<div class="confirm-row"><div class="confirm-row-icon">[◷]</div><div><div class="confirm-row-lbl">Date &amp; Time</div><div class="confirm-row-val">' + startLocal + '</div></div></div>' +
+        '<div class="confirm-row"><div class="confirm-row-icon">[◷]</div><div><div class="confirm-row-lbl">Timezone</div><div class="confirm-row-val">' + timezone + '</div></div></div>' +
+        '<div class="confirm-row"><div class="confirm-row-icon">[▶]</div><div><div class="confirm-row-lbl">Team</div><div class="confirm-row-val">' + (data.assigned_to ? 'With ' + data.assigned_to : TEAM_SLUG) + '</div></div></div>';
       document.getElementById('confirm-uid').textContent = 'Booking ID: ' + data.uid;
 
       if (data.status === 'pending') {

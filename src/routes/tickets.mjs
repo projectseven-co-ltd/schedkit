@@ -239,12 +239,12 @@ export default async function ticketsRoutes(fastify) {
     if (priority === 'urgent' || priority === 'high' || source === 'alert') {
       tryUserNtfy(req.user.Id, title, description, priority, source);
       tryNtfy(
-        `🚨 New incident: ${title}`,
+        `[!] New incident: ${title}`,
         `Priority: ${priority.toUpperCase()}\nSource: ${source}\n${description || ''}`,
         priority === 'urgent' ? 'urgent' : 'high'
       );
       tryPush(req.user.Id, {
-        title: `🚨 ${priority.toUpperCase()} — ${title}`,
+        title: `[!] ${priority.toUpperCase()} — ${title}`,
         body: description || `New ${source} incident`,
         url: '/dashboard',
         tag: `incident-${ticket.Id}`,
@@ -351,12 +351,12 @@ export default async function ticketsRoutes(fastify) {
     if (updates.sla_breached && !existing.sla_breached) {
       tryBroadcast('incident.breached', result);
       tryNtfy(
-        `⚠️ SLA breached: ${updated.title}`,
+        `[!] SLA breached: ${updated.title}`,
         `Priority: ${(updated.priority || 'normal').toUpperCase()}\nTicket #${updated.Id}`,
         'urgent'
       );
       tryPush(existing.user_id, {
-        title: `⚠️ SLA Breached`,
+        title: `[!] SLA Breached`,
         body: `${updated.title} — response time exceeded`,
         url: '/dashboard',
         tag: `sla-${updated.Id}`,

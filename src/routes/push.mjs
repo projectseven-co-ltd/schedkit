@@ -141,7 +141,7 @@ export default async function pushRoutes(fastify) {
     const subs = await getSubscriptions(req.user.Id);
     if (!subs.length) return { ok: false, sent: 0 };
     await sendPushToUser(req.user.Id, {
-      title: '📡 SchedKit',
+      title: '[+] SchedKit',
       body: 'Push notifications are working. SITREP online.',
       url: '/dashboard',
       tag: 'test',
