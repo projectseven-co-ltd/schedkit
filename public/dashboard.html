@@ -257,7 +257,7 @@ tr:hover td{background:var(--surface2)}
 .sitrep-feed-item.incident .sitrep-feed-text{color:#60a5fa}
 .sitrep-feed-item.ok .sitrep-feed-text,.sitrep-feed-item.reply .sitrep-feed-text{color:#4ade80}
 .sitrep-feed-item.assignment .sitrep-feed-text{color:var(--accent)}
-.sitrep-feed-time{font-size:11px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap;margin-top:2px}
+.sitrep-feed-time{font-size:9px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap;margin-right:6px;flex-shrink:0}
 .sitrep-feed-empty{padding:24px 16px;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono)}
 .nextup-item{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
 .nextup-item:last-child{border-bottom:none}
@@ -1423,9 +1423,9 @@ function renderSitrepFeed() {
   }
   el.innerHTML = sitrepFeed.map(item => `
     <div class="sitrep-feed-item ${item.kind}">
-      <div style="flex:1">
-        <div class="sitrep-feed-text">${esc(item.text)}</div>
+      <div style="flex:1;display:flex;align-items:baseline;gap:0">
         <div class="sitrep-feed-time">${esc(fmtRelTime(item.ts))}</div>
+        <div class="sitrep-feed-text">${esc(item.text)}</div>
       </div>
     </div>`).join('');
 }
@@ -1591,7 +1591,7 @@ function sitrepHandleSSE(type, payload) {
     if (slaEl) { slaEl.textContent = 'BREACH'; slaEl.style.color = 'var(--red)'; }
   }
   if (type === 'reply.added') {
-    sitrepPushFeed('reply', `[>] Reply · #${payload.ticket_id}`, new Date().toISOString());
+    sitrepPushFeed('reply', `[→] Reply · #${payload.ticket_id}`, new Date().toISOString());
   }
   if (type === 'signal.beacon') {
     const dev = payload.meta ? (JSON.parse(payload.meta||'{}').device_id || 'unknown') : 'unknown';
@@ -4166,7 +4166,7 @@ async function sendBeaconPing() {
       const coordStr = beaconLastCoords
         ? `${beaconLastCoords.lat.toFixed(4)}, ${beaconLastCoords.lng.toFixed(4)}`
         : 'no GPS fix';
-      bscrFeedPush(`Beacon ping · ${coordStr}`);
+      bscrFeedPush(`[+] Ping · ${coordStr}`);
     }
   } catch {}
 }
