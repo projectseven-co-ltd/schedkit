@@ -16,8 +16,24 @@ export default async function uploadsRoutes(fastify) {
     preHandler: requireSession,
     schema: {
       tags: ['Signals'],
-      summary: 'Upload a capture image (saved to disk, served as static file)',
+      summary: 'Upload a capture image',
+      description: 'Accept a raw JPEG, PNG, or WebP image upload from Beacon Mode or another authenticated client, save it to `public/captures`, and return a permanent static URL.',
       consumes: ['image/jpeg', 'image/webp', 'image/png'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            url: { type: 'string' },
+            filename: { type: 'string' },
+            size: { type: 'integer' },
+          },
+          example: {
+            url: '/captures/cap_1742061600000_ab12c.jpg',
+            filename: 'cap_1742061600000_ab12c.jpg',
+            size: 184233,
+          },
+        },
+      },
     },
   }, async (req, reply) => {
     const mime = req.headers['content-type'] || 'image/jpeg';

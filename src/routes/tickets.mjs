@@ -107,6 +107,25 @@ const UNIFIED_DESCRIPTION = `
 - The \`source\` field (\`api\`, \`email\`, \`webhook\`, \`alert\`) and \`priority\` together imply context — neither endpoint enforces a use case on the caller
 `;
 
+const ticketExample = {
+  Id: 42,
+  title: 'Water main pressure drop',
+  description: 'Pressure dropped below threshold at Site Alpha.',
+  status: 'open',
+  priority: 'urgent',
+  source: 'alert',
+  source_ref: 'sensor-ops-991',
+  user_id: 7,
+  sla_due_at: '2026-03-15T19:00:00Z',
+  sla_breached: false,
+  sla_status: 'warning',
+  customer_token: 'cus_tok_abc123xyz',
+  customer_status_url: 'https://schedkit.net/incidents/status/cus_tok_abc123xyz',
+  lat: 35.4676,
+  lng: -97.5164,
+  location_name: 'Site Alpha',
+};
+
 export default async function ticketsRoutes(fastify) {
   // GET /v1/tickets — list tickets for authenticated user
   fastify.get('/tickets', {
@@ -144,6 +163,7 @@ export default async function ticketsRoutes(fastify) {
             },
             total: { type: 'integer' },
           },
+          example: { tickets: [ticketExample], total: 1 },
         },
       },
     },
@@ -184,6 +204,16 @@ export default async function ticketsRoutes(fastify) {
           lng: { type: 'number', nullable: true, description: 'Incident longitude' },
           location_name: { type: 'string', nullable: true, description: 'Human-readable location name' },
         },
+        examples: [{
+          title: 'Water main pressure drop',
+          description: 'Pressure dropped below threshold at Site Alpha.',
+          priority: 'urgent',
+          source: 'alert',
+          source_ref: 'sensor-ops-991',
+          lat: 35.4676,
+          lng: -97.5164,
+          location_name: 'Site Alpha',
+        }],
       },
       response: {
         201: {
@@ -204,6 +234,7 @@ export default async function ticketsRoutes(fastify) {
             lng: { type: 'number', nullable: true },
             location_name: { type: 'string', nullable: true },
           },
+          example: ticketExample,
         },
       },
     },
@@ -275,6 +306,7 @@ export default async function ticketsRoutes(fastify) {
             customer_token: { type: 'string' },
             customer_status_url: { type: 'string' },
           },
+          example: ticketExample,
         },
       },
     },
@@ -309,6 +341,14 @@ export default async function ticketsRoutes(fastify) {
           lat: { type: 'number', nullable: true },
           lng: { type: 'number', nullable: true },
           location_name: { type: 'string', nullable: true },
+        },
+        examples: [{ status: 'in_progress', priority: 'high', assignee_id: 12, location_name: 'Site Alpha North Gate' }],
+      },
+      response: {
+        200: {
+          type: 'object',
+          additionalProperties: true,
+          example: { ...ticketExample, status: 'in_progress', priority: 'high', assignee_id: 12, location_name: 'Site Alpha North Gate' },
         },
       },
     },
@@ -380,6 +420,17 @@ export default async function ticketsRoutes(fastify) {
       description: 'Sets status to `closed`. Does not delete the record. Broadcasts `incident.resolved` to SSE clients.',
       security: [{ apiKey: [] }],
       params: { type: 'object', properties: { id: { type: 'string' } } },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            ok: { type: 'boolean' },
+            status: { type: 'string' },
+            id: { type: 'integer' },
+          },
+          example: { ok: true, status: 'closed', id: 42 },
+        },
+      },
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.tickets, req.params.id);

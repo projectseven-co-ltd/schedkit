@@ -52,7 +52,20 @@ export async function sendPushToUser(userId, { title, body, url, tag, requireInt
 export default async function pushRoutes(fastify) {
 
   // GET /v1/push/vapid-public — return public key for client subscription
-  fastify.get('/push/vapid-public', async () => {
+  fastify.get('/push/vapid-public', {
+    schema: {
+      tags: ['Push'],
+      summary: 'Get VAPID public key',
+      description: 'Return the public VAPID key the browser needs to create a Web Push subscription.',
+      response: {
+        200: {
+          type: 'object',
+          properties: { publicKey: { type: ['string', 'null'] } },
+          example: { publicKey: 'BIa_HKGuR_doeyRcqmP3qSRqznWQin-oPIJlSk1Mk08-yBSqeB8w932fH-f66YTFLMhUzeHzP_VHNEwMXIFmG4k' },
+        },
+      },
+    },
+  }, async () => {
     return { publicKey: VAPID_PUBLIC || null };
   });
 
@@ -62,14 +75,22 @@ export default async function pushRoutes(fastify) {
     schema: {
       tags: ['Push'],
       summary: 'Register a Web Push subscription',
+      description: 'Store or update a browser PushSubscription for the current user so SchedKit can send native notifications.',
       body: {
         type: 'object',
         required: ['subscription'],
         properties: {
           subscription: { type: 'object', description: 'PushSubscription JSON from browser' },
         },
+        examples: [{
+          subscription: {
+            endpoint: 'https://fcm.googleapis.com/fcm/send/example-subscription-id',
+            expirationTime: null,
+            keys: { p256dh: 'BExamplePublicKey', auth: 'exampleAuthSecret' },
+          },
+        }],
       },
-      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' } } } },
+      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' } }, example: { ok: true } } },
     },
   }, async (req, reply) => {
     const { subscription } = req.body;
@@ -109,12 +130,14 @@ export default async function pushRoutes(fastify) {
     schema: {
       tags: ['Push'],
       summary: 'Remove a Web Push subscription',
+      description: 'Delete a stored Web Push subscription for the current user, usually during logout or opt-out.',
       body: {
         type: 'object',
         required: ['endpoint'],
         properties: { endpoint: { type: 'string' } },
+        examples: [{ endpoint: 'https://fcm.googleapis.com/fcm/send/example-subscription-id' }],
       },
-      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' } } } },
+      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' } }, example: { ok: true } } },
     },
   }, async (req, reply) => {
     const { endpoint } = req.body;
@@ -135,7 +158,8 @@ export default async function pushRoutes(fastify) {
     schema: {
       tags: ['Push'],
       summary: 'Send a test push notification to yourself',
-      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' }, sent: { type: 'integer' } } } },
+      description: 'Send a test push to all saved subscriptions for the current user. Useful for validating permission and delivery.',
+      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' }, sent: { type: 'integer' } }, example: { ok: true, sent: 2 } } },
     },
   }, async (req) => {
     const subs = await getSubscriptions(req.user.Id);

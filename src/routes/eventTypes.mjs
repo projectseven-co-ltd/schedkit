@@ -9,6 +9,25 @@ async function requireAuth(req, reply) {
   return requireSession(req, reply);
 }
 
+const eventTypeExample = {
+  Id: 14,
+  title: 'Incident Triage',
+  slug: 'incident-triage',
+  description: 'Quick ops intake for new incidents.',
+  appointment_label: 'assignment',
+  duration_minutes: 30,
+  buffer_before: 0,
+  buffer_after: 15,
+  min_notice_minutes: 60,
+  max_bookings_per_day: 8,
+  location: 'Google Meet',
+  location_type: 'video',
+  webhook_url: 'https://example.com/hooks/bookings',
+  custom_fields: '[{"id":"site","label":"Site","type":"text"}]',
+  requires_confirmation: false,
+  active: true,
+};
+
 const eventTypeSchema = {
   type: 'object',
   properties: {
@@ -40,7 +59,7 @@ export default async function eventTypesRoutes(fastify) {
       summary: 'List event types',
       description: 'Returns all event types for the authenticated user. Each event type has a public booking URL at `/book/:username/:slug`.',
       security: [{ apiKey: [] }],
-      response: { 200: { type: 'object', properties: { event_types: { type: 'array', items: eventTypeSchema } } } },
+      response: { 200: { type: 'object', properties: { event_types: { type: 'array', items: eventTypeSchema } }, example: { event_types: [eventTypeExample] } } },
     },
   }, async (req) => {
     const result = await db.find(tables.event_types, `(user_id,eq,${req.user.Id})`);
@@ -52,8 +71,10 @@ export default async function eventTypesRoutes(fastify) {
     schema: {
       tags: ['Event Types'],
       summary: 'Get event type',
+      description: 'Return a single event type definition by ID for the authenticated user.',
       security: [{ apiKey: [] }],
       params: { type: 'object', properties: { id: { type: 'string' } } },
+      response: { 200: { ...eventTypeSchema, example: eventTypeExample } },
     },
   }, async (req, reply) => {
     const row = await db.get(tables.event_types, req.params.id);
@@ -87,7 +108,9 @@ export default async function eventTypesRoutes(fastify) {
           custom_fields: { type: 'string', description: 'JSON array of custom field definitions shown on the booking form' },
           requires_confirmation: { type: 'boolean', description: 'If true, new bookings are held as `pending` until the host confirms or declines via email link or dashboard' },
         },
+        examples: [eventTypeExample],
       },
+      response: { 201: { ...eventTypeSchema, example: eventTypeExample } },
     },
   }, async (req, reply) => {
     const { title, slug: rawSlug, description, appointment_label, duration_minutes,
@@ -145,7 +168,8 @@ export default async function eventTypesRoutes(fastify) {
       description: 'Partially update an event type. Only fields included in the request body are changed. Toggle `requires_confirmation` here to switch between instant-confirm and host-approval flows.',
       security: [{ apiKey: [] }],
       params: { type: 'object', properties: { id: { type: 'string' } } },
-      body: { type: 'object', properties: eventTypeSchema.properties },
+      body: { type: 'object', properties: eventTypeSchema.properties, examples: [{ title: 'Urgent Dispatch', duration_minutes: 45, requires_confirmation: true }] },
+      response: { 200: { ...eventTypeSchema, example: { ...eventTypeExample, title: 'Urgent Dispatch', duration_minutes: 45, requires_confirmation: true } } },
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.event_types, req.params.id);
@@ -159,8 +183,10 @@ export default async function eventTypesRoutes(fastify) {
     schema: {
       tags: ['Event Types'],
       summary: 'Delete event type',
+      description: 'Delete an event type owned by the authenticated user.',
       security: [{ apiKey: [] }],
       params: { type: 'object', properties: { id: { type: 'string' } } },
+      response: { 200: { type: 'object', properties: { deleted: { type: 'boolean' } }, example: { deleted: true } } },
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.event_types, req.params.id);

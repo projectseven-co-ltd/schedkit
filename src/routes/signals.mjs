@@ -58,6 +58,27 @@ async function getPrimaryOrgId(userId) {
   return ids[0] || null;
 }
 
+const signalCreateExample = {
+  type: 'beacon',
+  lat: 35.4676,
+  lng: -97.5164,
+  accuracy: 10,
+  meta: { device_id: 'dev-abc123-xyz', battery: 81 },
+};
+
+const signalResponseExample = {
+  Id: 301,
+  user_id: 7,
+  org_id: 4,
+  type: 'beacon',
+  lat: 35.4676,
+  lng: -97.5164,
+  accuracy: 10,
+  meta: '{"device_id":"dev-abc123-xyz","battery":81}',
+  created_at: '2026-03-15T18:00:00Z',
+  user_name: 'Olson Ops',
+};
+
 // ── Routes ────────────────────────────────────────────
 export default async function signalsRoutes(fastify) {
 
@@ -67,6 +88,7 @@ export default async function signalsRoutes(fastify) {
     schema: {
       tags: ['Signals'],
       summary: 'Create a signal (beacon ping, capture, note, alert)',
+      description: 'Create a new org-scoped signal. Beacon pings are broadcast live and only persist a `beacon_on` record on first activation; other signal types are written to storage and optionally trigger push notifications.',
       body: {
         type: 'object',
         required: ['type'],
@@ -81,8 +103,9 @@ export default async function signalsRoutes(fastify) {
           org_id:    { type: 'number', description: 'Override org — defaults to user primary org' },
           meta:      { type: 'object', additionalProperties: true },
         },
+        examples: [signalCreateExample],
       },
-      response: { 201: { type: 'object', additionalProperties: true } },
+      response: { 201: { type: 'object', additionalProperties: true, example: signalResponseExample } },
     },
   }, async (req, reply) => {
     const { type, lat, lng, accuracy, image_url, note, ticket_id, meta } = req.body;
@@ -191,6 +214,7 @@ export default async function signalsRoutes(fastify) {
     schema: {
       tags: ['Signals'],
       summary: 'List signals for the authenticated user\'s orgs',
+      description: 'Return persisted signals for the orgs the current user belongs to. Beacon pings themselves are live-only, so use this for captures, notes, alerts, and audit records.',
       querystring: {
         type: 'object',
         properties: {
@@ -200,7 +224,7 @@ export default async function signalsRoutes(fastify) {
           since:  { type: 'string' },
         },
       },
-      response: { 200: { type: 'object', additionalProperties: true } },
+      response: { 200: { type: 'object', additionalProperties: true, example: { signals: [signalResponseExample], total: 1 } } },
     },
   }, async (req) => {
     const { type, org_id, limit = 100, since } = req.query;
@@ -226,7 +250,17 @@ export default async function signalsRoutes(fastify) {
   // DELETE /v1/signals/beacon — stop beacon, persist beacon_off log entry
   fastify.delete('/signals/beacon', {
     preHandler: requireSession,
-    schema: { tags: ['Signals'], summary: 'Stop beacon — log beacon_off + broadcast to org stream' },
+    schema: {
+      tags: ['Signals'],
+      summary: 'Stop beacon and broadcast beacon_off',
+      description: 'Stop the current device beacon, clear it from the active tracker, write a `beacon_off` audit record, and broadcast the stop event to the org stream.',
+      body: {
+        type: 'object',
+        properties: { device_id: { type: 'string' } },
+        examples: [{ device_id: 'dev-abc123-xyz' }],
+      },
+      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' } }, example: { ok: true } } },
+    },
   }, async (req) => {
     const orgId = await getPrimaryOrgId(req.user.Id);
     const deviceId = req.body?.device_id || req.query?.device_id || null;
@@ -261,7 +295,8 @@ export default async function signalsRoutes(fastify) {
     preHandler: requireSession,
     schema: {
       tags: ['Signals'],
-      summary: 'Beacon lifecycle log — persisted beacon_off events',
+      summary: 'List signal audit log entries',
+      description: 'Return persisted signal log records such as `beacon_off`, `capture`, `alert`, or other audit-worthy signal entries for the current org.',
       querystring: {
         type: 'object',
         properties: {
@@ -271,7 +306,7 @@ export default async function signalsRoutes(fastify) {
           device_id: { type: 'string' },
         },
       },
-      response: { 200: { type: 'object', additionalProperties: true } },
+      response: { 200: { type: 'object', additionalProperties: true, example: { entries: [{ ...signalResponseExample, type: 'alert', note: 'Pipe pressure drop' }], total: 1, limit: 50, offset: 0 } } },
     },
   }, async (req) => {
     const orgId = await getPrimaryOrgId(req.user.Id);
@@ -290,7 +325,17 @@ export default async function signalsRoutes(fastify) {
 
   // GET /v1/signals/stream — SSE stream scoped to user's orgs
   fastify.get('/signals/stream', {
-    schema: { tags: ['Signals'], summary: 'SSE stream — signals from user\'s orgs only' },
+    schema: {
+      tags: ['Signals'],
+      summary: 'Open SSE stream for live signals',
+      description: 'Open a server-sent events stream that emits live signal events for the orgs the authenticated user belongs to.',
+      response: {
+        200: {
+          type: 'string',
+          example: 'data: {"type":"connected","org_ids":["4"]}\n\ndata: {"type":"signal.beacon","payload":{"device_id":"dev-abc123-xyz"}}\n\n',
+        },
+      },
+    },
   }, async (req, reply) => {
     // Auth: session cookie or api_key query param
     let user = null;

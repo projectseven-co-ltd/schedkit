@@ -82,6 +82,13 @@ export default async function orgsRoutes(fastify) {
           name: { type: 'string', description: 'Display name for the org' },
           slug: { type: 'string', description: 'URL-safe slug (auto-generated from name if omitted)' },
         },
+        examples: [{ name: 'Alpha Response Team', slug: 'alpha-response' }],
+      },
+      response: {
+        201: {
+          type: 'object', additionalProperties: true,
+          example: { Id: 4, name: 'Alpha Response Team', slug: 'alpha-response', owner_user_id: '7', api_key: 'p7s_org_abc123' },
+        },
       },
     },
   }, async (req, reply) => {
@@ -121,6 +128,7 @@ export default async function orgsRoutes(fastify) {
     schema: {
       tags: [TAG], summary: 'List your organizations', security: SEC,
       description: 'Returns all organizations the authenticated user is a member of.',
+      response: { 200: { type: 'object', additionalProperties: true, example: { orgs: [{ Id: 4, name: 'Alpha Response Team', slug: 'alpha-response' }] } } },
     },
   }, async (req) => {
     const memberships = await db.find(tables.org_members, `(user_id,eq,${req.user.Id})`);
@@ -136,6 +144,7 @@ export default async function orgsRoutes(fastify) {
       tags: [TAG], summary: 'Get an organization', security: SEC,
       description: 'Returns org details, members, and teams. `api_key` is only included for the org owner.',
       params: { type: 'object', properties: { org_slug: { type: 'string' } } },
+      response: { 200: { type: 'object', additionalProperties: true, example: { org: { Id: 4, name: 'Alpha Response Team', slug: 'alpha-response' }, members: [{ role: 'owner', user: { email: 'ops@schedkit.net', name: 'Olson Ops' } }], teams: [] } } },
     },
   }, async (req, reply) => {
     const ctx = await requireOrgAccess(req, reply);
@@ -172,7 +181,9 @@ export default async function orgsRoutes(fastify) {
           name: { type: 'string' },
           slug: { type: 'string' },
         },
+        examples: [{ name: 'Alpha Response HQ', slug: 'alpha-response-hq' }],
       },
+      response: { 200: { type: 'object', additionalProperties: true, example: { Id: 4, name: 'Alpha Response HQ', slug: 'alpha-response-hq' } } },
     },
   }, async (req, reply) => {
     const ctx = await requireOrgAccess(req, reply, 'admin');
@@ -198,6 +209,7 @@ export default async function orgsRoutes(fastify) {
       tags: [TAG], summary: 'Delete an organization', security: SEC,
       description: 'Permanently deletes the org. Requires `owner` role.',
       params: { type: 'object', properties: { org_slug: { type: 'string' } } },
+      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' } }, example: { ok: true } } },
     },
   }, async (req, reply) => {
     const ctx = await requireOrgAccess(req, reply, 'owner');
@@ -220,7 +232,9 @@ export default async function orgsRoutes(fastify) {
           email: { type: 'string' },
           role: { type: 'string', enum: ['admin', 'member'] },
         },
+        examples: [{ email: 'alex@example.com', role: 'member' }],
       },
+      response: { 201: { type: 'object', additionalProperties: true, example: { Id: 19, org_id: '4', user_id: '12', role: 'member' } } },
     },
   }, async (req, reply) => {
     const ctx = await requireOrgAccess(req, reply, 'admin');
@@ -249,7 +263,9 @@ export default async function orgsRoutes(fastify) {
       body: {
         type: 'object', required: ['role'],
         properties: { role: { type: 'string', enum: ['admin', 'member'] } },
+        examples: [{ role: 'admin' }],
       },
+      response: { 200: { type: 'object', additionalProperties: true, example: { Id: 19, org_id: '4', user_id: '12', role: 'admin' } } },
     },
   }, async (req, reply) => {
     const ctx = await requireOrgAccess(req, reply, 'admin');
@@ -269,6 +285,7 @@ export default async function orgsRoutes(fastify) {
       tags: [TAG], summary: 'Remove a member from an org', security: SEC,
       description: 'Removes the user from the org. Requires `admin`.',
       params: { type: 'object', properties: { org_slug: { type: 'string' }, user_id: { type: 'string' } } },
+      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' } }, example: { ok: true } } },
     },
   }, async (req, reply) => {
     const ctx = await requireOrgAccess(req, reply, 'admin');

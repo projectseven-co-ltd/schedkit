@@ -9,8 +9,9 @@ export default async function bookingPageRoutes(fastify) {
     schema: {
       tags: ['Public'],
       summary: 'Individual booking page',
-      description: 'Returns the HTML booking page for an individual host\'s event type. Open in a browser — not an API endpoint.',
+      description: 'Returns the HTML booking page for an individual host\'s event type. Open in a browser — not a JSON API endpoint.',
       params: { type: 'object', properties: { username: { type: 'string' }, event_slug: { type: 'string' } } },
+      response: { 200: { type: 'string', example: '<!DOCTYPE html><html><head><title>Book a Meeting</title></head><body>...</body></html>' } },
     },
   }, async (req, reply) => {
     const { username, event_slug } = req.params;

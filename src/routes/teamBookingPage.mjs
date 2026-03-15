@@ -30,8 +30,9 @@ export default async function teamBookingPageRoutes(fastify) {
     schema: {
       tags: ['Public'],
       summary: 'Team booking page',
-      description: 'Returns the HTML booking page for a team event type. Open in a browser — not an API endpoint.',
+      description: 'Returns the HTML booking page for a team event type. Open in a browser — not a JSON API endpoint.',
       params: { type: 'object', properties: { org_slug: { type: 'string' }, team_slug: { type: 'string' }, event_slug: { type: 'string' } } },
+      response: { 200: { type: 'string', example: '<!DOCTYPE html><html><head><title>Book a Meeting</title></head><body>...</body></html>' } },
     },
   }, async (req, reply) => {
     const { org_slug, team_slug, event_slug } = req.params;
@@ -53,6 +54,22 @@ export default async function teamBookingPageRoutes(fastify) {
           attendee_email: { type: 'string', format: 'email' },
           attendee_timezone: { type: 'string', default: 'UTC' },
           notes: { type: 'string' },
+        },
+        examples: [{ start_time: '2026-03-20T15:00:00.000Z', attendee_name: 'Taylor Brooks', attendee_email: 'taylor@example.com', attendee_timezone: 'America/Chicago', notes: 'Need a field response lead.' }],
+      },
+      response: {
+        201: {
+          type: 'object',
+          additionalProperties: true,
+          example: {
+            uid: 'bk_abc123def456',
+            status: 'confirmed',
+            start_time: '2026-03-20T15:00:00.000Z',
+            end_time: '2026-03-20T15:30:00.000Z',
+            assigned_to: 'Alex Response',
+            cancel_url: '/v1/cancel/cancel_tok_123',
+            reschedule_url: '/v1/reschedule/res_tok_123',
+          },
         },
       },
     },

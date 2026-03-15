@@ -1,0 +1,125 @@
+---
+title: Architecture
+description: How SchedKit is built — platform overview, core concepts, and technology stack.
+---
+
+# Architecture
+
+SchedKit is an **API-FirstResponder platform** — not a calendar app. The scheduling layer exists to coordinate people and resources in response to signals. Physical or digital. Urgent or routine.
+
+> "A prayer is always a signal asking for a response. An emergency alert is the same thing with urgency."
+
+---
+
+## Platform Overview
+
+```
+Signal IN  ──►  SchedKit  ──►  Action OUT
+               (coordinate)
+```
+
+Any signal can trigger any action:
+
+| Signal In | Action Out |
+|-----------|-----------|
+| Booking request | Assign responder, send confirmation |
+| Webhook payload | Create incident, page team |
+| Beacon ping | Update War Room map, track location |
+| NOAA alert | Auto-create incident, notify org |
+| Sensor reading | Trigger relay, flash LED, book slot |
+
+---
+
+## Core Concepts
+
+### Signals
+The heartbeat of the platform. Every event is a signal — beacon pings, captures, alerts, notes, check-ins. Signals are org-scoped and streamed live via SSE.
+
+- **Beacon** — periodic GPS ping from an active operator (fast-path, not persisted)
+- **Capture** — photo with coordinates attached to a signal
+- **Alert** — high-priority signal, triggers push notifications
+- **Note / Check-in** — manual text or location entry
+- `beacon_on` / `beacon_off` — lifecycle events, persisted for audit trail
+
+### Assignments (Bookings)
+Scheduled coordination events — a responder, a time slot, a client. Powered by the booking engine with team routing, availability windows, and confirmation flows.
+
+- Individual bookings: `/book/:username/:event_slug`
+- Team bookings: `/book/:org_slug/:team_slug/:event_slug`
+- Routing: `round_robin`, `random`, `fixed`
+
+### Incidents (Tickets)
+Structured response threads. An incident has responders, a priority, SLA timers, replies, and a public-facing status page. The same data model powers both internal tickets and customer-facing incidents.
+
+- SLA auto-set on create: urgent=1h, high=4h, normal=24h, low=48h
+- `sla_status` computed on read: `ok` / `warning` / `breached`
+- Public status URL: `https://schedkit.net/incidents/status/:token`
+
+### Orgs & Teams
+Multi-tenant grouping layer. An org contains teams; teams contain members with roles. Bookings, signals, and incidents are all org-scoped.
+
+- Plans gate org/team creation (Free/Starter: no orgs; Agency: 1 org, 5 teams; Enterprise: unlimited)
+- Over-limit resources are locked read-only, never deleted
+
+### War Room
+Real-time operational map. Shows live beacon positions, capture pins, alert flashes, and an activity feed — all driven by the SSE signal stream. No polling.
+
+---
+
+## Technology Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js v22 (ESM modules) |
+| Framework | Fastify 4 |
+| Database | NocoDB (REST API over MySQL) |
+| Real-time | Server-Sent Events (SSE) — no WebSocket dependency |
+| Email | Mailjet (transactional) + Himalaya (IMAP/SMTP CLI) |
+| Push | Web Push (VAPID) via native browser API |
+| File storage | NocoDB MinIO (S3-compatible) |
+| Payments | Stripe (Checkout + Customer Portal) |
+| Maps | Leaflet.js (War Room) |
+| Docs | Mintlify |
+| Deploy | Plesk GitOps — `git push` → webhook → `deploy.sh` → pm2 |
+
+---
+
+## System Diagram
+
+```
+                        ┌─────────────────────────────┐
+                        │         schedkit.net         │
+                        │                              │
+  Browser / App ───────►│  Fastify API  (Node.js v22)  │
+  AI Agent ────────────►│  /v1/*  routes               │
+  ESP32 / IoT ─────────►│  SSE streams                 │
+                        │                              │
+                        └──────┬──────────┬────────────┘
+                               │          │
+                    ┌──────────▼──┐  ┌────▼──────────┐
+                    │   NocoDB    │  │    Mailjet     │
+                    │  (MySQL +   │  │  (transact.    │
+                    │   MinIO)    │  │   email)       │
+                    └─────────────┘  └────────────────┘
+```
+
+---
+
+## Design Principles
+
+### API-First
+Every action the dashboard can perform, the API can perform. No click-ops. Every feature ships as an atomic endpoint first — the UI is just a consumer.
+
+### Agent-Native
+SchedKit is designed to be called by AI agents, not just humans. Endpoints are atomic, composable, and side-effect-clear. An agent can book, cancel, reschedule, query availability, and create incidents without any UI interaction.
+
+See the [AI Agent Tool Guide](/agent-tool-guide) for ready-made function definitions for Claude, GPT, and other LLMs.
+
+### Org-Scoped
+Every signal, booking, incident, and team is scoped to an org. Multi-tenant from day one. Users can belong to multiple orgs; signals only route to members of the sending org.
+
+### Rules Belong in the API
+Safeguards (plan limits, SLA enforcement, availability windows, booking constraints) live in the API layer — not in docs, not in the client. An agent calling the API gets the same guardrails as a human using the dashboard.
+
+### Parity Principle
+Whatever the user can do, the agent can do. Whatever the API can do, the dashboard exposes. No hidden capabilities, no UI-only features.

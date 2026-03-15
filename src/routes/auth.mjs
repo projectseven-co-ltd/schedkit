@@ -14,11 +14,19 @@ export default async function authRoutes(fastify) {
     schema: {
       tags: ['Auth'],
       summary: 'Request a magic link login email',
-      description: 'Sends a one-time login link and short login code to the email address if it matches a registered user.',
+      description: 'Send a one-time magic link and 6-digit login code to a registered user. Always returns `{ ok: true }` so the endpoint does not leak whether an email exists.',
       body: {
         type: 'object',
         required: ['email'],
-        properties: { email: { type: 'string' } },
+        properties: { email: { type: 'string', format: 'email' } },
+        examples: [{ email: 'ops@schedkit.net' }],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: { ok: { type: 'boolean' } },
+          example: { ok: true },
+        },
       },
     },
   }, async (req) => {
@@ -53,13 +61,24 @@ export default async function authRoutes(fastify) {
     schema: {
       tags: ['Auth'],
       summary: 'Verify short login code',
-      description: 'Verifies the 6-digit login code sent by email and issues a dashboard session cookie in the current browser/app context.',
+      description: 'Verify the 6-digit email code inside the web app or PWA and issue a dashboard session cookie for the current browser context.',
       body: {
         type: 'object',
         required: ['email', 'code'],
         properties: {
-          email: { type: 'string' },
+          email: { type: 'string', format: 'email' },
           code: { type: 'string' },
+        },
+        examples: [{ email: 'ops@schedkit.net', code: '482193' }],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            ok: { type: 'boolean' },
+            destination: { type: 'string' },
+          },
+          example: { ok: true, destination: '/dashboard' },
         },
       },
     },
@@ -95,7 +114,18 @@ export default async function authRoutes(fastify) {
     schema: {
       tags: ['Auth'],
       summary: 'Verify magic link token',
-      querystring: { type: 'object', properties: { token: { type: 'string' } } },
+      description: 'Verify a one-time magic link token from email. On success this issues a session cookie and redirects the browser to onboarding or dashboard.',
+      querystring: {
+        type: 'object',
+        properties: { token: { type: 'string' } },
+        examples: [{ token: '482193-qx3P7b9nR2wLk6sJm8Tz4Vb1Qh5NcD0EfG' }],
+      },
+      response: {
+        200: {
+          type: 'string',
+          example: '<html>Redirecting to dashboard...</html>',
+        },
+      },
     },
   }, async (req, reply) => {
     const token = String(req.query?.token || '');
@@ -117,8 +147,8 @@ export default async function authRoutes(fastify) {
     schema: {
       tags: ['Auth'],
       summary: 'Log out',
-      description: 'Clears the session cookie and deletes the server-side session.',
-      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' } } } },
+      description: 'Clear the session cookie and delete the current server-side session record.',
+      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' } }, example: { ok: true } } },
     }
   }, async (req, reply) => {
     const cookieHeader = req.headers['cookie'] || '';
@@ -139,8 +169,24 @@ export default async function authRoutes(fastify) {
     schema: {
       tags: ['Auth'],
       summary: 'Get current user',
-      description: 'Returns the authenticated user profile for the current session.',
+      description: 'Return the authenticated user profile for the active browser session, including API key, plan, and ntfy topic settings.',
       security: [{ cookieAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          example: {
+            Id: 7,
+            name: 'Olson Ops',
+            email: 'ops@schedkit.net',
+            slug: 'olson-ops',
+            timezone: 'America/Chicago',
+            api_key: 'p7s_live_ops_abc123',
+            enterprise: true,
+            ntfy_topic: 'schedkit-ops',
+            plan: 'enterprise',
+          },
+        },
+      },
     },
     preHandler: requireSession
   }, async (req) => {
@@ -153,17 +199,31 @@ export default async function authRoutes(fastify) {
     schema: {
       tags: ['Auth'],
       summary: 'Update profile',
-      description: 'Update name, email, or timezone for the current session user.',
+      description: 'Update the current session user profile. This is used for onboarding and profile maintenance.',
       body: {
         type: 'object',
         properties: {
           name: { type: 'string' },
-          email: { type: 'string' },
+          email: { type: 'string', format: 'email' },
           timezone: { type: 'string' },
           ntfy_topic: { type: 'string' },
-        }
+        },
+        examples: [{ name: 'Olson Ops', timezone: 'America/Chicago', ntfy_topic: 'schedkit-ops' }]
       },
       security: [{ cookieAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          example: {
+            Id: 7,
+            name: 'Olson Ops',
+            email: 'ops@schedkit.net',
+            slug: 'olson-ops',
+            timezone: 'America/Chicago',
+            ntfy_topic: 'schedkit-ops',
+          },
+        },
+      },
     },
     preHandler: requireSession
   }, async (req) => {

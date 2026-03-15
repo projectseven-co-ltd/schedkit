@@ -14,6 +14,21 @@ import { addMinutes, parseISO } from 'date-fns';
 import { nanoid } from 'nanoid';
 import { sendBookingConfirmation, sendCancellationEmail, sendBookingPending, sendHostConfirmationRequest, sendBookingConfirmedByHost, sendBookingDeclined } from '../lib/mailer.mjs';
 
+const bookingExample = {
+  Id: 88,
+  uid: 'bk_abc123def456',
+  event_type_id: '14',
+  user_id: '7',
+  attendee_name: 'Taylor Brooks',
+  attendee_email: 'taylor@example.com',
+  attendee_timezone: 'America/Chicago',
+  start_time: '2026-03-20T15:00:00.000Z',
+  end_time: '2026-03-20T15:30:00.000Z',
+  status: 'confirmed',
+  cancel_url: '/cancel/cancel_tok_123',
+  reschedule_url: '/reschedule/res_tok_123',
+};
+
 async function fireWebhook(url, payload) {
   if (!url) return;
   try {
@@ -45,6 +60,7 @@ export default async function bookingsRoutes(fastify) {
           page: { type: 'integer', default: 1 },
         },
       },
+      response: { 200: { type: 'object', additionalProperties: true, example: { bookings: [bookingExample], total: 1 } } },
     },
   }, async (req) => {
     const { status, limit = 50, page = 1 } = req.query;
@@ -66,8 +82,10 @@ export default async function bookingsRoutes(fastify) {
     schema: {
       tags: ['Bookings'],
       summary: 'Get booking',
+      description: 'Return a single booking by ID for the authenticated owner.',
       security: [{ apiKey: [] }],
       params: { type: 'object', properties: { id: { type: 'string' } } },
+      response: { 200: { type: 'object', additionalProperties: true, example: bookingExample } },
     },
   }, async (req, reply) => {
     const row = await db.get(tables.bookings, req.params.id);
@@ -90,7 +108,9 @@ export default async function bookingsRoutes(fastify) {
           start_time: { type: 'string', description: 'New ISO start time' },
           override: { type: 'boolean', description: 'If true, bypasses availability/slot validation — allows any date/time including weekends' },
         },
+        examples: [{ start_time: '2026-03-21T16:00:00.000Z', override: false }],
       },
+      response: { 200: { type: 'object', additionalProperties: true, example: { ok: true, start_time: '2026-03-21T16:00:00.000Z', end_time: '2026-03-21T16:30:00.000Z', override: false } } },
     },
   }, async (req, reply) => {
     const booking = await db.get(tables.bookings, req.params.id);
@@ -149,7 +169,9 @@ export default async function bookingsRoutes(fastify) {
           notes: { type: 'string' },
           custom_responses: { type: 'object', description: 'Answers to custom fields defined on the event type' },
         },
+        examples: [{ start_time: '2026-03-20T15:00:00.000Z', attendee_name: 'Taylor Brooks', attendee_email: 'taylor@example.com', attendee_timezone: 'America/Chicago', notes: 'Need site intake.', custom_responses: { site: 'Alpha' } }],
       },
+      response: { 201: { type: 'object', additionalProperties: true, example: bookingExample } },
     },
   }, async (req, reply) => {
     const { username, event_slug } = req.params;
@@ -337,6 +359,7 @@ export default async function bookingsRoutes(fastify) {
       summary: 'Cancel a booking (via token)',
       description: 'Cancel a booking using the `cancel_token` from the booking confirmation. Sends cancellation emails to both attendee and host.',
       params: { type: 'object', properties: { token: { type: 'string' } } },
+      response: { 200: { type: 'object', properties: { status: { type: 'string' }, uid: { type: 'string' } }, example: { status: 'cancelled', uid: 'bk_abc123def456' } } },
     },
   }, async (req, reply) => {
     const result = await db.find(tables.bookings, `(cancel_token,eq,${req.params.token})`);
@@ -371,6 +394,7 @@ export default async function bookingsRoutes(fastify) {
       summary: 'Cancel confirmation page',
       description: 'Returns an HTML confirmation page for cancelling a booking. Linked from cancellation emails.',
       params: { type: 'object', properties: { token: { type: 'string' } } },
+      response: { 200: { type: 'string', example: '<!DOCTYPE html><html><body>Cancel this booking?</body></html>' } },
     },
   }, async (req, reply) => {
     const result = await db.find(tables.bookings, `(cancel_token,eq,${req.params.token})`);
@@ -388,6 +412,7 @@ export default async function bookingsRoutes(fastify) {
       summary: 'Confirm cancellation',
       description: 'Confirms the cancellation after the attendee clicks "Yes, cancel" on the cancel confirmation page.',
       params: { type: 'object', properties: { token: { type: 'string' } } },
+      response: { 200: { type: 'string', example: '<!DOCTYPE html><html><body>Your booking has been cancelled.</body></html>' } },
     },
   }, async (req, reply) => {
     const result = await db.find(tables.bookings, `(cancel_token,eq,${req.params.token})`);
@@ -416,6 +441,7 @@ export default async function bookingsRoutes(fastify) {
       summary: 'Reschedule page',
       description: 'Returns an HTML page for rescheduling a booking. Linked from booking confirmation and cancellation emails.',
       params: { type: 'object', properties: { token: { type: 'string' } } },
+      response: { 200: { type: 'string', example: '<!DOCTYPE html><html><body>Reschedule your booking</body></html>' } },
     },
   }, async (req, reply) => {
     const result = await db.find(tables.bookings, `(reschedule_token,eq,${req.params.token})`);
@@ -444,7 +470,9 @@ export default async function bookingsRoutes(fastify) {
           start_time: { type: 'string', description: 'New ISO 8601 start time' },
           attendee_timezone: { type: 'string', default: 'UTC' },
         },
+        examples: [{ start_time: '2026-03-22T16:00:00.000Z', attendee_timezone: 'America/Chicago' }],
       },
+      response: { 200: { type: 'object', additionalProperties: true, example: { status: 'rescheduled', uid: 'bk_new123', start_time: '2026-03-22T16:00:00.000Z', end_time: '2026-03-22T16:30:00.000Z', cancel_url: '/v1/cancel/cancel_tok_new', reschedule_url: '/v1/reschedule/res_tok_new' } } },
     },
   }, async (req, reply) => {
     const { start_time, attendee_timezone = 'UTC' } = req.body;
