@@ -1250,7 +1250,7 @@ body::after {
     const dot = kind === 'alert' ? '#ff5f5f' : kind === 'capture' ? '#a78bfa' : kind === 'ok' ? '#4ade80' : kind === 'muted' ? 'var(--muted,#5a5a6e)' : kind === 'incident' ? '#60a5fa' : '#00ffcc';
     const item = document.createElement('div');
     item.className = 'sitrep-feed-item';
-    item.innerHTML = \`<div class="sitrep-feed-dot" style="background:\${dot}"></div><div style="flex:1;font-family:'Fira Code',monospace;"><span style="color:var(--muted,#5a5a6e);font-size:9px;">\${now} </span><span style="font-size:11px;letter-spacing:0.02em;">\${text}</span></div>\`;
+    item.innerHTML = \`<div class="sitrep-feed-dot" style="background:\${dot}"></div><div style="flex:1;font-family:'Fira Code',monospace;"><span style="color:var(--muted,#5a5a6e);font-size:9px;">\${now} </span><span style="font-size:11px;letter-spacing:0.02em;color:\${dot}">\${text}</span></div>\`;
     feed.insertBefore(item, feed.firstChild);
     while (feed.children.length > 50) feed.removeChild(feed.lastChild);
   }
