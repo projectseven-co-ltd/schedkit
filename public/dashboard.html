@@ -98,7 +98,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
   position:fixed;top:0;left:0;height:100vh;z-index:50;
 }
 .sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
-.sidebar-logo a{font-family:var(--font-mono);color:var(--accent);font-size:16px;text-decoration:none;display:flex;align-items:center;gap:10px}
+.sidebar-logo a{font-family:var(--font-mono);color:var(--accent);font-size:16px;text-decoration:none;display:flex;align-items:center;gap:10px}[data-lights="nite"] .sidebar-logo a{color:#4a1a00}[data-lights="nvg"] .sidebar-logo a{color:#1e3a44}[data-lights="nite"] .sidebar-logo span{color:#2a0f00}[data-lights="nvg"] .sidebar-logo span{color:#0e1e24}
 .sidebar-logo span{color:var(--muted)}
 .sidebar-nav{flex:1;padding:16px 10px;display:flex;flex-direction:column;gap:2px}
 .nav-item{
@@ -251,7 +251,7 @@ tr:hover td{background:var(--surface2)}
 .sitrep-stat-sub{font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:2px}
 .sitrep-stat-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:18px;opacity:.2;font-family:var(--font-mono);letter-spacing:0.05em}
 .sitrep-lower{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.sitrep-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}.sitrep-panel.live{border-color:rgba(255,95,95,0.3)}
+.sitrep-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}.sitrep-panel.live{border-color:rgba(255,95,95,0.3)}[data-lights="nite"] #sitrep-activity-feed{filter:saturate(0.3) brightness(0.6)}[data-lights="nite"] #sitrep-activity-feed .feed-entry{color:var(--muted)!important}[data-lights="nvg"] #sitrep-activity-feed{filter:saturate(0.05) brightness(0.5)}[data-lights="nvg"] #sitrep-activity-feed .feed-entry{color:var(--muted)!important}[data-lights="nite"] #wr-feed{filter:saturate(0.3) brightness(0.6)}[data-lights="nvg"] #wr-feed{filter:saturate(0.05) brightness(0.5)}[data-lights="nite"] #bscr-feed{filter:saturate(0.3) brightness(0.6)}[data-lights="nvg"] #bscr-feed{filter:saturate(0.05) brightness(0.5)}[data-lights="nvg"] .sitrep-status-dot{background:#1e3a44;animation:none;box-shadow:none}[data-lights="nvg"] .sitrep-status-bar{border-color:rgba(74,122,138,0.2)}[data-lights="nvg"] .sitrep-panel.live{border-color:rgba(74,122,138,0.2)}[data-lights="nite"] .sitrep-status-dot{background:#6a1a00}[data-lights="nite"] .sitrep-status-bar{border-color:rgba(100,20,0,0.4)}[data-lights="nite"] .sitrep-panel.live{border-color:rgba(100,20,0,0.4)}[data-lights="nite"] .nav-item.active{background:rgba(100,20,0,0.2);color:#6a1a00;border-color:rgba(100,20,0,0.3)}[data-lights="nvg"] .nav-item.active{background:rgba(30,58,68,0.3);color:#2a5a6a;border-color:rgba(30,58,68,0.4)}[data-lights="nite"] #sitrep-feed-live{color:#6a1a00!important;animation:none}[data-lights="nvg"] #sitrep-feed-live{color:#1e3a44!important;animation:none}[data-lights="nite"] #beacon-fab{background:#3a0f00;border-color:#6a1a00;color:#6a1a00}[data-lights="nvg"] #beacon-fab{background:#010c12;border-color:#1e3a44;color:#1e3a44}
 .sitrep-panel-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .sitrep-panel-head h3{font-size:11px;font-family:var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0}
 .sitrep-panel-body{padding:0;max-height:320px;overflow-y:auto}
@@ -480,7 +480,7 @@ tr:hover td{background:var(--surface2)}
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><a href="/dashboard"><svg width="26" height="26" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#0A0A0B"/><line x1="128" y1="96" x2="208" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/></svg>sched<span>kit</span></a></div>
+  <div class="sidebar-logo"><a href="/dashboard" class="logo-link"><svg class="logo-svg" width="26" height="26" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#0A0A0B"/><line x1="128" y1="96" x2="208" y2="416" stroke="currentColor" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="currentColor" stroke-width="72" stroke-linecap="round"/></svg>sched<span>kit</span></a></div>
   <nav class="sidebar-nav">
     <button class="nav-item active" data-section="sitrep">
       <span class="nav-icon">[+]</span> SITREP
