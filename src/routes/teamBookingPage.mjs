@@ -579,7 +579,7 @@ html, body {
         document.getElementById('info-name').textContent = TEAM_SLUG;
         document.getElementById('info-title').textContent = eventType.title;
         document.getElementById('info-meta').innerHTML = \`
-          <div class="meta-row"><span class="meta-icon">⏱</span>\${eventType.duration_minutes} min</div>
+          <div class="meta-row"><span class="meta-icon">[~]</span>\${eventType.duration_minutes} min</div>
           <div class="meta-row"><span class="meta-icon">\${locIcon}</span>\${locLabel}</div>
           <div class="meta-row"><span class="meta-icon">[▶]</span>Team booking</div>
         \`;
@@ -775,7 +775,6 @@ html, body {
   function _applyMode2(m){_mode2=m;document.documentElement.setAttribute('data-lights',m);localStorage.setItem('p7-display-mode',m);['lightsBtnLabel','lightsBtnLabelMobile'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=_ML[m]||'DARK';});document.querySelectorAll('.lights-btn').forEach(b=>{const ic=b.querySelector('span:first-child');if(ic&&!ic.classList.contains('phosphor-dot'))ic.textContent=_MS[m]||'[◑]';});}
   _applyMode2(_mode2);
   document.querySelectorAll('.lights-btn').forEach(b=>{let _t=null;b.addEventListener('pointerdown',()=>{_t=setTimeout(()=>{_t=null;if(_mode2==='day')_applyMode2(_preDay2);else{_preDay2=_mode2;_applyMode2('day');}},500);});b.addEventListener('pointerup',()=>{if(!_t)return;clearTimeout(_t);_t=null;if(_mode2==='day')_applyMode2(_preDay2);else _applyMode2(_TAC[(_TAC.indexOf(_mode2)+1)%_TAC.length]);});b.addEventListener('pointercancel',()=>{clearTimeout(_t);_t=null;});b.addEventListener('contextmenu',e=>e.preventDefault());});
-    });
   })();
 })();
 </script>

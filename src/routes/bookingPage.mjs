@@ -915,7 +915,7 @@ html, body {
         document.getElementById('info-name').textContent = USERNAME;
         document.getElementById('info-title').textContent = eventType.title;
         document.getElementById('info-meta').innerHTML = \`
-          <div class="meta-row"><span class="meta-icon">⏱</span>\${eventType.duration_minutes} min</div>
+          <div class="meta-row"><span class="meta-icon">[~]</span>\${eventType.duration_minutes} min</div>
           <div class="meta-row"><span class="meta-icon">\${locIcon}</span>\${locLabel}</div>
         \`;
         document.title = RESCHEDULE_TOKEN ? \`Reschedule: \${eventType.title}\` : \`Book \${label}: \${eventType.title}\`;
