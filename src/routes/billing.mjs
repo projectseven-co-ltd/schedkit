@@ -5,8 +5,8 @@ import { tables } from '../lib/tables.mjs';
 import { requireSession } from '../middleware/session.mjs';
 
 const PRICE_IDS = {
-  starter: 'price_1TBKt0KY0CpWBxBoWY7QpBga',
-  agency:  'price_1TBKt0KY0CpWBxBoi9hNvdRB',
+  starter: process.env.STRIPE_PRICE_STARTER || 'price_1TBMFk3LrZftF9HcDVGFbeMk',
+  agency:  process.env.STRIPE_PRICE_AGENCY  || 'price_1TBMFl3LrZftF9HcGXioTpJ2',
 };
 
 const PLAN_FROM_PRICE = Object.fromEntries(Object.entries(PRICE_IDS).map(([k,v]) => [v, k]));
