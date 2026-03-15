@@ -243,7 +243,7 @@ tr:hover td{background:var(--surface2)}
 .sitrep-panel-body{padding:0;max-height:320px;overflow-y:auto}
 .sitrep-feed-item{padding:8px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;font-size:12px}
 .sitrep-feed-item:last-child{border-bottom:none}
-.sitrep-feed-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0;background:var(--muted)}
+.sitrep-feed-dot{display:none}
 .sitrep-feed-dot.assignment{background:var(--accent)}
 .sitrep-feed-dot.incident{background:#60a5fa}
 .sitrep-feed-dot.alert{background:#ff5f5f}
@@ -1423,7 +1423,6 @@ function renderSitrepFeed() {
   }
   el.innerHTML = sitrepFeed.map(item => `
     <div class="sitrep-feed-item ${item.kind}">
-      <div class="sitrep-feed-dot ${item.kind}"></div>
       <div style="flex:1">
         <div class="sitrep-feed-text">${esc(item.text)}</div>
         <div class="sitrep-feed-time">${esc(fmtRelTime(item.ts))}</div>
