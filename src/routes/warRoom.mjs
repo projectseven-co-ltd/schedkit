@@ -541,14 +541,32 @@ body::after {
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   z-index: 500;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 24px 32px;
+  background: rgba(10,10,11,0.82);
+  border: 1px solid rgba(0,255,204,0.15);
+  border-radius: 10px;
+  padding: 20px 32px;
   text-align: center;
   color: var(--muted);
-  font-size: 11px;
-  letter-spacing: 2px;
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
   pointer-events: none;
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+#map-no-geo .geo-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(0,255,204,0.5);
+  margin: 0 2px;
+  animation: geoDotPulse 1.4s ease-in-out infinite;
+}
+#map-no-geo .geo-dot:nth-child(2) { animation-delay: 0.2s; }
+#map-no-geo .geo-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes geoDotPulse {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1.2); }
 }
 /* Leaflet popup dark override */
 .leaflet-popup-content-wrapper {
@@ -638,7 +656,7 @@ body::after {
   </div>
   <div id="view-map">
     <div id="map-container"></div>
-    <div id="map-no-geo">NO GEO DATA — INCLUDE lat/lng WHEN CREATING INCIDENTS</div>
+    <div id="map-no-geo">[+] WAITING FOR GEO DATA<br><span style="display:inline-flex;gap:4px;margin-top:8px;"><span class="geo-dot"></span><span class="geo-dot"></span><span class="geo-dot"></span></span></div>
     <!-- Capture date filter toolbar -->
     <div id="capture-filter-bar">
       <span style="font-size:9px;letter-spacing:0.1em;color:#555568;font-family:'Fira Code',monospace;">[▲] CAPTURES</span>
@@ -1042,7 +1060,7 @@ body::after {
 
   function checkGeoEmpty() {
     const hasIncidents = incidentMarkers.size > 0;
-    const hasBeacons = Object.keys(window._liveBeacons || {}).length > 0;
+    const hasBeacons = beaconMarkers.size > 0;
     const hasCaptures = (_captures || []).length > 0;
     document.getElementById('map-no-geo').style.display =
       (hasIncidents || hasBeacons || hasCaptures) ? 'none' : 'block';
