@@ -1089,7 +1089,57 @@ body::after {
     }
   }
 
-  function updateResponderDot(user_id, lat, lng) {
+  // ── Beacon track polylines ─────────────────────────────────────────
+  // _beaconTracks[key] = { points: [[lat,lng],...], polyline: L.Polyline, visible: true }
+  const _beaconTracks = {};
+  const MAX_TRACK_POINTS = 500; // per device
+
+  function getTrackColor(key) {
+    // Deterministic color per device — cycle through distinct hues
+    const palette = ['#00ffcc','#a78bfa','#fbbf24','#60a5fa','#f472b6','#34d399','#fb923c'];
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) & 0xffff;
+    return palette[h % palette.length];
+  }
+
+  function pushTrackPoint(key, lat, lng) {
+    if (!leafletMap) return;
+    if (!_beaconTracks[key]) {
+      const color = getTrackColor(key);
+      _beaconTracks[key] = {
+        points: [],
+        color,
+        polyline: L.polyline([], {
+          color,
+          weight: 2,
+          opacity: 0.7,
+          dashArray: '4 6',
+          smoothFactor: 1,
+        }).addTo(leafletMap),
+      };
+    }
+    const track = _beaconTracks[key];
+    track.points.push([lat, lng]);
+    if (track.points.length > MAX_TRACK_POINTS) track.points.shift();
+    track.polyline.setLatLngs(track.points);
+  }
+
+  function clearTrack(key) {
+    if (_beaconTracks[key]) {
+      leafletMap && leafletMap.removeLayer(_beaconTracks[key].polyline);
+      delete _beaconTracks[key];
+    }
+  }
+
+  function toggleTrack(key) {
+    const t = _beaconTracks[key];
+    if (!t) return;
+    if (leafletMap.hasLayer(t.polyline)) {
+      leafletMap.removeLayer(t.polyline);
+    } else {
+      t.polyline.addTo(leafletMap);
+    }
+  }
     // Legacy responder.moved fallback — treat as beacon ping with no device_id
     updateBeaconDot('user-' + user_id, user_id, lat, lng, null, null);
   }
@@ -1118,38 +1168,50 @@ body::after {
       }).addTo(leafletMap);
     }
 
-    // Dot
+        // Dot — color matches track (deterministic per device)
     const shortId = String(deviceId || userId).slice(-6);
     const displayLabel = label || shortId;
+    const dotColor = getTrackColor(key);
     const icon = L.divIcon({
       className: '',
       html: \`<div style="
         width:14px;height:14px;border-radius:50%;
-        background:#00ffcc;border:2px solid rgba(0,255,204,0.6);
-        box-shadow:0 0 8px rgba(0,255,204,0.7);
+        background:\${dotColor};border:2px solid \${dotColor}99;
+        box-shadow:0 0 8px \${dotColor}bb;
         animation:beaconPing 2s ease-out infinite;
       "></div>\`,
       iconSize: [14, 14],
       iconAnchor: [7, 7],
     });
     const marker = L.marker([lat, lng], { icon }).addTo(leafletMap);
-    marker.bindPopup(\`
-      <div class="map-popup-title">[+] Beacon</div>
-      <div class="map-popup-row">Device <span>\${displayLabel}</span></div>
-      <div class="map-popup-row">Coords <span>\${lat.toFixed(5)}, \${lng.toFixed(5)}</span></div>
-      \${accuracy ? \`<div class="map-popup-row">Accuracy <span>±\${Math.round(accuracy)}m</span></div>\` : ''}
-    \`);
-
-    // Label marker (floating text above dot)
+        // Label marker (floating text above dot)
     const labelIcon = L.divIcon({
       className: '',
-      html: \`<div style="font-family:'Fira Code',monospace;font-size:9px;color:#00ffcc;letter-spacing:0.08em;white-space:nowrap;text-shadow:0 0 4px rgba(0,0,0,0.9);margin-top:-18px;margin-left:8px;">\${displayLabel}</div>\`,
+      html: \`<div style="font-family:'Fira Code',monospace;font-size:9px;color:\${dotColor};letter-spacing:0.08em;white-space:nowrap;text-shadow:0 0 4px rgba(0,0,0,0.9);margin-top:-18px;margin-left:8px;">\${displayLabel}</div>\`,
       iconSize: [80, 14],
       iconAnchor: [0, 14],
     });
     const labelMarker = L.marker([lat, lng], { icon: labelIcon, interactive: false }).addTo(leafletMap);
 
     beaconMarkers.set(key, { marker, accuracyCircle, labelMarker, lastSeen: Date.now(), userId, lat, lng, deviceId });
+
+    // Track polyline — push point every ping
+    pushTrackPoint(key, lat, lng);
+
+    // Match beacon dot color to track color
+    const trackColor = (_beaconTracks[key]?.color) || '#00ffcc';
+
+    // Update popup with track info
+    marker.bindPopup(\`
+      <div class="map-popup-title">[+] Beacon Active</div>
+      <div class="map-popup-row">Device <span>\${displayLabel}</span></div>
+      <div class="map-popup-row">Coords <span>\${lat.toFixed(5)}, \${lng.toFixed(5)}</span></div>
+      \${accuracy ? \`<div class="map-popup-row">Accuracy <span>±\${Math.round(accuracy)}m</span></div>\` : ''}
+      <div class="map-popup-row">Track pts <span>\${(_beaconTracks[key]?.points?.length || 1)}</span></div>
+      <a class="map-popup-btn" onclick="toggleTrack('\${key}');return false;" href="#">TOGGLE TRACK</a>
+      <a class="map-popup-btn" style="color:#ff5f5f;border-color:#ff5f5f44;" onclick="clearTrack('\${key}');return false;" href="#">CLEAR TRACK</a>
+    \`);
+
     updateBeaconPanel();
     checkGeoEmpty();
   }
@@ -1162,6 +1224,7 @@ body::after {
     existing.accuracyCircle && leafletMap && leafletMap.removeLayer(existing.accuracyCircle);
     existing.labelMarker && leafletMap && leafletMap.removeLayer(existing.labelMarker);
     beaconMarkers.delete(key);
+    clearTrack(key);
     updateBeaconPanel();
     checkGeoEmpty();
   }
@@ -1651,6 +1714,8 @@ body::after {
   window.setCaptureRange = setCaptureRange;
   window.applyCaptureCustomRange = applyCaptureCustomRange;
   window.clearCaptures = clearCaptures;
+  window.toggleTrack = toggleTrack;
+  window.clearTrack = clearTrack;
 })();
 </script>
 <style>
