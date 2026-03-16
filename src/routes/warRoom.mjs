@@ -994,6 +994,9 @@ body::after {
     // Recluster captures on zoom change
     leafletMap.on('zoomend', onMapZoomEnd);
 
+    // Right-click on map → reset to "3 months" to show all captures
+    leafletMap.on('contextmenu', () => setCaptureRange('3mo'));
+
     // Load today's captures by default
     const { since } = getCaptureRangeDates('today');
     loadHistoricalSignals(since);

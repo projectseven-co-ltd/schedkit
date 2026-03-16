@@ -501,7 +501,7 @@ tr:hover td{background:var(--surface2)}
     </button>
     <div class="nav-divider"></div>
     <button class="nav-item" data-section="kit">
-      <span class="nav-icon">[◆]</span> Kit Config
+      <span class="nav-icon">[◆]</span> Settings
     </button>
     <button class="nav-item" data-section="orgs">
       <span class="nav-icon">[▶]</span> Units
@@ -730,7 +730,7 @@ tr:hover td{background:var(--surface2)}
     <!-- KIT CONFIG -->
     <div class="section" id="section-kit">
       <div class="page-header" style="margin-bottom:16px">
-        <h2>Kit Config</h2>
+        <h2>Settings</h2>
       </div>
       <div class="kit-tabs">
         <button class="kit-tab active" onclick="switchKitTab('event-types')">Event Types</button>
@@ -1449,7 +1449,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.add('active');
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById('section-' + section).classList.add('active');
-    const titles = { sitrep:'SITREP', assignments:'Assignments', tickets:'Incidents', signals:'Signals', kit:'Kit Config', 'event-types':'Event Types', availability:'Availability', blackout:'Blackout Dates', clients:'Client Flags', orgs:'Units', settings:'Settings' };
+    const titles = { sitrep:'SITREP', assignments:'Assignments', tickets:'Incidents', signals:'Signals', kit:'Settings', 'event-types':'Event Types', availability:'Availability', blackout:'Blackout Dates', clients:'Client Flags', orgs:'Units', settings:'Account' };
     document.getElementById('page-title').textContent = titles[section] || section;
     loadSection(section);
     closeSidebar(); // close on mobile after nav
@@ -1599,7 +1599,8 @@ async function loadSitrep() {
   if (tickRes?.ok) {
     const { tickets = [] } = await tickRes.json();
     openIncidents = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
-    breachedCount = tickets.filter(t => t.sla_status === 'breached').length;
+    // Only count breaches on open/in-progress tickets — closed tickets don't matter
+    breachedCount = tickets.filter(t => (t.status === 'open' || t.status === 'in_progress') && t.sla_status === 'breached').length;
     inProgressCount = tickets.filter(t => t.status === 'in_progress').length;
 
     // Seed feed with recent tickets
@@ -1880,9 +1881,10 @@ function renderPlanTiers() {
 }
 
 
+function userTz() { return currentUser?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }
 function fmtTicketTime(ts) {
   const d = new Date(ts || Date.now());
-  return d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+  return d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit', timeZone: userTz() });
 }
 
 function synthesizeTicketActivity(ticket, replies = []) {
@@ -3071,7 +3073,7 @@ function openRescheduleModal(assignment) {
   const start = new Date(assignment.start_time);
   document.getElementById("rs-assignment-info").innerHTML =
     `<strong>${esc(assignment.attendee_name)}</strong> &nbsp;·&nbsp; ${esc(assignment.attendee_email)}<br>
-     Current: <span style="color:var(--accent)">${start.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}</span>`;
+     Current: <span style="color:var(--accent)">${start.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:userTz()})}</span>`;
 
   if (rsFlatpickr) rsFlatpickr.destroy();
   rsFlatpickr = flatpickr('#rs-date', {
@@ -3177,7 +3179,7 @@ function openCancelAssignmentModal(assignment) {
   const start = new Date(assignment.start_time);
   document.getElementById('cancel-assignment-info').innerHTML =
     `<strong>${esc(assignment.attendee_name)}</strong> &nbsp;·&nbsp; ${esc(assignment.attendee_email)}<br>
-     <span style="color:var(--accent);font-family:var(--font-mono)">${start.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}</span>`;
+     <span style="color:var(--accent);font-family:var(--font-mono)">${start.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:userTz()})}</span>`;
   openModal('cancel-assignment-modal');
 }
 
