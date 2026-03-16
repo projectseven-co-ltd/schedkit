@@ -1140,6 +1140,8 @@ body::after {
       t.polyline.addTo(leafletMap);
     }
   }
+
+  function updateResponderDot(user_id, lat, lng) {
     // Legacy responder.moved fallback — treat as beacon ping with no device_id
     updateBeaconDot('user-' + user_id, user_id, lat, lng, null, null);
   }
