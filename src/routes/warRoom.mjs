@@ -1708,9 +1708,9 @@ body::after {
   renderList();
     connectSSE();
   connectSignalSSE();
-  // Default to map view — init immediately
+  // Default to map view — init on next tick so DOM has laid out
   mapInitialized = true;
-  initMap();
+  setTimeout(() => initMap(), 50);
   window.setCaptureRange = setCaptureRange;
   window.applyCaptureCustomRange = applyCaptureCustomRange;
   window.clearCaptures = clearCaptures;
