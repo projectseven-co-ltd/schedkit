@@ -554,19 +554,27 @@ body::after {
   backdrop-filter: blur(6px);
   white-space: nowrap;
 }
-#map-no-geo .geo-dot {
+#map-no-geo .geo-bar {
   display: inline-block;
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: rgba(0,255,204,0.5);
+  width: 4px;
+  background: rgba(0,255,204,0.7);
   margin: 0 2px;
-  animation: geoDotPulse 1.4s ease-in-out infinite;
+  border-radius: 1px;
+  animation: geoBarPulse 1s ease-in-out infinite;
 }
-#map-no-geo .geo-dot:nth-child(2) { animation-delay: 0.2s; }
-#map-no-geo .geo-dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes geoDotPulse {
-  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1.2); }
+#map-no-geo .geo-bar:nth-child(1)  { height: 8px;  animation-delay: 0s;   }
+#map-no-geo .geo-bar:nth-child(2)  { height: 14px; animation-delay: 0.1s; }
+#map-no-geo .geo-bar:nth-child(3)  { height: 6px;  animation-delay: 0.2s; }
+#map-no-geo .geo-bar:nth-child(4)  { height: 12px; animation-delay: 0.3s; }
+#map-no-geo .geo-bar:nth-child(5)  { height: 5px;  animation-delay: 0.4s; }
+#map-no-geo .geo-bar:nth-child(6)  { height: 10px; animation-delay: 0.5s; }
+#map-no-geo .geo-bar:nth-child(7)  { height: 7px;  animation-delay: 0.6s; }
+#map-no-geo .geo-bar:nth-child(8)  { height: 13px; animation-delay: 0.7s; }
+#map-no-geo .geo-bar:nth-child(9)  { height: 4px;  animation-delay: 0.8s; }
+#map-no-geo .geo-bar:nth-child(10) { height: 9px;  animation-delay: 0.9s; }
+@keyframes geoBarPulse {
+  0%, 100% { opacity: 0.15; transform: scaleY(0.4); }
+  50%       { opacity: 1;    transform: scaleY(1);   }
 }
 /* Leaflet popup dark override */
 .leaflet-popup-content-wrapper {
@@ -656,7 +664,7 @@ body::after {
   </div>
   <div id="view-map">
     <div id="map-container"></div>
-    <div id="map-no-geo">[+] WAITING FOR GEO DATA<br><span style="display:inline-flex;gap:4px;margin-top:8px;"><span class="geo-dot"></span><span class="geo-dot"></span><span class="geo-dot"></span></span></div>
+    <div id="map-no-geo">[+] WAITING FOR GEO DATA<br><span style="display:inline-flex;gap:0;align-items:flex-end;margin-top:10px;height:16px;"><span class="geo-bar"></span><span class="geo-bar"></span><span class="geo-bar"></span><span class="geo-bar"></span><span class="geo-bar"></span><span class="geo-bar"></span><span class="geo-bar"></span><span class="geo-bar"></span><span class="geo-bar"></span><span class="geo-bar"></span></span></div>
     <!-- Capture date filter toolbar -->
     <div id="capture-filter-bar">
       <span style="font-size:9px;letter-spacing:0.1em;color:#555568;font-family:'Fira Code',monospace;">[▲] CAPTURES</span>
