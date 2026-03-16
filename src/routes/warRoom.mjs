@@ -1014,17 +1014,17 @@ body::after {
             '<span class="bc-sla ' + sc + '" data-sla-id="' + id + '">' + (isBreached ? '[×] BREACHED' : slaText) + '</span>' +
           '</div>' +
           '<div class="bc-actions">' +
-            '<button class="bc-btn" onclick="event.stopPropagation();selectIncident(\'' + id + '\')">DETAILS</button>' +
-            (hasGeo ? '<button class="bc-btn map-pin" onclick="event.stopPropagation();flyToIncident(\'' + id + '\')">MAP</button>' : '') +
-            (inc.status !== 'in_progress' ? '<button class="bc-btn escalate" onclick="event.stopPropagation();quickEscalate(\'' + id + '\')">ESCALATE</button>' : '') +
-            '<button class="bc-btn resolve" onclick="event.stopPropagation();quickResolve(\'' + id + '\')">RESOLVE</button>' +
+            '<button class="bc-btn" onclick="event.stopPropagation();selectIncident(' + JSON.stringify(id) + ')">DETAILS</button>' +
+            (hasGeo ? '<button class="bc-btn map-pin" onclick="event.stopPropagation();flyToIncident(' + JSON.stringify(id) + ')">MAP</button>' : '') +
+            (inc.status !== 'in_progress' ? '<button class="bc-btn escalate" onclick="event.stopPropagation();quickEscalate(' + JSON.stringify(id) + ')">ESCALATE</button>' : '') +
+            '<button class="bc-btn resolve" onclick="event.stopPropagation();quickResolve(' + JSON.stringify(id) + ')">RESOLVE</button>' +
           '</div>';
 
         card.addEventListener('click', () => selectIncident(id));
         container.appendChild(card);
       }
       if (!list.length) {
-        container.innerHTML = '<div style="color:#2a2a36;font-family:\'Fira Code\',monospace;font-size:9px;letter-spacing:0.1em;padding:8px 4px">— NONE —</div>';
+        container.innerHTML = '<div style="color:#2a2a36;font-family:monospace;font-size:9px;letter-spacing:0.1em;padding:8px 4px">— NONE —</div>';
       }
     }
   }
