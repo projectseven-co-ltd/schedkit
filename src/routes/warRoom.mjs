@@ -925,7 +925,7 @@ body::after {
     leafletMap = L.map('map-container', {
       zoomControl: true,
       attributionControl: false,
-    }).setView([20, 0], 2);
+    }).setView([37.8, -96], 4); // Default: CONUS
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       subdomains: 'abcd',
@@ -936,13 +936,16 @@ body::after {
       (i.status === 'open' || i.status === 'in_progress') &&
       i.lat != null && i.lng != null);
 
-    if (withGeo.length === 0) {
-      document.getElementById('map-no-geo').style.display = 'block';
-    } else {
+    if (withGeo.length > 0) {
       document.getElementById('map-no-geo').style.display = 'none';
       for (const inc of withGeo) addIncidentMarker(inc);
       fitMapToMarkers();
+    } else {
+      document.getElementById('map-no-geo').style.display = 'block';
     }
+
+    // Load historical captures and pin them
+    loadHistoricalSignals();
   }
 
   function makeCircleMarker(inc) {
@@ -1184,6 +1187,42 @@ body::after {
     };
   }
 
+  // Load historical captures + recent beacons from REST, pin on map
+  async function loadHistoricalSignals() {
+    try {
+      const res = await fetch('/v1/signals?limit=200&sort=-Id', {
+        headers: { 'x-api-key': _apiKey }
+      });
+      if (!res.ok) return;
+      const { signals = [] } = await res.json();
+      const captures = signals.filter(s => s.type === 'capture' && s.lat != null);
+      for (const c of captures) {
+        let meta = {};
+        try { meta = JSON.parse(c.meta || '{}'); } catch {}
+        const deviceId = meta.device_id || ('user-' + c.user_id);
+        addCapturePin(c, deviceId, true);
+      }
+      if (captures.length > 0) {
+        document.getElementById('map-no-geo').style.display = 'none';
+        // Fit map to capture pins if no incidents had geo
+        const bounds = captures.map(c => [+c.lat, +c.lng]);
+        if (bounds.length === 1) {
+          leafletMap.setView(bounds[0], 14);
+        } else if (bounds.length > 1) {
+          leafletMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+        }
+      }
+      // Also show recent beacon locations (last known position per device)
+      const beaconsByDevice = {};
+      signals.filter(s => s.type === 'beacon_on' && s.lat != null).forEach(s => {
+        let meta = {};
+        try { meta = JSON.parse(s.meta || '{}'); } catch {}
+        const did = meta.device_id || ('user-' + s.user_id);
+        if (!beaconsByDevice[did]) beaconsByDevice[did] = s;
+      });
+    } catch (e) { console.warn('historical signals load failed', e); }
+  }
+
   function handleSignalEvent(evt) {
     const { type, payload } = evt;
     if (!payload) return;
@@ -1212,47 +1251,60 @@ body::after {
       addFeedItem('alert', '[!] Alert · ' + shortId + (payload.note ? ' · ' + payload.note : ''));
     } else if (type === 'signal.capture') {
       if (payload.lat != null && mapInitialized) addCapturePin(payload, deviceId);
-      addFeedItem('capture', '[▲] Capture · ' + shortId + (payload.lat ? ' · ' + (+payload.lat).toFixed(4) + ', ' + (+payload.lng).toFixed(4) : ''));
+      const hasImg = !!(payload.image_url);
+      const imgSrc = hasImg ? (payload.image_url.startsWith('/') ? payload.image_url : '/captures/' + payload.image_url.split('/').pop()) : null;
+      const coords = payload.lat ? \` · \${(+payload.lat).toFixed(4)}, \${(+payload.lng).toFixed(4)}\` : '';
+      const clickHandler = imgSrc ? \` style="cursor:pointer" onclick="showCaptureLightbox('\${imgSrc}', '\${shortId}\${coords}')"\` : '';
+      addFeedItem('capture', \`[▲] Capture · \${shortId}\${coords}\`, clickHandler);
     } else if (type === 'signal.note') {
       addFeedItem('muted', '[~] Note · ' + shortId + ' · ' + (payload.note || '').slice(0, 60));
     }
   }
 
 
-  function addCapturePin(payload, deviceId) {
+  function addCapturePin(payload, deviceId, historical) {
     if (!leafletMap || payload.lat == null || payload.lng == null) return;
     const shortId = (deviceId || '').slice(-8);
     const hasImage = !!(payload.image_url && payload.image_url.length > 0);
     const icon = L.divIcon({
       className: '',
-      html: '<div style="width:20px;height:20px;border-radius:2px;background:#8b5cf6;border:1px solid #a78bfa;display:flex;align-items:center;justify-content:center;font-size:10px;font-family:monospace;font-weight:700;color:#e8e8ea;letter-spacing:0;box-shadow:0 0 8px rgba(139,92,246,0.5);">&#9650;</div>',
-      iconSize: [20, 20],
-      iconAnchor: [10, 10],
+      html: \`<div style="width:22px;height:22px;border-radius:3px;background:#8b5cf6;border:2px solid #a78bfa;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:monospace;font-weight:700;color:#e8e8ea;box-shadow:0 0 10px rgba(139,92,246,0.6);\${historical ? 'opacity:0.7' : ''}">&#9650;</div>\`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
     });
-    const time = new Date().toISOString().slice(11,19);
-    const popup = L.popup({ maxWidth: 260 });
+    const ts = payload.created_at || payload.CreatedAt || new Date().toISOString();
+    const timeStr = new Date(ts).toISOString().slice(11,19) + ' UTC';
+    const dateStr = new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const coords = \`\${(+payload.lat).toFixed(5)}, \${(+payload.lng).toFixed(5)}\`;
+
     const m = L.marker([+payload.lat, +payload.lng], { icon }).addTo(leafletMap);
     m.on('click', function() {
-      let html = '<div class="map-popup-title" style="color:#a78bfa">[▲] Capture</div>' +
-        '<div class="map-popup-row">Device <span>' + shortId + '</span></div>' +
-        '<div class="map-popup-row">Time <span>' + time + ' UTC</span></div>';
+      let html = \`<div class="map-popup-title" style="color:#a78bfa">[▲] Capture</div>
+        <div class="map-popup-row">Device <span>\${escHtml(shortId)}</span></div>
+        <div class="map-popup-row">Time <span>\${dateStr} \${timeStr}</span></div>
+        <div class="map-popup-row">Coords <span>\${coords}</span></div>\`;
       if (hasImage) {
-        const proxyUrl = payload.image_url.startsWith('/') ? payload.image_url : '/v1/upload/image?url=' + encodeURIComponent(payload.image_url);
-        html += '<img src="' + proxyUrl + '" style="width:100%;max-width:240px;border-radius:4px;margin-top:8px;cursor:pointer;" onclick="showCaptureLightbox(this.src)">';
+        const imgSrc = payload.image_url.startsWith('/') ? payload.image_url : '/captures/' + payload.image_url.split('/').pop();
+        const meta = \`\${shortId} · \${dateStr} \${timeStr} · \${coords}\`;
+        html += \`<div style="margin-top:10px;cursor:pointer;position:relative;" onclick="showCaptureLightbox('\${imgSrc}', '\${escHtml(meta)}')">
+          <img src="\${imgSrc}" style="width:100%;max-width:240px;border-radius:4px;border:1px solid rgba(167,139,250,0.3);display:block;" onerror="this.style.display='none';this.nextSibling.style.display='block'">
+          <div style="display:none;padding:8px;background:#1a1020;border:1px dashed #a78bfa;border-radius:4px;font-size:11px;color:#a78bfa;">[▲] Image unavailable</div>
+          <div style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.7);border-radius:3px;padding:2px 5px;font-size:9px;color:#a78bfa;font-family:monospace">[→] EXPAND</div>
+        </div>\`;
       }
-      popup.setContent(html);
-      m.bindPopup(popup).openPopup();
+      m.bindPopup(L.popup({ maxWidth: 280 }).setContent(html)).openPopup();
     });
+    return m;
   }
 
-  function addFeedItem(kind, text) {
+  function addFeedItem(kind, text, extraAttrs) {
     const feed = document.getElementById('wr-feed');
     if (!feed) return;
     const now = new Date().toISOString().slice(11,19);
     const dot = kind === 'alert' ? '#ff5f5f' : kind === 'capture' ? '#a78bfa' : kind === 'ok' ? '#4ade80' : kind === 'muted' ? 'var(--muted,#5a5a6e)' : kind === 'incident' ? '#60a5fa' : '#00ffcc';
     const item = document.createElement('div');
     item.className = 'sitrep-feed-item';
-    item.innerHTML = \`<div style="flex:1;font-family:'Fira Code',monospace;"><span style="color:var(--muted,#5a5a6e);font-size:9px;">\${now} </span><span style="font-size:11px;letter-spacing:0.02em;color:\${dot}">\${text}</span></div>\`;
+    item.innerHTML = \`<div\${extraAttrs||''} style="flex:1;font-family:'Fira Code',monospace;"><span style="color:var(--muted,#5a5a6e);font-size:9px;">\${now} </span><span style="font-size:11px;letter-spacing:0.02em;color:\${dot}">\${text}</span></div>\`;
     feed.insertBefore(item, feed.firstChild);
     while (feed.children.length > 50) feed.removeChild(feed.lastChild);
   }
@@ -1358,18 +1410,39 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <!-- Capture lightbox -->
-<div id="capture-lightbox" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.92);backdrop-filter:blur(6px);align-items:center;justify-content:center;flex-direction:column;gap:12px;" onclick="hideCaptureLightbox()">
-  <div style="position:absolute;top:16px;right:20px;font-family:'Fira Code',monospace;font-size:13px;color:#5a5a6e;cursor:pointer;" onclick="hideCaptureLightbox()">[×] close</div>
-  <img id="capture-lightbox-img" src="" style="max-width:90vw;max-height:82vh;border-radius:6px;border:1px solid rgba(167,139,250,0.3);object-fit:contain;" onclick="event.stopPropagation()">
-  <div id="capture-lightbox-meta" style="font-family:'Fira Code',monospace;font-size:11px;color:#5a5a6e;letter-spacing:0.04em;"></div>
+<div id="capture-lightbox" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.94);backdrop-filter:blur(8px);align-items:center;justify-content:center;flex-direction:column;gap:0;" onclick="hideCaptureLightbox()">
+  <div style="position:relative;max-width:min(92vw,900px);width:100%;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+    <!-- header bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0f0f13;border:1px solid #2a2a36;border-bottom:none;border-radius:8px 8px 0 0;">
+      <div style="font-family:'Fira Code',monospace;font-size:11px;color:#a78bfa;letter-spacing:0.08em;">[▲] CAPTURE IMAGE</div>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <a id="capture-lightbox-dl" href="" download style="font-family:'Fira Code',monospace;font-size:11px;color:#5a5a6e;text-decoration:none;letter-spacing:0.06em;" onclick="event.stopPropagation()">[↓] download</a>
+        <span style="font-family:'Fira Code',monospace;font-size:13px;color:#5a5a6e;cursor:pointer;letter-spacing:0.04em;" onclick="hideCaptureLightbox()">[×] close</span>
+      </div>
+    </div>
+    <!-- image -->
+    <div style="background:#090909;border:1px solid #2a2a36;border-bottom:none;display:flex;align-items:center;justify-content:center;min-height:200px;max-height:75vh;overflow:hidden;">
+      <img id="capture-lightbox-img" src="" style="max-width:100%;max-height:75vh;object-fit:contain;display:block;" onerror="this.style.display='none';document.getElementById('capture-lb-err').style.display='flex'">
+      <div id="capture-lb-err" style="display:none;flex-direction:column;align-items:center;gap:8px;padding:40px;color:#5a5a6e;font-family:'Fira Code',monospace;font-size:12px;">[▲] Image unavailable</div>
+    </div>
+    <!-- meta footer -->
+    <div id="capture-lightbox-meta" style="padding:8px 14px;background:#0f0f13;border:1px solid #2a2a36;border-radius:0 0 8px 8px;font-family:'Fira Code',monospace;font-size:10px;color:#5a5a6e;letter-spacing:0.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+  </div>
+  <div style="margin-top:12px;font-family:'Fira Code',monospace;font-size:10px;color:#2a2a3a;letter-spacing:0.06em;">click outside or ESC to close</div>
 </div>
 <script>
 function showCaptureLightbox(src, meta) {
   const lb = document.getElementById('capture-lightbox');
   const img = document.getElementById('capture-lightbox-img');
+  const err = document.getElementById('capture-lb-err');
   const metaEl = document.getElementById('capture-lightbox-meta');
+  const dl = document.getElementById('capture-lightbox-dl');
+  img.style.display = 'block';
+  err.style.display = 'none';
   img.src = src;
-  metaEl.textContent = meta || '';
+  dl.href = src;
+  dl.download = src.split('/').pop() || 'capture.jpg';
+  metaEl.textContent = meta ? '[▲] ' + meta : '';
   lb.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 }
