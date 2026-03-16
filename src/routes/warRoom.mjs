@@ -944,6 +944,9 @@ body::after {
       document.getElementById('map-no-geo').style.display = 'block';
     }
 
+    // Recluster captures on zoom change
+    leafletMap.on('zoomend', onMapZoomEnd);
+
     // Load historical captures and pin them
     loadHistoricalSignals();
   }
@@ -1262,39 +1265,186 @@ body::after {
   }
 
 
+  // ── Capture Cluster + Spider System ──────────────────────────────────
+  const _captures = []; // all capture records
+  let _clusterMarkers = []; // active cluster/solo markers on map
+  let _spiderLines = [];    // active SVG spider lines
+  let _spiderMarkers = [];  // active spider arm markers
+  let _spiderOpen = false;
+
   function addCapturePin(payload, deviceId, historical) {
     if (!leafletMap || payload.lat == null || payload.lng == null) return;
-    const shortId = (deviceId || '').slice(-8);
-    const hasImage = !!(payload.image_url && payload.image_url.length > 0);
+    const ts = payload.created_at || payload.CreatedAt || new Date().toISOString();
+    _captures.push({
+      lat: +payload.lat,
+      lng: +payload.lng,
+      deviceId: deviceId || '',
+      shortId: (deviceId || '').slice(-8),
+      hasImage: !!(payload.image_url),
+      imgSrc: payload.image_url ? (payload.image_url.startsWith('/') ? payload.image_url : '/captures/' + payload.image_url.split('/').pop()) : null,
+      ts,
+      timeStr: new Date(ts).toISOString().slice(11,19) + ' UTC',
+      dateStr: new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      historical: !!historical,
+    });
+    rebuildCaptureClusters();
+  }
+
+  function clearSpider() {
+    _spiderLines.forEach(l => leafletMap.removeLayer(l));
+    _spiderMarkers.forEach(m => leafletMap.removeLayer(m));
+    _spiderLines = [];
+    _spiderMarkers = [];
+    _spiderOpen = false;
+  }
+
+  function rebuildCaptureClusters() {
+    // Remove existing cluster/solo markers
+    _clusterMarkers.forEach(m => leafletMap.removeLayer(m));
+    _clusterMarkers = [];
+    clearSpider();
+
+    if (_captures.length === 0) return;
+
+    // Group captures by proximity in pixel space at current zoom
+    const CLUSTER_PX = 44;
+    const used = new Array(_captures.length).fill(false);
+    const groups = [];
+
+    for (let i = 0; i < _captures.length; i++) {
+      if (used[i]) continue;
+      const group = [i];
+      used[i] = true;
+      const piPt = leafletMap.latLngToContainerPoint([_captures[i].lat, _captures[i].lng]);
+      for (let j = i + 1; j < _captures.length; j++) {
+        if (used[j]) continue;
+        const pjPt = leafletMap.latLngToContainerPoint([_captures[j].lat, _captures[j].lng]);
+        const dx = piPt.x - pjPt.x, dy = piPt.y - pjPt.y;
+        if (Math.sqrt(dx*dx + dy*dy) < CLUSTER_PX) {
+          group.push(j);
+          used[j] = true;
+        }
+      }
+      groups.push(group);
+    }
+
+    for (const group of groups) {
+      if (group.length === 1) {
+        // Solo pin
+        const c = _captures[group[0]];
+        const m = makeSoloCaptureMarker(c);
+        m.addTo(leafletMap);
+        _clusterMarkers.push(m);
+      } else {
+        // Cluster node — pulsing dot, shows count
+        const lats = group.map(i => _captures[i].lat);
+        const lngs = group.map(i => _captures[i].lng);
+        const cLat = lats.reduce((a,b)=>a+b,0)/lats.length;
+        const cLng = lngs.reduce((a,b)=>a+b,0)/lngs.length;
+        const count = group.length;
+        const icon = L.divIcon({
+          className: '',
+          html: \`<div style="width:26px;height:26px;border-radius:50%;background:rgba(139,92,246,0.85);border:2px solid #a78bfa;display:flex;align-items:center;justify-content:center;font-family:'Fira Code',monospace;font-size:10px;font-weight:700;color:#fff;box-shadow:0 0 12px rgba(139,92,246,0.7),0 0 24px rgba(139,92,246,0.3);cursor:pointer;">\${count}</div>\`,
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        });
+        const cm = L.marker([cLat, cLng], { icon, zIndexOffset: 100 }).addTo(leafletMap);
+        cm._captureGroup = group;
+        cm._clustered = true;
+        cm.on('click', function(e) {
+          L.DomEvent.stopPropagation(e);
+          if (_spiderOpen) { clearSpider(); return; }
+          spiderOpen(group, [cLat, cLng], cm);
+        });
+        _clusterMarkers.push(cm);
+      }
+    }
+  }
+
+  function spiderOpen(group, center, clusterMarker) {
+    clearSpider();
+    _spiderOpen = true;
+    const count = group.length;
+    // Distribute arms in a circle; radius grows with count
+    const radius = Math.max(80, count * 22);
+    const angleStep = (2 * Math.PI) / count;
+
+    group.forEach((captureIdx, armIdx) => {
+      const c = _captures[captureIdx];
+      const angle = -Math.PI/2 + armIdx * angleStep; // start at top
+
+      // Convert center to pixel, compute arm endpoint in pixels
+      const centerPx = leafletMap.latLngToContainerPoint(center);
+      const endPx = L.point(
+        centerPx.x + Math.cos(angle) * radius,
+        centerPx.y + Math.sin(angle) * radius
+      );
+      const endLatLng = leafletMap.containerPointToLatLng(endPx);
+
+      // SVG connector line
+      const line = L.polyline([center, endLatLng], {
+        color: '#a78bfa',
+        weight: 1,
+        opacity: 0.45,
+        dashArray: '3,4',
+      }).addTo(leafletMap);
+      _spiderLines.push(line);
+
+      // Arm marker (mini capture pin)
+      const icon = L.divIcon({
+        className: '',
+        html: \`<div style="width:20px;height:20px;border-radius:3px;background:#8b5cf6;border:2px solid #a78bfa;display:flex;align-items:center;justify-content:center;font-size:9px;font-family:monospace;font-weight:700;color:#e8e8ea;box-shadow:0 0 8px rgba(139,92,246,0.6);cursor:pointer;">&#9650;</div>\`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+      });
+      const arm = L.marker(endLatLng, { icon, zIndexOffset: 200 }).addTo(leafletMap);
+
+      arm.on('click', function(e) {
+        L.DomEvent.stopPropagation(e);
+        openCapturePopup(c, arm);
+      });
+      _spiderMarkers.push(arm);
+    });
+
+    // Close spider when map is clicked
+    leafletMap.once('click', clearSpider);
+  }
+
+  function makeSoloCaptureMarker(c) {
     const icon = L.divIcon({
       className: '',
-      html: \`<div style="width:22px;height:22px;border-radius:3px;background:#8b5cf6;border:2px solid #a78bfa;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:monospace;font-weight:700;color:#e8e8ea;box-shadow:0 0 10px rgba(139,92,246,0.6);\${historical ? 'opacity:0.7' : ''}">&#9650;</div>\`,
+      html: \`<div style="width:22px;height:22px;border-radius:3px;background:#8b5cf6;border:2px solid #a78bfa;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:monospace;font-weight:700;color:#e8e8ea;box-shadow:0 0 10px rgba(139,92,246,0.6);\${c.historical ? 'opacity:0.75' : ''}">&#9650;</div>\`,
       iconSize: [22, 22],
       iconAnchor: [11, 11],
     });
-    const ts = payload.created_at || payload.CreatedAt || new Date().toISOString();
-    const timeStr = new Date(ts).toISOString().slice(11,19) + ' UTC';
-    const dateStr = new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const coords = \`\${(+payload.lat).toFixed(5)}, \${(+payload.lng).toFixed(5)}\`;
-
-    const m = L.marker([+payload.lat, +payload.lng], { icon }).addTo(leafletMap);
-    m.on('click', function() {
-      let html = \`<div class="map-popup-title" style="color:#a78bfa">[▲] Capture</div>
-        <div class="map-popup-row">Device <span>\${escHtml(shortId)}</span></div>
-        <div class="map-popup-row">Time <span>\${dateStr} \${timeStr}</span></div>
-        <div class="map-popup-row">Coords <span>\${coords}</span></div>\`;
-      if (hasImage) {
-        const imgSrc = payload.image_url.startsWith('/') ? payload.image_url : '/captures/' + payload.image_url.split('/').pop();
-        const meta = \`\${shortId} · \${dateStr} \${timeStr} · \${coords}\`;
-        html += \`<div style="margin-top:10px;cursor:pointer;position:relative;" onclick="showCaptureLightbox('\${imgSrc}', '\${escHtml(meta)}')">
-          <img src="\${imgSrc}" style="width:100%;max-width:240px;border-radius:4px;border:1px solid rgba(167,139,250,0.3);display:block;" onerror="this.style.display='none';this.nextSibling.style.display='block'">
-          <div style="display:none;padding:8px;background:#1a1020;border:1px dashed #a78bfa;border-radius:4px;font-size:11px;color:#a78bfa;">[▲] Image unavailable</div>
-          <div style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.7);border-radius:3px;padding:2px 5px;font-size:9px;color:#a78bfa;font-family:monospace">[→] EXPAND</div>
-        </div>\`;
-      }
-      m.bindPopup(L.popup({ maxWidth: 280 }).setContent(html)).openPopup();
+    const m = L.marker([c.lat, c.lng], { icon });
+    m.on('click', function(e) {
+      L.DomEvent.stopPropagation(e);
+      openCapturePopup(c, m);
     });
     return m;
+  }
+
+  function openCapturePopup(c, marker) {
+    const coords = \`\${c.lat.toFixed(5)}, \${c.lng.toFixed(5)}\`;
+    let html = \`<div class="map-popup-title" style="color:#a78bfa">[▲] Capture</div>
+      <div class="map-popup-row">Device <span>\${escHtml(c.shortId)}</span></div>
+      <div class="map-popup-row">Time <span>\${c.dateStr} \${c.timeStr}</span></div>
+      <div class="map-popup-row">Coords <span>\${coords}</span></div>\`;
+    if (c.hasImage && c.imgSrc) {
+      const meta = \`\${c.shortId} · \${c.dateStr} \${c.timeStr} · \${coords}\`;
+      html += \`<div style="margin-top:10px;cursor:pointer;position:relative;" onclick="showCaptureLightbox('\${c.imgSrc}', '\${escHtml(meta)}')">
+        <img src="\${c.imgSrc}" style="width:100%;max-width:240px;border-radius:4px;border:1px solid rgba(167,139,250,0.3);display:block;" onerror="this.style.display='none';this.nextSibling.style.display='block'">
+        <div style="display:none;padding:8px;background:#1a1020;border:1px dashed #a78bfa;border-radius:4px;font-size:11px;color:#a78bfa;">[▲] Image unavailable</div>
+        <div style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.7);border-radius:3px;padding:2px 5px;font-size:9px;color:#a78bfa;font-family:monospace">[→] EXPAND</div>
+      </div>\`;
+    }
+    marker.bindPopup(L.popup({ maxWidth: 280 }).setContent(html)).openPopup();
+  }
+
+  // Recluster when zoom changes
+  function onMapZoomEnd() {
+    if (_captures.length > 0) rebuildCaptureClusters();
   }
 
   function addFeedItem(kind, text, extraAttrs) {
