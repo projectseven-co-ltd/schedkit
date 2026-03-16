@@ -1190,6 +1190,7 @@ body::after {
 
   // ---- MAP ----
   let leafletMap = null;
+  let activeLayer = 'dark';
   const incidentMarkers = new Map(); // id -> { marker, circle }
   const responderMarkers = new Map(); // user_id -> marker
 
@@ -1207,6 +1208,26 @@ body::after {
     return SLA_COLORS[sc] || PRIORITY_COLORS[inc.priority] || '#00aaff';
   }
 
+  function markerStyleForLayer(layerName) {
+    if (layerName === 'satellite' || layerName === 'hybrid') {
+      return { radiusBoost: 2, weight: 3, fillOpacity: 0.98, stroke: '#ffffff', strokeOpacity: 0.95 };
+    }
+    if (layerName === 'terrain') {
+      return { radiusBoost: 1, weight: 3, fillOpacity: 0.94, stroke: '#0a0a0b', strokeOpacity: 0.9 };
+    }
+    return { radiusBoost: 0, weight: 2, fillOpacity: 0.85, stroke: null, strokeOpacity: 0 };
+  }
+
+  function refreshIncidentMarkers() {
+    if (!leafletMap) return;
+    for (const marker of incidentMarkers.values()) leafletMap.removeLayer(marker);
+    incidentMarkers.clear();
+    const withGeo = incidents.filter(i =>
+      (i.status === 'open' || i.status === 'in_progress') &&
+      i.lat != null && i.lng != null);
+    for (const inc of withGeo) addIncidentMarker(inc);
+  }
+
   function initMap() {
     leafletMap = L.map('map-container', {
       zoomControl: true,
@@ -1215,27 +1236,49 @@ body::after {
 
     // ── Tile layers ────────────────────────────────────────────────────
     const tileLayers = {
-      tactical: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd', maxZoom: 19,
-      }),
-      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19,
-      }),
-      terrain: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd', maxZoom: 19,
-      }),
+      default: [
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+          subdomains: 'abcd', maxZoom: 19,
+        }),
+      ],
+      dark: [
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          subdomains: 'abcd', maxZoom: 19,
+        }),
+      ],
+      hybrid: [
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          maxZoom: 19,
+        }),
+        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+          maxZoom: 19,
+          pane: 'overlayPane',
+        }),
+      ],
+      terrain: [
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+          maxZoom: 19,
+        }),
+      ],
+      satellite: [
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          maxZoom: 19,
+        }),
+      ],
     };
-    let activeLayer = 'tactical';
-    tileLayers.tactical.addTo(leafletMap);
+    activeLayer = 'dark';
+    tileLayers.dark.forEach(layer => layer.addTo(leafletMap));
 
     // ── Layer switcher ─────────────────────────────────────────────────
     const layerSwitcher = L.control({ position: 'topright' });
     layerSwitcher.onAdd = function() {
       const div = L.DomUtil.create('div', 'wr-layer-switcher');
       div.innerHTML = \`
-        <button class="lyr-btn active" data-lyr="tactical" onclick="setMapLayer('tactical')">TACTICAL</button>
-        <button class="lyr-btn" data-lyr="satellite" onclick="setMapLayer('satellite')">SATELLITE</button>
+        <button class="lyr-btn active" data-lyr="dark" onclick="setMapLayer('dark')">DARK</button>
+        <button class="lyr-btn" data-lyr="default" onclick="setMapLayer('default')">DEFAULT</button>
+        <button class="lyr-btn" data-lyr="hybrid" onclick="setMapLayer('hybrid')">HYBRID</button>
         <button class="lyr-btn" data-lyr="terrain" onclick="setMapLayer('terrain')">TERRAIN</button>
+        <button class="lyr-btn" data-lyr="satellite" onclick="setMapLayer('satellite')">SATELLITE</button>
       \`;
       L.DomEvent.disableClickPropagation(div);
       return div;
@@ -1243,11 +1286,12 @@ body::after {
     layerSwitcher.addTo(leafletMap);
 
     window.setMapLayer = function(name) {
-      if (name === activeLayer) return;
-      leafletMap.removeLayer(tileLayers[activeLayer]);
-      tileLayers[name].addTo(leafletMap);
-      tileLayers[name].bringToBack();
+      if (name === activeLayer || !tileLayers[name]) return;
+      tileLayers[activeLayer].forEach(layer => leafletMap.removeLayer(layer));
+      tileLayers[name].forEach(layer => layer.addTo(leafletMap));
+      tileLayers[name][0].bringToBack();
       activeLayer = name;
+      refreshIncidentMarkers();
       document.querySelectorAll('.lyr-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.lyr === name));
     };
@@ -1314,23 +1358,31 @@ body::after {
 
   function makeCircleMarker(inc) {
     const color = markerColor(inc);
-    const radius = inc.priority === 'urgent' ? 14 : 10;
+    const layerStyle = markerStyleForLayer(activeLayer);
+    const radius = (inc.priority === 'urgent' ? 14 : 10) + layerStyle.radiusBoost;
     const marker = L.circleMarker([inc.lat, inc.lng], {
       radius,
-      color,
+      color: layerStyle.stroke || color,
+      opacity: layerStyle.strokeOpacity || 1,
       fillColor: color,
-      fillOpacity: 0.85,
-      weight: 2,
+      fillOpacity: layerStyle.fillOpacity,
+      weight: layerStyle.weight,
     });
 
     // For urgent: add CSS pulse via custom pane/className trick
     // We use a divIcon wrapper for urgent
     if (inc.priority === 'urgent') {
+      const borderColor = layerStyle.stroke || '#ff6666';
+      const shadow = activeLayer === 'satellite' || activeLayer === 'hybrid'
+        ? '0 0 0 3px rgba(255,255,255,0.55), 0 0 18px rgba(255,51,51,0.45)'
+        : activeLayer === 'terrain'
+          ? '0 0 0 3px rgba(10,10,11,0.45), 0 0 16px rgba(255,51,51,0.38)'
+          : '0 0 12px rgba(255,51,51,0.35)';
       const icon = L.divIcon({
         className: '',
-        html: '<div class="marker-urgent" style="width:20px;height:20px;border-radius:50%;background:#ff3333;border:2px solid #ff6666;opacity:0.9"></div>',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
+        html: '<div class="marker-urgent" style="width:22px;height:22px;border-radius:50%;background:#ff3333;border:3px solid ' + borderColor + ';box-shadow:' + shadow + ';opacity:0.96"></div>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
       });
       return L.marker([inc.lat, inc.lng], { icon });
     }
