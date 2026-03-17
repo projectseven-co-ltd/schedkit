@@ -387,7 +387,15 @@ export async function sendBookingConfirmedByHost({ attendee_name, attendee_email
 }
 
 // ── Ticket created (customer) ─────────────────────────────────────────────────
-export async function sendTicketCreated({ to_email, to_name, ticket_id, title, priority, status_url }) {
+function renderSubject(template, { ticket_id, title, priority, org_name }) {
+  return (template || 'Ticket #%ticket_id% received: %title%')
+    .replace(/%ticket_id%/g, ticket_id)
+    .replace(/%title%/g, title)
+    .replace(/%priority%/g, priority || '')
+    .replace(/%org_name%/g, org_name || 'SchedKit');
+}
+
+export async function sendTicketCreated({ to_email, to_name, ticket_id, title, priority, status_url, org }) {
   const priorityColors = { urgent: '#ff5f5f', high: '#f5a623', normal: '#DFFF00', low: '#5a5a6e' };
   const color = priorityColors[priority] || '#DFFF00';
   const html = emailWrap(`
@@ -405,12 +413,16 @@ export async function sendTicketCreated({ to_email, to_name, ticket_id, title, p
     ${note('Bookmark this link — it always shows the latest status without logging in.')}
   `);
   try {
-    await send(to_email, to_name, `Ticket #${ticket_id} received: ${title}`, html, null, `SchedKit-INC${ticket_id}`);
+    const fromPrefix = org?.ticket_from_prefix || 'SchedKit-INC';
+    const subject = org?.ticket_subject_template
+      ? renderSubject(org.ticket_subject_template, { ticket_id, title, priority, org_name: org.name })
+      : `Ticket #${ticket_id} received: ${title}`;
+    await send(to_email, to_name, subject, html, null, `${fromPrefix}${ticket_id}`);
   } catch(e) { console.error('Ticket created email error:', e.message); }
 }
 
 // ── Ticket status changed (customer) ─────────────────────────────────────────
-export async function sendTicketStatusChanged({ to_email, to_name, ticket_id, title, old_status, new_status, status_url }) {
+export async function sendTicketStatusChanged({ to_email, to_name, ticket_id, title, old_status, new_status, status_url, org }) {
   const statusColors = { open: '#5a5a6e', in_progress: '#DFFF00', resolved: '#4ade80', closed: '#5a5a6e' };
   const statusLabels = { open: 'OPEN', in_progress: 'IN PROGRESS', resolved: 'RESOLVED', closed: 'CLOSED' };
   const color = statusColors[new_status] || '#DFFF00';
@@ -428,7 +440,8 @@ export async function sendTicketStatusChanged({ to_email, to_name, ticket_id, ti
     ${primaryBtn(status_url, 'View Ticket →')}
   `);
   try {
-    await send(to_email, to_name, `Ticket #${ticket_id} ${statusLabels[new_status] || new_status}: ${title}`, html, null, `SchedKit-INC${ticket_id}`);
+    const fromPrefix = org?.ticket_from_prefix || 'SchedKit-INC';
+    await send(to_email, to_name, `Ticket #${ticket_id} ${statusLabels[new_status] || new_status}: ${title}`, html, null, `${fromPrefix}${ticket_id}`);
   } catch(e) { console.error('Ticket status email error:', e.message); }
 }
 

@@ -19,6 +19,17 @@ async function requireAuth(req, reply) {
   return requireSession(req, reply);
 }
 
+// Fetch the primary org for a user (first owned org, else first membership)
+async function getPrimaryOrg(userId) {
+  try {
+    const owned = await db.find(tables.organizations, `(owner_user_id,eq,${userId})`, { sort: 'created_at', limit: 1 });
+    if (owned.list?.[0]) return owned.list[0];
+    const memberships = await db.find(tables.org_members, `(user_id,eq,${userId})`, { sort: 'created_at', limit: 1 });
+    if (memberships.list?.[0]) return db.get(tables.organizations, memberships.list[0].org_id);
+  } catch (_) {}
+  return null;
+}
+
 // SLA window in hours by priority
 const SLA_HOURS = { urgent: 1, high: 4, normal: 24, low: 48 };
 
@@ -275,6 +286,7 @@ export default async function ticketsRoutes(fastify) {
     const emailTo = customer_email || req.user?.email;
     const emailName = customer_name || req.user?.name || emailTo;
     if (emailTo) {
+      const org = await getPrimaryOrg(req.user?.Id);
       sendTicketCreated({
         to_email: emailTo,
         to_name: emailName,
@@ -282,6 +294,7 @@ export default async function ticketsRoutes(fastify) {
         title,
         priority,
         status_url: `https://schedkit.net/incidents/status/${customer_token}`,
+        org,
       });
     }
 
@@ -410,6 +423,7 @@ export default async function ticketsRoutes(fastify) {
     if (status && status !== existing.status) {
       const owner = await db.get(tables.users, existing.user_id);
       if (owner?.email) {
+        const org = await getPrimaryOrg(existing.user_id);
         sendTicketStatusChanged({
           to_email: owner.email,
           to_name: owner.name || owner.email,
@@ -420,6 +434,7 @@ export default async function ticketsRoutes(fastify) {
           status_url: updated.customer_token
             ? `https://schedkit.net/incidents/status/${updated.customer_token}`
             : `https://schedkit.net/dashboard`,
+          org,
         });
       }
     }

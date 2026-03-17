@@ -203,6 +203,35 @@ export default async function orgsRoutes(fastify) {
     return updated;
   });
 
+  // ── Org Settings (email branding) ────────────────────────────────
+
+  fastify.patch('/orgs/:org_slug/settings', {
+    preHandler: requireSession,
+    schema: {
+      tags: [TAG], summary: 'Update org email settings', security: SEC,
+      description: 'Update email branding for the org. Requires `admin` role. `ticket_subject_template` supports tokens: `%ticket_id%`, `%title%`, `%priority%`, `%org_name%`. `ticket_from_prefix` sets the sender name prefix (e.g. `SchedKit-INC` → `SchedKit-INC9`).',
+      params: { type: 'object', properties: { org_slug: { type: 'string' } } },
+      body: {
+        type: 'object',
+        properties: {
+          ticket_subject_template: { type: 'string', description: 'Email subject template. Tokens: %ticket_id%, %title%, %priority%, %org_name%' },
+          ticket_from_prefix: { type: 'string', description: 'From name prefix for ticket emails (e.g. "SchedKit-INC" → "SchedKit-INC9")' },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const ctx = await requireOrgAccess(req, reply, 'admin');
+    if (!ctx) return;
+    const { org } = ctx;
+
+    const updates = {};
+    if (req.body.ticket_subject_template !== undefined) updates.ticket_subject_template = req.body.ticket_subject_template;
+    if (req.body.ticket_from_prefix !== undefined) updates.ticket_from_prefix = req.body.ticket_from_prefix;
+
+    const updated = await db.update(tables.organizations, org.Id, updates);
+    return updated;
+  });
+
   fastify.delete('/orgs/:org_slug', {
     preHandler: requireSession,
     schema: {

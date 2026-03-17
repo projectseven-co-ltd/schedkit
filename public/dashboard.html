@@ -2727,6 +2727,25 @@ async function loadOrgDetail(orgSlug) {
           ` : '<p style="color:var(--muted);font-size:13px">No teams yet.</p>'}
         </div>
       </div>
+
+      ${isAdmin ? `
+      <div style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border)">
+        <h4 style="margin:0 0 16px;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);font-family:var(--font-mono)">Email Settings</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="form-row" style="margin:0">
+            <label style="font-size:11px">Ticket Subject Template</label>
+            <input type="text" id="org-email-subject" value="${esc(org.ticket_subject_template || '')}" placeholder="Ticket #%ticket_id% received: %title%" style="font-family:var(--font-mono);font-size:12px">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Tokens: %ticket_id% %title% %priority% %org_name%</div>
+          </div>
+          <div class="form-row" style="margin:0">
+            <label style="font-size:11px">From Name Prefix</label>
+            <input type="text" id="org-email-from-prefix" value="${esc(org.ticket_from_prefix || '')}" placeholder="SchedKit-INC" style="font-family:var(--font-mono);font-size:12px">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Ticket #9 → <span style="color:var(--accent);font-family:var(--font-mono)">${esc(org.ticket_from_prefix || 'SchedKit-INC')}9</span></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:16px;font-size:12px;padding:8px 16px" onclick="saveOrgEmailSettings('${esc(org.slug)}')">Save Email Settings</button>
+      </div>
+      ` : ''}
     </div>`;
 }
 
@@ -2752,6 +2771,21 @@ async function saveOrg() {
   closeOrgModal();
   await loadOrgs();
   toast('Organization created', 'ok');
+}
+
+async function saveOrgEmailSettings(orgSlug) {
+  const subject = document.getElementById('org-email-subject')?.value.trim();
+  const fromPrefix = document.getElementById('org-email-from-prefix')?.value.trim();
+  const res = await apiFetch(`/v1/orgs/${orgSlug}/settings`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      ticket_subject_template: subject || null,
+      ticket_from_prefix: fromPrefix || null,
+    }),
+  });
+  if (!res?.ok) { toast('Failed to save settings', 'err'); return; }
+  toast('Email settings saved', 'ok');
+  await loadOrgDetail(orgSlug);
 }
 
 function openInviteMemberModal(orgSlug) {
