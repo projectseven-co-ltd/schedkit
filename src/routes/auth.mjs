@@ -3,6 +3,16 @@ import { tables } from '../lib/tables.mjs';
 import { nanoid } from 'nanoid';
 import { addMinutes, addDays } from 'date-fns';
 import { sendMagicLink } from '../lib/mailer.mjs';
+
+// Only allow relative paths to prevent open redirect
+function sanitizeRedirect(url) {
+  if (!url) return null;
+  try {
+    // Allow only paths starting with / but not //  (which browsers treat as protocol-relative)
+    if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//')) return url;
+  } catch {}
+  return null;
+}
 import { requireSession } from '../middleware/session.mjs';
 
 const BASE_DOMAIN = process.env.BASE_DOMAIN || 'schedkit.net';
@@ -11,6 +21,7 @@ export default async function authRoutes(fastify) {
 
   // POST /v1/auth/magic — request magic link + code
   fastify.post('/auth/magic', {
+    config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
     schema: {
       tags: ['Auth'],
       summary: 'Request a magic link login email',
@@ -72,8 +83,9 @@ export default async function authRoutes(fastify) {
     return { ok: true };
   });
 
-  // POST /v1/auth/verify-code — verify short code inside the PWA/web app
+    // POST /v1/auth/verify-code — verify short code inside the PWA/web app
   fastify.post('/auth/verify-code', {
+    config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
     schema: {
       tags: ['Auth'],
       summary: 'Verify short login code',
@@ -129,6 +141,7 @@ export default async function authRoutes(fastify) {
 
   // GET /v1/auth/verify?token=... — verify magic link, issue session cookie
   fastify.get('/auth/verify', {
+    config: { rateLimit: { max: 20, timeWindow: '15 minutes' } },
     schema: {
       tags: ['Auth'],
       summary: 'Verify magic link token',
@@ -281,7 +294,7 @@ async function consumeLoginAndCreateSession(reply, link, user, { redirect, next 
     created_at: new Date().toISOString(),
   });
 
-  const destination = next || ((!user?.name) ? '/onboarding' : '/dashboard');
+  const destination = sanitizeRedirect(next) || ((!user?.name) ? '/onboarding' : '/dashboard');
   reply.header('Set-Cookie', `sk_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}; Secure`);
 
   if (redirect) return reply.redirect(destination);

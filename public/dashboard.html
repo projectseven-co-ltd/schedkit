@@ -1413,7 +1413,7 @@ async function apiFetch(path, opts = {}) {
     try {
       const body = await res.clone().json();
       if (body.upgrade_url) {
-        toast(`${body.error} — <span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="openBillingModal('agency')">Upgrade →</span>`, 'err', 6000);
+        toast(`${esc(body.error)} — <span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="openBillingModal('agency')">Upgrade →</span>`, 'err', 6000, true);
       } else {
         toast(body.error || 'You don\'t have permission to do that', 'err');
       }
@@ -2328,7 +2328,7 @@ async function saveEventType() {
   } else {
     const err = await res.json().catch(() => ({}));
     if (err.upgrade_url) {
-      toast(`${err.error} — <span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="openBillingModal('agency')">Upgrade →</span>`, 'err', 6000);
+      toast(`${esc(err.error)} — <span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="openBillingModal('agency')">Upgrade →</span>`, 'err', 6000, true);
     } else {
       toast(err.error || err.message || `Save failed (${res.status})`, 'err');
     }
@@ -3480,9 +3480,10 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function copyText(text) { navigator.clipboard.writeText(text).then(() => toast('Copied!', 'ok')); }
-function toast(msg, type = 'ok', duration = 3000) {
+function toast(msg, type = 'ok', duration = 3000, html = false) {
   const t = document.getElementById('toast');
-  t.innerHTML = msg; t.className = `toast show ${type}`;
+  if (html) { t.innerHTML = msg; } else { t.textContent = msg; }
+  t.className = `toast show ${type}`;
   setTimeout(() => t.classList.remove('show'), duration);
 }
 

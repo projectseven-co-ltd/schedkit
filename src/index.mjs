@@ -5,6 +5,7 @@ import formbody from '@fastify/formbody';
 import staticFiles from '@fastify/static';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import rateLimit from '@fastify/rate-limit';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
@@ -42,6 +43,11 @@ const fastify = Fastify({ logger: true, bodyLimit: 10 * 1024 * 1024 }); // 10MB 
 
 await fastify.register(cors, { origin: true });
 await fastify.register(formbody);
+
+// Global rate limit — generous default, tightened per-route on auth endpoints
+await fastify.register(rateLimit, {
+  global: false, // opt-in per route; we set defaults only on sensitive routes
+});
 
 // Raw body access for Stripe webhook signature verification
 fastify.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {

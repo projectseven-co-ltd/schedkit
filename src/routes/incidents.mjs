@@ -134,6 +134,7 @@ export default async function incidentsRoutes(fastify) {
 
   // POST /v1/incidents/:id/join
   fastify.post('/incidents/:id/join', {
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     preHandler: requireAuth,
     schema: {
       tags: ['Incidents'],
@@ -165,8 +166,9 @@ export default async function incidentsRoutes(fastify) {
     return reply.code(201).send(row);
   });
 
-  // POST /v1/incidents/:id/leave
+    // POST /v1/incidents/:id/leave
   fastify.post('/incidents/:id/leave', {
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     preHandler: requireAuth,
     schema: {
       tags: ['Incidents'],
@@ -190,8 +192,9 @@ export default async function incidentsRoutes(fastify) {
     return { ok: true };
   });
 
-  // POST /v1/incidents/:id/replies — add reply (staff or customer via token)
+    // POST /v1/incidents/:id/replies — add reply (staff or customer via token)
   fastify.post('/incidents/:id/replies', {
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     schema: {
       tags: ['Incidents'],
       summary: 'Add reply to incident',

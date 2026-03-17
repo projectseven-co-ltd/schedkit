@@ -25,7 +25,10 @@ export default async function notificationRoutes(fastify) {
     const { topic } = req.body || {};
     if (!topic) return reply.code(400).send({ error: 'topic required' });
 
-    const url = topic.startsWith('http') ? topic : `https://ntfy.sh/${topic}`;
+    // SSRF fix: only allow ntfy.sh topics (no arbitrary URLs)
+    if (topic.startsWith('http')) return reply.code(400).send({ error: 'invalid_topic', message: 'Topic must be a plain topic name, not a URL' });
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(topic)) return reply.code(400).send({ error: 'invalid_topic', message: 'Topic must be alphanumeric (a-z, 0-9, _, -)' });
+    const url = `https://ntfy.sh/${topic}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain', 'Title': 'SchedKit Test', 'Tags': 'bell,schedkit', 'Priority': 'default' },
