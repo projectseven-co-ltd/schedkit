@@ -386,6 +386,52 @@ export async function sendBookingConfirmedByHost({ attendee_name, attendee_email
   } catch(e) { console.error('Confirmed-by-host email error:', e.message); }
 }
 
+// ── Ticket created (customer) ─────────────────────────────────────────────────
+export async function sendTicketCreated({ to_email, to_name, ticket_id, title, priority, status_url }) {
+  const priorityColors = { urgent: '#ff5f5f', high: '#f5a623', normal: '#DFFF00', low: '#5a5a6e' };
+  const color = priorityColors[priority] || '#DFFF00';
+  const html = emailWrap(`
+    ${statusLine('✓ TICKET RECEIVED', '#4ade80')}
+    ${heading('We got your request')}
+    ${subheading('Your ticket has been submitted. We\'ll respond based on priority.')}
+    ${detailTable([
+      ['Ticket', `<span style="font-family:monospace;color:#DFFF00;">#${ticket_id}</span>`],
+      ['Subject', title],
+      ['Priority', `<span style="font-family:monospace;color:${color};">${priority.toUpperCase()}</span>`],
+      ['Status', 'Open'],
+    ])}
+    ${primaryBtn(status_url, 'View Ticket Status →')}
+    <br><br>
+    ${note('Bookmark this link — it always shows the latest status without logging in.')}
+  `);
+  try {
+    await send(to_email, to_name, `Ticket #${ticket_id} received: ${title}`, html);
+  } catch(e) { console.error('Ticket created email error:', e.message); }
+}
+
+// ── Ticket status changed (customer) ─────────────────────────────────────────
+export async function sendTicketStatusChanged({ to_email, to_name, ticket_id, title, old_status, new_status, status_url }) {
+  const statusColors = { open: '#5a5a6e', in_progress: '#DFFF00', resolved: '#4ade80', closed: '#5a5a6e' };
+  const statusLabels = { open: 'OPEN', in_progress: 'IN PROGRESS', resolved: 'RESOLVED', closed: 'CLOSED' };
+  const color = statusColors[new_status] || '#DFFF00';
+  const isResolved = new_status === 'resolved' || new_status === 'closed';
+  const html = emailWrap(`
+    ${statusLine(`TICKET ${statusLabels[new_status] || new_status.toUpperCase()}`, color)}
+    ${heading(isResolved ? 'Your ticket has been resolved' : 'Your ticket was updated')}
+    ${subheading(isResolved ? 'Let us know if you need anything else.' : 'We\'re working on it.')}
+    ${detailTable([
+      ['Ticket', `<span style="font-family:monospace;color:#DFFF00;">#${ticket_id}</span>`],
+      ['Subject', title],
+      ['Previous status', `<span style="font-family:monospace;color:#5a5a6e;">${statusLabels[old_status] || old_status.toUpperCase()}</span>`],
+      ['New status', `<span style="font-family:monospace;color:${color};">${statusLabels[new_status] || new_status.toUpperCase()}</span>`],
+    ])}
+    ${primaryBtn(status_url, 'View Ticket →')}
+  `);
+  try {
+    await send(to_email, to_name, `Ticket #${ticket_id} ${statusLabels[new_status] || new_status}: ${title}`, html);
+  } catch(e) { console.error('Ticket status email error:', e.message); }
+}
+
 // ── Booking declined by host (attendee) ──────────────────────────────────────
 export async function sendBookingDeclined({ attendee_name, attendee_email, host_name, event_title, start_time, timezone }) {
   const startLocal = fmtTime(start_time, timezone);

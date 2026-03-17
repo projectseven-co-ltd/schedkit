@@ -12,6 +12,7 @@ import { tables } from '../lib/tables.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
 import { nanoid } from 'nanoid';
+import { sendTicketCreated, sendTicketStatusChanged } from '../lib/mailer.mjs';
 
 async function requireAuth(req, reply) {
   if (req.headers['x-api-key']) return requireApiKey(req, reply);
@@ -266,6 +267,19 @@ export default async function ticketsRoutes(fastify) {
     // SSE broadcast
     tryBroadcast('incident.created', result);
 
+    // Email customer confirmation
+    const creator = req.user;
+    if (creator?.email) {
+      sendTicketCreated({
+        to_email: creator.email,
+        to_name: creator.name || creator.email,
+        ticket_id: ticket.Id,
+        title,
+        priority,
+        status_url: `https://schedkit.net/incidents/status/${customer_token}`,
+      });
+    }
+
     // Web push + ntfy for urgent/high or alert source
     if (priority === 'urgent' || priority === 'high' || source === 'alert') {
       tryUserNtfy(req.user.Id, title, description, priority, source);
@@ -386,6 +400,24 @@ export default async function ticketsRoutes(fastify) {
         ? `https://schedkit.net/incidents/status/${updated.customer_token}`
         : null,
     };
+
+    // Email customer on status change
+    if (status && status !== existing.status) {
+      const owner = await db.get(tables.users, existing.user_id);
+      if (owner?.email) {
+        sendTicketStatusChanged({
+          to_email: owner.email,
+          to_name: owner.name || owner.email,
+          ticket_id: existing.Id,
+          title: updated.title,
+          old_status: existing.status,
+          new_status: status,
+          status_url: updated.customer_token
+            ? `https://schedkit.net/incidents/status/${updated.customer_token}`
+            : `https://schedkit.net/dashboard`,
+        });
+      }
+    }
 
     // Check if SLA just breached
     if (updates.sla_breached && !existing.sla_breached) {
