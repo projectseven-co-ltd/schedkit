@@ -1,5 +1,5 @@
 {
-  "$schema": "https://mintlify.com/schema.json",
+  "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "SchedKit",
   "logo": {
@@ -10,75 +10,78 @@
   "colors": {
     "primary": "#DFFF00",
     "light": "#DFFF00",
-    "dark": "#a8bf00",
-    "background": {
-      "dark": "#0a0a0b"
+    "dark": "#a8bf00"
+  },
+  "navbar": {
+    "links": [
+      { "label": "Dashboard", "href": "https://schedkit.net/dashboard" }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Started",
+      "href": "https://schedkit.net"
     }
   },
-  "topbarLinks": [
-    { "name": "Dashboard", "url": "https://schedkit.net/dashboard" }
-  ],
-  "topbarCtaButton": {
-    "name": "Get Started",
-    "url": "https://schedkit.net"
-  },
-  "tabs": [
-    { "name": "API Reference", "url": "api-reference" }
-  ],
-  "anchors": [
-    { "name": "Live API Explorer", "icon": "terminal", "url": "https://schedkit.net/docs" },
-    { "name": "GitHub", "icon": "github", "url": "https://github.com/projectseven-co-ltd/p7-scheduler" },
-    { "name": "Status", "icon": "signal", "url": "https://schedkit.net" }
-  ],
-  "navigation": [
-    {
-      "group": "Getting Started",
-      "pages": [
-        "introduction",
-        "quickstart",
-        "authentication",
-        "errors"
-      ]
-    },
-    {
-      "group": "Platform",
-      "pages": [
-        "architecture",
-        "infrastructure"
-      ]
-    },
-    {
-      "group": "Core Concepts",
-      "pages": [
-        "concepts/signals",
-        "concepts/beacon",
-        "concepts/assignments",
-        "concepts/incidents",
-        "concepts/units"
-      ]
-    },
-    {
-      "group": "API Reference",
-      "pages": [
-        "api-reference/auth",
-        "api-reference/users",
-        "api-reference/bookings",
-        "api-reference/signals",
-        "api-reference/tickets",
-        "api-reference/orgs",
-        "api-reference/push",
-        "api-reference/webhooks"
-      ]
-    },
-    {
-      "group": "AI Integration",
-      "pages": [
-        "agent-tool-guide"
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Docs",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": ["introduction", "quickstart", "authentication", "errors"]
+          },
+          {
+            "group": "Platform",
+            "pages": ["architecture", "infrastructure"]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/signals",
+              "concepts/beacon",
+              "concepts/assignments",
+              "concepts/incidents",
+              "concepts/units"
+            ]
+          },
+          {
+            "group": "AI Integration",
+            "pages": ["agent-tool-guide"]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "API Reference",
+            "pages": [
+              "api-reference/auth",
+              "api-reference/users",
+              "api-reference/bookings",
+              "api-reference/signals",
+              "api-reference/tickets",
+              "api-reference/orgs",
+              "api-reference/push",
+              "api-reference/webhooks"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        { "anchor": "Live API Explorer", "href": "https://schedkit.net/docs", "icon": "terminal" },
+        { "anchor": "GitHub", "href": "https://github.com/projectseven-co-ltd/schedkit", "icon": "github" },
+        { "anchor": "Status", "href": "https://schedkit.net", "icon": "signal" }
       ]
     }
-  ],
-  "footerSocials": {
-    "github": "https://github.com/projectseven-co-ltd/p7-scheduler"
   },
-  "openapi": "https://schedkit.net/docs/json"
+  "openapi": "https://schedkit.net/docs/json",
+  "footer": {
+    "socials": {
+      "github": "https://github.com/projectseven-co-ltd/schedkit"
+    }
+  }
 }
