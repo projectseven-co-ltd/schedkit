@@ -51,6 +51,7 @@ fastify.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, bo
 
 // Swagger
 await fastify.register(swagger, {
+  generateOperationIds: true,
   openapi: {
     info: {
       title: 'SchedKit API',
