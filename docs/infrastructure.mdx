@@ -1,0 +1,78 @@
+---
+title: "Infrastructure Overview"
+description: "What powers SchedKit end-to-end — tech stack, messaging layer, and data flow reference for demos"
+---
+
+# Infrastructure Overview
+
+SchedKit runs as a single Fastify service with opinionated dependencies. This page is the quick tour you can point to during demos when somebody asks "what's under the hood?"
+
+## Stack at a Glance
+
+| Layer | Tech | Notes |
+|------|------|-------|
+| HTTP/API | **Fastify** (Node.js 22, ESM) | All endpoints live in `src/routes`. Swagger + Mintlify docs stay in sync with runtime schemas. |
+| Data | **NocoDB** (REST over Postgres) | Every table (orgs, tickets, bookings, signals) is defined in `lib/tables.mjs`. No ORM — just NocoDB REST calls. |
+| Messaging | **Mailjet** | Transactional email for bookings, tickets, invites. From name/subject are org-configurable. |
+| Push | **Web Push API** + **ntfy.sh** | Browsers get VAPID push; phones get ntfy alerts for urgent/alert-sourced tickets. |
+| Real-time | **Server-Sent Events** | `/v1/incidents/stream`, `/v1/signals/stream`, `/v1/war-room` broadcast org-scoped JSON frames. |
+| Files | S3-compatible (coming) | Today: uploads land on the app server. Roadmap: S3 bucket per tenant. |
+| Auth | Magic link + session cookie | `/v1/auth/magic-link` creates link; `/v1/auth/session` exchanges OTP. No passwords anywhere. |
+| Deploy | GitOps via **Plesk webhook** | `git push origin main` → webhook → `deploy.sh` → `pm2 restart`. No click-ops. |
+
+## Messaging & Notification Flow
+
+```
+Ticket Created → mailer.mjs
+        │
+        ├─ Mailjet API (customer + host email)
+        ├─ web-push (org members w/ browser subscriptions)
+        └─ ntfy.sh topic (urgent/high or alert-sourced)
+```
+
+- **Email branding** pulls directly from the ticket's org (`ticket_subject_template`, `ticket_from_prefix`).
+- **Hosts** get `SchedKit-INC#` style from-names so Outlook/Gmail show the ticket number even if the subject is truncated.
+- **ntfy** topics live at `https://ntfy.sh/p7n-cloudron-monitor` for incidents, `schedkit-leads` for sales intel.
+
+## Data Flow (Signals → Incident → Assignment)
+
+```
+[Signal Source]
+   |  (NOAA alert / webhook / booking / ESP32)
+   v
+POST /v1/signals or /v1/tickets
+   |
+   ├─ Write row in NocoDB (signals or tickets table)
+   ├─ Broadcast over SSE (org members only)
+   ├─ Push + ntfy fan-out
+   └─ Optional auto-booking:
+        availability.mjs → bookings.mjs → Mailjet confirmations
+```
+
+Key takeaways for demos:
+- **Everything is org-scoped.** Even SSE registrations are bucketed by org ID.
+- **Same APIs the dashboard uses** — no hidden admin endpoints.
+- **Book / Ticket symmetry:** an alert can open a ticket *and* pre-book a follow-up event using the same API key.
+
+## Deployment Pipeline
+
+```
+local git push main
+      ↓
+GitHub → Plesk Git webhook → /var/www/.../deploy.sh
+      ↓
+`npm install --production`
+`pm2 restart schedkit`
+```
+
+- `deploy.sh` also writes `.git-sha` for version reporting (`GET /version`).
+- No manual SSH restarts. If it’s not in Git, it’s not deployed.
+
+## Demo Script Pointers
+
+1. **Show Swagger:** `https://schedkit.net/docs` proves every route is public.
+2. **Trigger an alert:** curl `POST /v1/tickets` with `priority:"urgent"` → watch Mailjet + SSE + ntfy fire simultaneously.
+3. **Toggle org branding:** update org settings → resend ticket email → Outlook/Gmail now show custom subject + from name.
+4. **Book a team event:** `POST /book/:org/:team/:event` auto-rotates assignees via `team.routing`.
+
+Having this page handy during demos answers the inevitable "what stack is this" question in under 30 seconds.

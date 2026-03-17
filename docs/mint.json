@@ -42,13 +42,8 @@
     {
       "group": "Platform",
       "pages": [
-        "architecture"
-      ]
-    },
-    {
-      "group": "Platform",
-      "pages": [
-        "architecture"
+        "architecture",
+        "infrastructure"
       ]
     },
     {
