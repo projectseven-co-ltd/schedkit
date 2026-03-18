@@ -6,30 +6,29 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Beacon">
-<meta name="theme-color" content="#DFFF00">
-<title>Beacon — SchedKit</title>
+<meta name="apple-mobile-web-app-title" content="Signals">
+<meta name="theme-color" content="#00ffcc">
+<title>Signals — SchedKit</title>
 <link rel="icon" href="/signals-icon.svg" type="image/svg+xml">
 <link rel="manifest" href="/signals-manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* Exact same vars as dashboard */
   :root {
-    --bg:#0a0a0b;--surface:#111114;--surface2:#16161a;--border:#1e1e24;
-    --accent:#DFFF00;--accent-dim:rgba(223,255,0,0.08);--accent-border:rgba(223,255,0,0.2);
-    --text:#e8e8ea;--muted:#5a5a6e;--red:#ff5f5f;--green:#4ade80;
-    --font-sans:'Space Grotesk',sans-serif;--font-mono:'Fira Code',monospace;
-  }
-  [data-lights="nite"] {
-    --bg:#0d0000;--surface:#130000;--surface2:#1a0000;--border:#2a0000;
-    --accent:#ff3300;--accent-dim:rgba(255,51,0,0.08);--accent-border:rgba(255,51,0,0.2);
-    --text:#ffaa88;--muted:#662200;--red:#ff4400;--green:#882200;
-  }
-  [data-lights="nvg"] {
-    --bg:#000508;--surface:#010c12;--surface2:#021018;--border:#031820;
-    --accent:#4a7a8a;--accent-dim:rgba(74,122,138,0.06);--accent-border:rgba(74,122,138,0.12);
-    --text:#4a7a8a;--muted:#1e3a44;--red:#2a5a6a;--green:#2a5a6a;
+    --bg: #0a0a0b;
+    --surface: #070e0d;
+    --surface2: #0c1a18;
+    --border: rgba(0,255,204,0.1);
+    --accent: #00ffcc;
+    --accent-dim: rgba(0,255,204,0.06);
+    --text: #e8e8ea;
+    --muted: #3a5a54;
+    --red: #ff5f5f;
+    --green: #00ffcc;
+    --font-mono: 'Fira Code', monospace;
+    --font-sans: 'Space Grotesk', sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -41,660 +40,757 @@
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
     overscroll-behavior: none;
   }
 
-  /* ── NAV ── same style as dashboard top bar */
+  /* ── NAV ── */
   nav {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 20px;
+    padding: 14px 20px;
     border-bottom: 1px solid var(--border);
-    background: var(--surface);
+    background: rgba(10,10,11,0.95);
+    backdrop-filter: blur(12px);
     position: sticky;
     top: 0;
     z-index: 100;
   }
   .nav-logo {
     font-family: var(--font-mono);
-    font-size: 14px;
+    font-size: 13px;
     color: var(--accent);
+    letter-spacing: 0.08em;
     text-decoration: none;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+  }
+  .nav-status {
     display: flex;
     align-items: center;
-    gap: 8px;
-  }
-  .nav-right { display: flex; align-items: center; gap: 10px; }
-  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
-  .conn-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
-  .conn-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
-  .lights-btn {
-    display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
-    border-radius: 20px; border: 1px solid var(--accent-border); background: transparent;
-    color: var(--muted); font-family: var(--font-mono); font-size: 0.62rem;
-    letter-spacing: 0.08em; cursor: pointer;
-  }
-  .lights-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* ── BEACON STATUS PANEL — same card style as dashboard ── */
-  .beacon-panel {
-    margin: 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .beacon-panel.active { border-color: var(--accent-border); }
-  .beacon-panel-header {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .beacon-panel-title {
+    gap: 7px;
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--muted);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
   }
-  .beacon-badge {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    padding: 3px 8px;
-    border-radius: 100px;
-    background: var(--surface2);
-    color: var(--muted);
-    border: 1px solid var(--border);
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background .3s;
   }
-  .beacon-badge.active {
-    background: var(--accent-dim);
-    color: var(--accent);
-    border-color: var(--accent-border);
-    animation: pulse 2s infinite;
-  }
-  .beacon-badge.paused { background: rgba(255,95,95,0.08); color: var(--red); border-color: rgba(255,95,95,0.2); }
+  .status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+  .status-dot.warn { background: #ffaa00; box-shadow: 0 0 6px #ffaa00; }
+  .status-dot.err { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
-  .beacon-stats {
+  /* ── MAIN ── */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow-y: auto;
+  }
+
+  /* ── SIGNAL TILES ── */
+  .signal-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1px;
-    background: var(--border);
+    gap: 12px;
+    padding: 20px;
   }
-  .beacon-stat {
+
+  .tile {
     background: var(--surface);
-    padding: 12px 16px;
-  }
-  .beacon-stat-label { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 4px; letter-spacing: 0.05em; }
-  .beacon-stat-value { font-size: 13px; color: var(--text); font-family: var(--font-mono); font-weight: 500; }
-  .beacon-stat-value.live { color: var(--accent); }
-
-  .beacon-progress-wrap { height: 2px; background: var(--border); }
-  .beacon-progress-fill { height: 100%; width: 0%; background: var(--accent); transition: width 15s linear; }
-
-  .beacon-action {
-    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 16px;
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, transform .1s;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    min-height: 120px;
+    justify-content: center;
   }
-  .pause-btn {
-    flex: 1; background: none; border: 1px solid var(--border);
-    border-radius: 8px; color: var(--muted); font-family: var(--font-mono);
-    font-size: 11px; padding: 10px; cursor: pointer; letter-spacing: 0.06em;
-    text-align: center; position: relative; overflow: hidden;
-    -webkit-tap-highlight-color: transparent; user-select: none;
-  }
-  .pause-btn-fill {
-    position: absolute; left: 0; top: 0; height: 100%; width: 0%;
-    background: rgba(255,95,95,0.15); transition: none; border-radius: 8px;
-  }
-  .pause-btn-label { position: relative; z-index: 1; }
+  .tile:active { transform: scale(0.96); }
+  .tile.active { border-color: var(--accent); background: var(--accent-dim); }
+  .tile.active .tile-icon { color: var(--accent); }
+  .tile.sending { border-color: var(--accent); animation: tileFlash .4s ease; }
+  @keyframes tileFlash { 0%{background:rgba(223,255,0,0.2)} 100%{background:var(--surface)} }
+  .tile.wide { grid-column: 1 / -1; }
+  .tile.danger.active { border-color: var(--red); background: rgba(255,95,95,0.06); }
+  .tile.danger.active .tile-icon { color: var(--red); }
 
-  /* ── ACTION TILES — same as old signals design ── */
-  .action-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-    padding: 0 16px 8px;
+  .tile-icon {
+    font-family: var(--font-mono);
+    font-size: 28px;
+    color: var(--muted);
+    transition: color .15s;
+    line-height: 1;
   }
-  .action-tile {
+  .tile-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: center;
+  }
+  .tile.active .tile-label { color: var(--accent); }
+  .tile.danger.active .tile-label { color: var(--red); }
+  .tile-sub {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    opacity: 0.7;
+  }
+  .tile-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    background: var(--accent);
+    color: #0a0a0b;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  /* ── NOAA FEED ── */
+  .noaa-section {
+    padding: 0 20px 20px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .section-refresh {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: color .15s;
+  }
+  .section-refresh:hover { color: var(--accent); }
+
+  .alert-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 16px 8px;
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
-    cursor: pointer; text-align: center;
-    -webkit-tap-highlight-color: transparent; user-select: none;
-    font-family: var(--font-mono);
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color .15s;
   }
-  .action-tile:active { background: var(--surface2); border-color: var(--accent-border); }
-  .action-tile .tile-icon { font-size: 20px; }
-  .action-tile .tile-label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; font-weight: 600; }
-  .action-tile.sending { border-color: var(--accent-border); animation: flash 0.4s; }
+  .alert-card:hover { border-color: rgba(255,255,255,0.15); }
+  .alert-card.extreme { border-left: 3px solid var(--red); }
+  .alert-card.severe { border-left: 3px solid #ff8800; }
+  .alert-card.moderate { border-left: 3px solid #ffaa00; }
+  .alert-card.minor { border-left: 3px solid var(--muted); }
+  .alert-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .alert-event { font-size: 13px; font-weight: 600; color: var(--text); }
+  .alert-severity { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; flex-shrink: 0; }
+  .alert-severity.extreme { background: rgba(255,95,95,0.15); color: var(--red); }
+  .alert-severity.severe { background: rgba(255,136,0,0.15); color: #ff8800; }
+  .alert-severity.moderate { background: rgba(255,170,0,0.12); color: #ffaa00; }
+  .alert-severity.minor { background: rgba(255,255,255,0.05); color: var(--muted); }
+  .alert-area { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .alert-time { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+  .noaa-empty { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: center; padding: 24px; }
 
-  /* SOS */
-  .sos-wrap { padding: 0 16px 16px; }
-  .sos-btn {
-    width: 100%; background: rgba(255,95,95,0.06); border: 1px solid rgba(255,95,95,0.2);
-    border-radius: 10px; color: var(--red); font-family: var(--font-mono);
-    font-size: 13px; font-weight: 700; padding: 16px; cursor: pointer;
-    letter-spacing: 0.12em; text-align: center; user-select: none;
-    -webkit-tap-highlight-color: transparent; position: relative; overflow: hidden;
-  }
-  .sos-fill {
-    position: absolute; left: 0; top: 0; height: 100%; width: 0%;
-    background: rgba(255,95,95,0.15); transition: width 2s linear;
-  }
-  .sos-text { position: relative; z-index: 1; }
-  .sos-btn.fired { background: rgba(255,95,95,0.2); }
-
-  /* ── NOAA ── */
-  .noaa-section { padding: 0 16px 24px; }
-  .noaa-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .noaa-title { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
-  .noaa-refresh { background: none; border: none; color: var(--muted); font-family: var(--font-mono); font-size: 12px; cursor: pointer; padding: 4px 8px; }
-  .noaa-empty { font-size: 13px; color: var(--muted); padding: 8px 0; font-family: var(--font-mono); }
-  .alert-card {
-    border-left: 3px solid var(--muted); padding: 10px 12px; margin-bottom: 8px;
-    background: var(--surface); border-radius: 0 8px 8px 0; cursor: pointer;
-    font-size: 13px;
-  }
-  .alert-card.severe, .alert-card.extreme { border-left-color: var(--red); }
-  .alert-card.moderate { border-left-color: #ffaa00; }
-  .alert-event { color: var(--text); font-weight: 600; margin-bottom: 2px; }
-  .alert-area { color: var(--muted); font-size: 11px; font-family: var(--font-mono); }
-  .alert-sev { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-left: 8px; text-transform: uppercase; }
-
-  /* ── INSTALL BAR ── */
-  #signals-install-bar {
+  /* ── LOCATION STRIP ── */
+  .location-strip {
+    margin: 0 20px 20px;
     background: var(--surface);
-    border-bottom: 2px solid var(--accent-border);
-    padding: 12px 20px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text);
-    flex-direction: column;
-    gap: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
-  #signals-ios-steps { display: none; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; font-size: 12px; }
+  .location-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .location-coords {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .location-age {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
 
   /* ── TOAST ── */
   .toast {
-    position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); left: 50%;
-    transform: translateX(-50%) translateY(60px); background: var(--surface2);
-    border: 1px solid var(--border); border-radius: 8px; padding: 8px 18px;
-    font-size: 13px; font-family: var(--font-mono); color: var(--text);
-    z-index: 999; transition: transform 0.2s, opacity 0.2s;
-    opacity: 0; white-space: nowrap; pointer-events: none; letter-spacing: 0.04em;
+    position: fixed;
+    bottom: calc(20px + var(--safe-bottom));
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+    z-index: 999;
+    transition: transform .25s ease, opacity .25s;
+    opacity: 0;
+    white-space: nowrap;
+    pointer-events: none;
   }
   .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-  .toast.ok { border-color: var(--accent-border); color: var(--accent); }
-  .toast.err { border-color: rgba(255,95,95,0.4); color: var(--red); }
-  .toast.warn { border-color: rgba(255,170,0,0.4); color: #ffaa00; }
+  .toast.ok { border-color: var(--green); color: var(--green); }
+  .toast.err { border-color: var(--red); color: var(--red); }
+  .toast.warn { border-color: #ffaa00; color: #ffaa00; }
 
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-  @keyframes flash { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  /* ── VIDEO OVERLAY ── */
+  .video-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 200;
+    flex-direction: column;
+  }
+  .video-overlay.open { display: flex; }
+  .video-preview {
+    flex: 1;
+    width: 100%;
+    object-fit: cover;
+    background: #000;
+  }
+  .video-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    padding-bottom: calc(16px + var(--safe-bottom));
+    background: rgba(0,0,0,0.9);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    gap: 16px;
+  }
+  .video-btn {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .video-btn.record { border-color: var(--red); color: var(--red); }
+  .video-btn.record.recording { background: rgba(255,95,95,0.15); animation: recPulse 1s infinite; }
+  @keyframes recPulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+  .video-btn.close-vid { color: var(--muted); }
+  .video-status {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+  }
 </style>
 </head>
 <body>
 
-<!-- Install banner — in-flow above nav so nothing intercepts touches -->
-<div id="signals-install-bar" style="display:none">
+<!-- Install banner (in-flow, above nav) -->
+<div id="signals-install-bar" style="display:none;background:#070e0d;border-bottom:2px solid #00ffcc;padding:14px 20px;font-family:'Fira Code',monospace;font-size:12px;color:#e8e8ea;flex-direction:column;gap:14px;">
   <div style="display:flex;align-items:center;gap:12px">
+    <svg width="32" height="32" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <rect width="512" height="512" rx="80" fill="#0a0f0e"/>
+      <path d="M196 256 A60 60 0 0 1 256 196" stroke="#00ffcc" stroke-width="60" fill="none" stroke-linecap="round"/>
+      <path d="M316 256 A60 60 0 0 0 256 196" stroke="#00ffcc" stroke-width="60" fill="none" stroke-linecap="round"/>
+      <path d="M152 256 A104 104 0 0 1 256 152" stroke="#00ffcc" stroke-width="48" fill="none" stroke-linecap="round" opacity="0.65"/>
+      <path d="M360 256 A104 104 0 0 0 256 152" stroke="#00ffcc" stroke-width="48" fill="none" stroke-linecap="round" opacity="0.65"/>
+      <circle cx="256" cy="256" r="44" fill="#00ffcc"/>
+      <line x1="256" y1="300" x2="256" y2="390" stroke="#00ffcc" stroke-width="48" stroke-linecap="round"/>
+      <line x1="200" y1="390" x2="312" y2="390" stroke="#00ffcc" stroke-width="48" stroke-linecap="round"/>
+    </svg>
     <div style="flex:1">
-      <div style="font-weight:700;color:var(--accent);font-size:13px;margin-bottom:2px">Install Beacon</div>
-      <div id="signals-install-desc" style="color:var(--muted)">Add to home screen for best experience</div>
+      <div style="font-weight:700;color:#00ffcc;font-size:14px;margin-bottom:3px">Install Signals</div>
+      <div id="signals-install-desc" style="color:#3a5a54;font-size:11px">Install from signals.schedkit.net for the best experience</div>
     </div>
-    <button id="signals-install-btn" style="background:var(--accent);color:#0a0a0b;border:none;border-radius:8px;padding:8px 16px;font-family:var(--font-mono);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.08em">INSTALL</button>
-    <button id="signals-install-dismiss" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;padding:0 4px;line-height:1">×</button>
+    <button id="signals-install-btn" style="background:#00ffcc;color:#0a0a0b;border:none;border-radius:8px;padding:9px 16px;font-family:'Fira Code',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.05em;white-space:nowrap">INSTALL</button>
+    <button id="signals-install-dismiss" style="background:none;border:none;color:#3a5a54;cursor:pointer;font-size:22px;padding:0 4px;line-height:1">×</button>
   </div>
-  <div id="signals-ios-steps">
-    <div style="color:var(--muted);letter-spacing:0.1em;font-size:10px">HOW TO INSTALL ON iPHONE</div>
-    <div>1. Tap the <strong style="color:var(--accent)">Share</strong> button in Safari</div>
-    <div>2. Tap <strong style="color:var(--accent)">"Add to Home Screen"</strong></div>
-    <div>3. Tap <strong style="color:var(--accent)">"Add"</strong></div>
+
+  <!-- iOS step-by-step -->
+  <div id="signals-ios-steps" style="display:none;flex-direction:column;gap:12px;border-top:1px solid rgba(0,255,204,0.12);padding-top:14px">
+    <div style="color:#3a5a54;font-size:10px;letter-spacing:0.1em">HOW TO INSTALL ON iPHONE</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="background:rgba(0,255,204,0.08);border:1px solid rgba(0,255,204,0.2);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00ffcc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      </div>
+      <div>
+        <div style="color:#e8e8ea;font-size:12px">Tap the <strong style="color:#00ffcc">Share</strong> button</div>
+        <div style="color:#3a5a54;font-size:10px">Bottom of Safari — box with arrow pointing up</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="background:rgba(0,255,204,0.08);border:1px solid rgba(0,255,204,0.2);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;color:#00ffcc;font-weight:300">＋</div>
+      <div>
+        <div style="color:#e8e8ea;font-size:12px">Tap <strong style="color:#00ffcc">"Add to Home Screen"</strong></div>
+        <div style="color:#3a5a54;font-size:10px">Scroll down in the Share sheet to find it</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="background:rgba(0,255,204,0.08);border:1px solid rgba(0,255,204,0.2);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Fira Code',monospace;font-size:16px;color:#00ffcc">[✦]</div>
+      <div>
+        <div style="color:#e8e8ea;font-size:12px">Tap <strong style="color:#00ffcc">"Add"</strong> — you're live</div>
+        <div style="color:#3a5a54;font-size:10px">Signals installs as its own app with the cyan icon</div>
+      </div>
+    </div>
   </div>
 </div>
 
-<nav>
-  <a href="/dashboard" class="nav-logo">
-    <svg width="20" height="20" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-      <rect width="512" height="512" rx="80" fill="#0a0a0b"/>
-      <rect x="158" y="128" width="72" height="256" rx="20" fill="#DFFF00"/>
-      <rect x="282" y="128" width="72" height="256" rx="20" fill="#DFFF00"/>
-    </svg>
-    BEACON
+<nav>  <a href="/dashboard" class="nav-logo">
+    <svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:7px">
+      <path d="M196 256 A60 60 0 0 1 256 196" stroke="#00ffcc" stroke-width="60" fill="none" stroke-linecap="round"/>
+      <path d="M316 256 A60 60 0 0 0 256 196" stroke="#00ffcc" stroke-width="60" fill="none" stroke-linecap="round"/>
+      <path d="M152 256 A104 104 0 0 1 256 152" stroke="#00ffcc" stroke-width="48" fill="none" stroke-linecap="round" opacity="0.65"/>
+      <path d="M360 256 A104 104 0 0 0 256 152" stroke="#00ffcc" stroke-width="48" fill="none" stroke-linecap="round" opacity="0.65"/>
+      <path d="M108 256 A148 148 0 0 1 256 108" stroke="#00ffcc" stroke-width="40" fill="none" stroke-linecap="round" opacity="0.35"/>
+      <path d="M404 256 A148 148 0 0 0 256 108" stroke="#00ffcc" stroke-width="40" fill="none" stroke-linecap="round" opacity="0.35"/>
+      <circle cx="256" cy="256" r="44" fill="#00ffcc"/>
+      <line x1="256" y1="300" x2="256" y2="390" stroke="#00ffcc" stroke-width="48" stroke-linecap="round"/>
+      <line x1="200" y1="390" x2="312" y2="390" stroke="#00ffcc" stroke-width="48" stroke-linecap="round"/>
+    </svg>SIGNALS
   </a>
-  <div class="nav-right">
-    <div class="conn-dot" id="connDot"></div>
-    <span class="conn-label" id="connLabel">—</span>
-    <button class="lights-btn" id="lightsBtn" onclick="cycleLights()">◐ LIGHTS</button>
+  <div class="nav-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">offline</span>
   </div>
 </nav>
 
 <main>
-  <!-- Beacon status panel -->
-  <div class="beacon-panel" id="beaconPanel">
-    <div class="beacon-panel-header">
-      <div class="beacon-panel-title">// Beacon</div>
-      <div class="beacon-badge" id="beaconBadge">INACTIVE</div>
+  <!-- Signal tiles -->
+  <div class="signal-grid">
+    <!-- Location beacon -->
+    <div class="tile" id="tileBeacon" onclick="toggleBeacon()">
+      <div class="tile-icon">[◉]</div>
+      <div class="tile-label">Beacon</div>
+      <div class="tile-sub" id="beaconSub">tap to activate</div>
     </div>
-    <div class="beacon-stats">
-      <div class="beacon-stat">
-        <div class="beacon-stat-label">DEVICE</div>
-        <div class="beacon-stat-value" id="bDevice">—</div>
-      </div>
-      <div class="beacon-stat">
-        <div class="beacon-stat-label">COUNT</div>
-        <div class="beacon-stat-value" id="bCount">0</div>
-      </div>
-      <div class="beacon-stat">
-        <div class="beacon-stat-label">LAST TX</div>
-        <div class="beacon-stat-value" id="bLastTx">—</div>
-      </div>
-      <div class="beacon-stat">
-        <div class="beacon-stat-label">NEXT TX</div>
-        <div class="beacon-stat-value" id="bNextTx">—</div>
-      </div>
-      <div class="beacon-stat" style="grid-column:1/-1">
-        <div class="beacon-stat-label">GPS</div>
-        <div class="beacon-stat-value" id="bGps">acquiring…</div>
-      </div>
+
+    <!-- Photo capture -->
+    <div class="tile" id="tileCapture" onclick="sendCapture()">
+      <div class="tile-icon">[▣]</div>
+      <div class="tile-label">Capture</div>
+      <div class="tile-sub">send photo</div>
     </div>
-    <div class="beacon-progress-wrap">
-      <div class="beacon-progress-fill" id="beaconProgress"></div>
+
+    <!-- Live video -->
+    <div class="tile" id="tileVideo" onclick="openVideo()">
+      <div class="tile-icon">[▶]</div>
+      <div class="tile-label">Live Video</div>
+      <div class="tile-sub">stream to dashboard</div>
+      <div class="tile-badge">BETA</div>
     </div>
-    <div class="beacon-action">
-      <button class="pause-btn" id="pauseBtn">
-        <div class="pause-btn-fill" id="pauseFill"></div>
-        <span class="pause-btn-label" id="pauseLabel">HOLD TO PAUSE</span>
-      </button>
+
+    <!-- Status ping -->
+    <div class="tile" id="tileStatus" onclick="sendStatus()">
+      <div class="tile-icon">[✦]</div>
+      <div class="tile-label">Check In</div>
+      <div class="tile-sub">send status OK</div>
+    </div>
+
+    <!-- SOS — full width -->
+    <div class="tile wide danger" id="tileSOS" onclick="sendSOS()">
+      <div class="tile-icon">[⚠]</div>
+      <div class="tile-label">SOS</div>
+      <div class="tile-sub">hold 2 seconds to send emergency signal</div>
     </div>
   </div>
 
-  <!-- Action tiles -->
-  <div class="action-grid">
-    <div class="action-tile" id="tileCapture" onclick="sendCapture()">
-      <div class="tile-icon">📷</div>
-      <div class="tile-label">CAPTURE</div>
-    </div>
-    <div class="action-tile" id="tileCheckin" onclick="sendCheckin()">
-      <div class="tile-icon">✅</div>
-      <div class="tile-label">CHECK IN</div>
-    </div>
-    <div class="action-tile" id="tileNote" onclick="sendNote()">
-      <div class="tile-icon">✏️</div>
-      <div class="tile-label">NOTE</div>
-    </div>
-  </div>
-
-  <div class="sos-wrap">
-    <button class="sos-btn" id="sosBtnEl">
-      <div class="sos-fill" id="sosFill"></div>
-      <span class="sos-text">HOLD 2s — SOS</span>
-    </button>
+  <!-- Location strip -->
+  <div class="location-strip">
+    <div class="location-label">GPS</div>
+    <div class="location-coords" id="locationCoords">acquiring…</div>
+    <div class="location-age" id="locationAge">—</div>
   </div>
 
   <!-- NOAA alerts -->
   <div class="noaa-section">
-    <div class="noaa-header">
-      <div class="noaa-title">// NOAA Alerts</div>
-      <button class="noaa-refresh" onclick="loadNOAA()">↻ refresh</button>
+    <div class="section-header">
+      <div class="section-title">[⚡] NOAA Alerts</div>
+      <button class="section-refresh" onclick="loadNOAA()">[↻] refresh</button>
     </div>
-    <div id="noaaFeed"><div class="noaa-empty">loading…</div></div>
+    <div id="noaaFeed"><div class="noaa-empty">loading alerts…</div></div>
   </div>
 </main>
 
-<!-- Note modal -->
-<div id="noteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:flex-end">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 0 0;padding:20px;width:100%;padding-bottom:calc(20px + env(safe-area-inset-bottom))">
-    <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:0.1em;margin-bottom:12px">// SEND NOTE</div>
-    <textarea id="noteText" rows="3" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:10px;resize:none;" placeholder="Field note…"></textarea>
-    <div style="display:flex;gap:10px;margin-top:12px">
-      <button onclick="closeNote()" style="flex:1;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:var(--font-mono);font-size:12px;padding:10px;cursor:pointer">CANCEL</button>
-      <button onclick="submitNote()" style="flex:2;background:var(--accent);border:none;border-radius:8px;color:#0a0a0b;font-family:var(--font-mono);font-size:12px;font-weight:700;padding:10px;cursor:pointer">SEND</button>
-    </div>
+<!-- Video overlay -->
+<div class="video-overlay" id="videoOverlay">
+  <video class="video-preview" id="videoPreview" autoplay muted playsinline></video>
+  <div class="video-controls">
+    <button class="video-btn close-vid" onclick="closeVideo()">✕ Close</button>
+    <div class="video-status" id="videoStatus">ready</div>
+    <button class="video-btn record" id="recordBtn" onclick="toggleRecord()">⏺ Record</button>
   </div>
 </div>
 
+<!-- Hidden inputs -->
 <input type="file" id="captureInput" accept="image/*" capture="environment" style="display:none" onchange="uploadCapture(this)">
-<div id="toastEl" class="toast"></div>
+<div id="toast" class="toast"></div>
 
 <script>
-// ── Lights (same cycle as dashboard) ──
-const LIGHTS_CYCLE = ['on', 'nite', 'nvg'];
-let _lights = localStorage.getItem('beacon-lights') || 'on';
-function applyLights() {
-  document.documentElement.setAttribute('data-lights', _lights);
-  document.getElementById('lightsBtn').textContent = { on: '◐ LIGHTS', nite: '🔴 NITE', nvg: '🟢 NVG' }[_lights] || '◐ LIGHTS';
-}
-function cycleLights() {
-  _lights = LIGHTS_CYCLE[(LIGHTS_CYCLE.indexOf(_lights) + 1) % LIGHTS_CYCLE.length];
-  localStorage.setItem('beacon-lights', _lights);
-  applyLights();
-}
-applyLights();
-
-// ── Auth — redirect if not logged in ──
-let _me = null;
+// ── Auth check ──
 (async () => {
   try {
     const r = await fetch('/v1/auth/me', { credentials: 'include' });
     if (!r.ok) { window.location.replace('/login?next=/signals'); return; }
-    _me = (await r.json());
-    setConn(true, _me.name || _me.email || 'online');
-    document.getElementById('bDevice').textContent = deviceId();
-    startLocationWatch();
-    startBeacon();
+    const me = await r.json();
+    window._me = me;
+    setStatus('live', me.name || me.email || 'online');
+    startBeaconIfStored();
     loadNOAA();
+    startLocationWatch();
   } catch {
-    setConn(false, 'offline');
+    setStatus('err', 'offline');
   }
 })();
 
-// ── Conn ──
-function setConn(live, text) {
-  document.getElementById('connDot').className = 'conn-dot' + (live ? ' live' : '');
-  document.getElementById('connLabel').textContent = text;
+// ── Status ──
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  const label = document.getElementById('statusText');
+  dot.className = 'status-dot ' + state;
+  label.textContent = text;
 }
 
 // ── Toast ──
-let _toastT;
+let _toastTimer;
 function toast(msg, type = 'ok', ms = 2500) {
-  const t = document.getElementById('toastEl');
-  t.textContent = msg; t.className = 'toast show ' + type;
-  clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('show'), ms);
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), ms);
 }
 
-// ── Device ID ──
+// ── Location ──
+let _lastPos = null, _watchId = null, _locationAge = null;
+function startLocationWatch() {
+  if (!navigator.geolocation) return;
+  _watchId = navigator.geolocation.watchPosition(pos => {
+    _lastPos = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+    _locationAge = Date.now();
+    const el = document.getElementById('locationCoords');
+    el.textContent = `${_lastPos.lat.toFixed(5)}, ${_lastPos.lng.toFixed(5)}`;
+    document.getElementById('locationAge').textContent = `±${Math.round(_lastPos.acc)}m`;
+  }, () => {
+    document.getElementById('locationCoords').textContent = 'unavailable';
+  }, { enableHighAccuracy: true, maximumAge: 10000 });
+}
+
+// ── Beacon ──
+let _beaconInterval = null, _beaconActive = false;
+function toggleBeacon() {
+  _beaconActive ? stopBeacon() : startBeacon();
+}
+function startBeacon() {
+  _beaconActive = true;
+  localStorage.setItem('signals_beacon', '1');
+  document.getElementById('tileBeacon').classList.add('active');
+  document.getElementById('beaconSub').textContent = 'sending…';
+  sendBeaconPing();
+  _beaconInterval = setInterval(sendBeaconPing, 15000);
+  requestWakeLock();
+  toast('[◉] Beacon activated', 'ok');
+}
+function stopBeacon() {
+  _beaconActive = false;
+  localStorage.removeItem('signals_beacon');
+  clearInterval(_beaconInterval);
+  _beaconInterval = null;
+  document.getElementById('tileBeacon').classList.remove('active');
+  document.getElementById('beaconSub').textContent = 'tap to activate';
+  if (_wakeLock) { _wakeLock.release(); _wakeLock = null; }
+  fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ type: 'beacon_off', source: 'phone', device_id: deviceId() }) }).catch(() => {});
+  toast('[×] Beacon off', 'warn');
+}
+async function sendBeaconPing() {
+  const payload = { type: 'beacon', source: 'phone', device_id: deviceId() };
+  if (_lastPos) { payload.lat = _lastPos.lat; payload.lng = _lastPos.lng; payload.accuracy = _lastPos.acc; }
+  try {
+    await fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    document.getElementById('beaconSub').textContent = 'last: ' + new Date().toLocaleTimeString();
+  } catch { document.getElementById('beaconSub').textContent = 'retry…'; }
+}
+function startBeaconIfStored() {
+  if (localStorage.getItem('signals_beacon')) startBeacon();
+}
 function deviceId() {
   let id = localStorage.getItem('signals_device_id');
   if (!id) { id = 'DEV-' + Math.random().toString(36).slice(2,8).toUpperCase(); localStorage.setItem('signals_device_id', id); }
   return id;
 }
 
-// ── Location ──
-let _lastPos = null;
-function startLocationWatch() {
-  if (!navigator.geolocation) { document.getElementById('bGps').textContent = 'unavailable'; return; }
-  navigator.geolocation.watchPosition(pos => {
-    _lastPos = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
-    document.getElementById('bGps').textContent =
-      `${_lastPos.lat.toFixed(5)}, ${_lastPos.lng.toFixed(5)} ±${Math.round(_lastPos.acc)}m`;
-  }, () => {
-    document.getElementById('bGps').textContent = 'denied';
-  }, { enableHighAccuracy: true, maximumAge: 10000 });
-}
-
-// ── Signal helper ──
-async function postSignal(payload) {
-  const body = JSON.stringify({
-    device_id: deviceId(),
-    source: 'phone',
-    lat: _lastPos?.lat ?? null,
-    lng: _lastPos?.lng ?? null,
-    accuracy: _lastPos?.acc ?? null,
-    ...payload,
-  });
-  const r = await fetch('/v1/signals', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body,
-  });
-  if (!r.ok) throw new Error(r.status);
-  return r.json();
-}
-
-// ── Beacon ──
-let _beaconActive = false, _beaconCount = 0, _beaconInterval = null, _nextTxSecs = 0;
-
-function startBeacon() {
-  if (_beaconActive) return;
-  _beaconActive = true;
-  localStorage.setItem('signals_beacon', '1');
-  document.getElementById('beaconPanel').classList.add('active');
-  document.getElementById('beaconBadge').className = 'beacon-badge active';
-  document.getElementById('beaconBadge').textContent = 'ACTIVE';
-  document.getElementById('pauseLabel').textContent = 'HOLD TO PAUSE';
-  pingBeacon();
-  _beaconInterval = setInterval(pingBeacon, 15000);
-  requestWakeLock();
-}
-
-function pauseBeacon() {
-  if (!_beaconActive) return;
-  _beaconActive = false;
-  localStorage.removeItem('signals_beacon');
-  clearInterval(_beaconInterval); _beaconInterval = null;
-  document.getElementById('beaconPanel').classList.remove('active');
-  document.getElementById('beaconBadge').className = 'beacon-badge paused';
-  document.getElementById('beaconBadge').textContent = 'PAUSED';
-  document.getElementById('bNextTx').textContent = '—';
-  document.getElementById('beaconProgress').style.transition = 'none';
-  document.getElementById('beaconProgress').style.width = '0%';
-  document.getElementById('pauseLabel').textContent = 'TAP TO RESUME';
-  // sendBeacon fires even as page closes — guaranteed delivery
-  navigator.sendBeacon('/v1/signals', new Blob([JSON.stringify({
-    type: 'beacon_off', source: 'phone', device_id: deviceId(),
-  })], { type: 'application/json' }));
-  toast('Beacon paused', 'warn');
-}
-
-async function pingBeacon() {
-  try {
-    await postSignal({ type: 'beacon' });
-    _beaconCount++;
-    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const val = document.getElementById('bLastTx');
-    val.textContent = now; val.className = 'beacon-stat-value live';
-    setTimeout(() => { val.className = 'beacon-stat-value'; }, 3000);
-    document.getElementById('bCount').textContent = _beaconCount;
-    startCountdown();
-  } catch {
-    document.getElementById('bLastTx').textContent = 'FAILED';
-  }
-}
-
-let _cdInterval = null;
-function startCountdown() {
-  const bar = document.getElementById('beaconProgress');
-  bar.style.transition = 'none'; bar.style.width = '0%';
-  requestAnimationFrame(() => { bar.style.transition = 'width 15s linear'; bar.style.width = '100%'; });
-  clearInterval(_cdInterval); _nextTxSecs = 15;
-  document.getElementById('bNextTx').textContent = '15s';
-  _cdInterval = setInterval(() => {
-    _nextTxSecs--;
-    document.getElementById('bNextTx').textContent = _nextTxSecs > 0 ? `${_nextTxSecs}s` : 'now';
-    if (_nextTxSecs <= 0) clearInterval(_cdInterval);
-  }, 1000);
-}
-
-// Hold-to-pause button
-const _pauseBtn = document.getElementById('pauseBtn');
-let _pauseTimer = null;
-_pauseBtn.addEventListener('pointerdown', () => {
-  if (!_beaconActive) { startBeacon(); return; }
-  const fill = document.getElementById('pauseFill');
-  fill.style.transition = 'none'; fill.style.width = '0%';
-  requestAnimationFrame(() => { fill.style.transition = 'width 1.5s linear'; fill.style.width = '100%'; });
-  _pauseTimer = setTimeout(() => { pauseBeacon(); fill.style.transition='none'; fill.style.width='0%'; }, 1500);
-});
-['pointerup','pointerleave','pointercancel'].forEach(ev => _pauseBtn.addEventListener(ev, () => {
-  if (_pauseTimer) { clearTimeout(_pauseTimer); _pauseTimer = null; }
-  const fill = document.getElementById('pauseFill');
-  fill.style.transition = 'none'; fill.style.width = '0%';
-}));
-_pauseBtn.addEventListener('contextmenu', e => e.preventDefault());
-
-// Send beacon_off via sendBeacon on page close — works even when tab is killed
-function sendOffline() {
-  if (!_beaconActive) return;
-  navigator.sendBeacon('/v1/signals', new Blob([JSON.stringify({
-    type: 'beacon_off', source: 'phone', device_id: deviceId(),
-  })], { type: 'application/json' }));
-}
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') sendOffline();
-  if (document.visibilityState === 'visible' && _beaconActive) requestWakeLock();
-});
-window.addEventListener('pagehide', sendOffline);
-
-// ── SOS ──
-const _sosBtn = document.getElementById('sosBtnEl');
-let _sosTimer = null;
-_sosBtn.addEventListener('pointerdown', () => {
-  const fill = document.getElementById('sosFill');
-  fill.style.transition = 'none'; fill.style.width = '0%';
-  requestAnimationFrame(() => { fill.style.transition = 'width 2s linear'; fill.style.width = '100%'; });
-  _sosTimer = setTimeout(async () => {
-    _sosTimer = null; _sosBtn.classList.add('fired');
-    try {
-      await postSignal({ type: 'sos', severity: 'critical' });
-      toast('SOS SENT', 'err', 8000);
-    } catch { toast('SOS FAILED', 'err'); }
-    setTimeout(() => { _sosBtn.classList.remove('fired'); fill.style.transition='none'; fill.style.width='0%'; }, 3000);
-  }, 2000);
-});
-['pointerup','pointerleave','pointercancel'].forEach(ev => _sosBtn.addEventListener(ev, () => {
-  if (_sosTimer) { clearTimeout(_sosTimer); _sosTimer = null; }
-  const fill = document.getElementById('sosFill');
-  fill.style.transition = 'none'; fill.style.width = '0%';
-}));
-_sosBtn.addEventListener('contextmenu', e => e.preventDefault());
-
-// ── Capture ──
+// ── Photo capture ──
 function sendCapture() { document.getElementById('captureInput').click(); }
 async function uploadCapture(input) {
   const file = input.files[0]; if (!file) return;
   const tile = document.getElementById('tileCapture');
   tile.classList.add('sending');
-  toast('Uploading…', 'warn', 15000);
+  toast('[…] uploading photo', 'warn', 10000);
   try {
-    const buf = await file.arrayBuffer();
     const mime = file.type || 'image/jpeg';
-    const uploadRes = await fetch('/v1/upload/capture', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': mime },
-      body: buf,
-    });
-    if (!uploadRes.ok) throw new Error('upload ' + uploadRes.status);
-    const { url } = await uploadRes.json();
-    await postSignal({ type: 'capture', url });
-    toast('Capture sent', 'ok');
-  } catch (e) {
-    console.error('capture error', e);
-    toast('Capture failed', 'err');
-  }
-  tile.classList.remove('sending');
-  input.value = '';
+    const buf = await file.arrayBuffer();
+    const res = await fetch('/v1/upload/capture', { method: 'POST', credentials: 'include', headers: {'Content-Type': mime}, body: buf });
+    const data = await res.json();
+    if (!res.ok) throw new Error();
+    // Also fire a signal
+    await fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ type: 'capture', source: 'phone', device_id: deviceId(), url: data.url, lat: _lastPos?.lat, lng: _lastPos?.lng }) });
+    toast('[✓] Photo sent', 'ok');
+  } catch { toast('[×] Upload failed', 'err'); }
+  finally { tile.classList.remove('sending'); input.value = ''; }
 }
 
-// ── Check-in ──
-async function sendCheckin() {
-  const tile = document.getElementById('tileCheckin');
+// ── Status check-in ──
+async function sendStatus() {
+  const tile = document.getElementById('tileStatus');
   tile.classList.add('sending');
   try {
-    await postSignal({ type: 'status_ok' });
-    toast('Check-in sent', 'ok');
-  } catch { toast('Check-in failed', 'err'); }
+    await fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ type: 'status_ok', source: 'phone', device_id: deviceId(), lat: _lastPos?.lat, lng: _lastPos?.lng }) });
+    toast('[✓] Status OK sent', 'ok');
+  } catch { toast('[×] Failed', 'err'); }
   setTimeout(() => tile.classList.remove('sending'), 600);
 }
 
-// ── Note ──
-function sendNote() { document.getElementById('noteModal').style.display = 'flex'; document.getElementById('noteText').focus(); }
-function closeNote() { document.getElementById('noteModal').style.display = 'none'; document.getElementById('noteText').value = ''; }
-async function submitNote() {
-  const text = document.getElementById('noteText').value.trim();
-  if (!text) return;
-  closeNote();
+// ── SOS ──
+let _sosTimer = null;
+const sosTile = document.getElementById('tileSOS');
+sosTile.addEventListener('pointerdown', () => {
+  _sosTimer = setTimeout(async () => {
+    _sosTimer = null;
+    sosTile.classList.add('active');
+    try {
+      await fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ type: 'sos', source: 'phone', device_id: deviceId(), severity: 'critical', lat: _lastPos?.lat, lng: _lastPos?.lng }) });
+      toast('[!] SOS SENT', 'err', 5000);
+    } catch { toast('[×] SOS failed — try again', 'err'); }
+    setTimeout(() => sosTile.classList.remove('active'), 3000);
+  }, 2000);
+});
+sosTile.addEventListener('pointerup', () => { if (_sosTimer) { clearTimeout(_sosTimer); _sosTimer = null; } });
+sosTile.addEventListener('pointercancel', () => { if (_sosTimer) { clearTimeout(_sosTimer); _sosTimer = null; } });
+
+// ── Live video ──
+let _stream = null, _recorder = null, _ws = null;
+async function openVideo() {
   try {
-    await postSignal({ type: 'note', note: text });
-    toast('Note sent', 'ok');
-  } catch { toast('Note failed', 'err'); }
+    _stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
+    document.getElementById('videoPreview').srcObject = _stream;
+    document.getElementById('videoOverlay').classList.add('open');
+    document.getElementById('videoStatus').textContent = 'preview — tap record to stream';
+  } catch (e) {
+    toast('[×] Camera access denied', 'err');
+  }
+}
+function closeVideo() {
+  stopRecord();
+  if (_stream) { _stream.getTracks().forEach(t => t.stop()); _stream = null; }
+  document.getElementById('videoOverlay').classList.remove('open');
+  document.getElementById('videoPreview').srcObject = null;
+}
+function toggleRecord() { _recorder ? stopRecord() : startRecord(); }
+function startRecord() {
+  if (!_stream) return;
+  // WebSocket stream to server
+  const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+  _ws = new WebSocket(`${wsProto}://${location.host}/v1/signals/video-stream?device=${deviceId()}`);
+  _ws.onopen = () => {
+    _recorder = new MediaRecorder(_stream, { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: 500000 });
+    _recorder.ondataavailable = e => { if (_ws.readyState === 1 && e.data.size > 0) _ws.send(e.data); };
+    _recorder.start(500); // 500ms chunks
+    document.getElementById('recordBtn').classList.add('recording');
+    document.getElementById('recordBtn').textContent = '⏹ Stop';
+    document.getElementById('videoStatus').textContent = '⏺ streaming live';
+    toast('[⏺] Live stream started', 'ok');
+  };
+  _ws.onerror = () => { toast('[×] Stream failed', 'err'); stopRecord(); };
+}
+function stopRecord() {
+  if (_recorder) { _recorder.stop(); _recorder = null; }
+  if (_ws) { _ws.close(); _ws = null; }
+  const btn = document.getElementById('recordBtn');
+  btn.classList.remove('recording');
+  btn.textContent = '⏺ Record';
+  document.getElementById('videoStatus').textContent = 'stopped';
 }
 
 // ── NOAA ──
+let _noaaState = ''; // user's state from profile or geolocation
 async function loadNOAA() {
   const feed = document.getElementById('noaaFeed');
   feed.innerHTML = '<div class="noaa-empty">loading…</div>';
   try {
-    let url = 'https://api.weather.gov/alerts/active?status=actual&limit=10';
-    if (_lastPos) url = `https://api.weather.gov/alerts/active?point=${_lastPos.lat.toFixed(4)},${_lastPos.lng.toFixed(4)}&status=actual&limit=10`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'SchedKit-Beacon/1.0 (ceo@schedkit.net)' } });
-    const { features = [] } = await res.json();
-    if (!features.length) { feed.innerHTML = '<div class="noaa-empty">✓ No active alerts</div>'; return; }
-    feed.innerHTML = features.map(a => {
+    // Use coordinates if available, else fall back to nationwide
+    let url = 'https://api.weather.gov/alerts/active?status=actual&message_type=alert&limit=10';
+    if (_lastPos) {
+      url = `https://api.weather.gov/alerts/active?point=${_lastPos.lat.toFixed(4)},${_lastPos.lng.toFixed(4)}&status=actual&limit=10`;
+    }
+    const res = await fetch(url, { headers: { 'User-Agent': 'SchedKit-Signals/1.0 (ceo@schedkit.net)' } });
+    const data = await res.json();
+    const alerts = data.features || [];
+    if (!alerts.length) {
+      feed.innerHTML = '<div class="noaa-empty">[✓] No active alerts in your area</div>';
+      return;
+    }
+    feed.innerHTML = alerts.map(a => {
       const p = a.properties;
       const sev = (p.severity || 'minor').toLowerCase();
-      const area = (p.areaDesc || '').split(';')[0].trim();
-      return `<div class="alert-card ${sev}" onclick='injectNOAA(${JSON.stringify(JSON.stringify({ event: p.event, headline: p.headline, areaDesc: p.areaDesc, severity: p.severity, onset: p.onset, expires: p.expires, id: p.id }))})'>
-        <div class="alert-event">${p.event || 'Weather Alert'}<span class="alert-sev">[${sev}]</span></div>
+      const onset = p.onset ? new Date(p.onset).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+      const area = p.areaDesc ? p.areaDesc.split(';')[0].trim() : '—';
+      return `<div class="alert-card ${sev}" onclick="injectNOAASignal(${JSON.stringify(JSON.stringify(p))})">
+        <div class="alert-header">
+          <div class="alert-event">${p.event || 'Weather Alert'}</div>
+          <div class="alert-severity ${sev}">${sev}</div>
+        </div>
         <div class="alert-area">${area}</div>
+        <div class="alert-time">Onset: ${onset}</div>
       </div>`;
     }).join('');
-  } catch { feed.innerHTML = '<div class="noaa-empty">× Could not load alerts</div>'; }
+  } catch (e) {
+    feed.innerHTML = '<div class="noaa-empty">[×] Could not load NOAA alerts</div>';
+  }
 }
 
-async function injectNOAA(json) {
-  const p = JSON.parse(json);
+async function injectNOAASignal(propsJson) {
+  const p = JSON.parse(propsJson);
   try {
-    await postSignal({ type: 'noaa_alert', severity: (p.severity||'minor').toLowerCase(), title: p.event, description: p.headline, area: p.areaDesc, onset: p.onset, expires: p.expires, noaa_id: p.id });
-    toast('Alert → war room', 'ok');
-  } catch { toast('Failed', 'err'); }
-}
-
-// ── Wake Lock ──
-let _wakeLock = null;
-async function requestWakeLock() {
-  if (!('wakeLock' in navigator)) return;
-  try { _wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+    await fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        type: 'noaa_alert',
+        source: 'noaa',
+        severity: p.severity?.toLowerCase() || 'minor',
+        title: p.event,
+        description: p.headline || p.description?.slice(0, 300),
+        area: p.areaDesc,
+        onset: p.onset,
+        expires: p.expires,
+        noaa_id: p.id,
+      })
+    });
+    toast('[✓] Alert injected as signal', 'ok');
+  } catch { toast('[×] Failed to inject', 'err'); }
 }
 
 // ── PWA install ──
 let _deferredInstall = null;
-const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
-const isStandalone = () => window.matchMedia('(display-mode:standalone)').matches || navigator.standalone === true;
+function isIos() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+
 window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault(); _deferredInstall = e;
+  e.preventDefault();
+  _deferredInstall = e;
   if (!isStandalone() && !localStorage.getItem('signals-install-dismissed')) showInstallBar();
 });
+
+// iOS: show on load if not installed and not dismissed
 window.addEventListener('load', () => {
-  if (isIos() && !isStandalone() && !localStorage.getItem('signals-install-dismissed')) showInstallBar(true);
+  if (isIos() && !isStandalone() && !localStorage.getItem('signals-install-dismissed')) {
+    showInstallBar(true);
+  }
 });
-function showInstallBar(ios = false) {
-  const bar = document.getElementById('signals-install-bar');
-  bar.style.display = 'flex';
-  if (ios) { document.getElementById('signals-install-btn').textContent = 'HOW TO INSTALL'; }
+
+function showInstallBar(iosMode = false) {
+  document.getElementById('signals-install-bar').style.display = 'flex';
+  if (iosMode) {
+    document.getElementById('signals-install-btn').textContent = 'HOW TO INSTALL';
+    document.getElementById('signals-install-desc').textContent = 'Open signals.schedkit.net in Safari to install';
+  }
 }
-function hideInstallBar() {
-  document.getElementById('signals-install-bar').style.display = 'none';
-  localStorage.setItem('signals-install-dismissed', '1');
-}
-async function handleInstall() {
+
+document.getElementById('signals-install-btn')?.addEventListener('touchend', async (e) => {
+  e.preventDefault();
   if (isIos() || !_deferredInstall) {
     document.getElementById('signals-ios-steps').style.display = 'flex';
     document.getElementById('signals-install-btn').style.display = 'none';
+    document.getElementById('signals-install-desc').textContent = 'Follow the steps below ↓';
     return;
   }
   _deferredInstall.prompt();
-  await _deferredInstall.userChoice;
+  const { outcome } = await _deferredInstall.userChoice;
   _deferredInstall = null;
-  hideInstallBar();
+  document.getElementById('signals-install-bar').style.display = 'none';
+  if (outcome === 'accepted') localStorage.setItem('signals-install-dismissed', '1');
+});
+document.getElementById('signals-install-btn')?.addEventListener('click', async () => {
+  if (isIos() || !_deferredInstall) {
+    document.getElementById('signals-ios-steps').style.display = 'flex';
+    document.getElementById('signals-install-btn').style.display = 'none';
+    document.getElementById('signals-install-desc').textContent = 'Follow the steps below ↓';
+    return;
+  }
+  _deferredInstall.prompt();
+  const { outcome } = await _deferredInstall.userChoice;
+  _deferredInstall = null;
+  document.getElementById('signals-install-bar').style.display = 'none';
+  if (outcome === 'accepted') localStorage.setItem('signals-install-dismissed', '1');
+});
+
+document.getElementById('signals-install-dismiss')?.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  document.getElementById('signals-install-bar').style.display = 'none';
+  localStorage.setItem('signals-install-dismissed', '1');
+});
+document.getElementById('signals-install-dismiss')?.addEventListener('click', () => {
+  document.getElementById('signals-install-bar').style.display = 'none';
+  localStorage.setItem('signals-install-dismissed', '1');
+});
+
+// ── Screen Wake Lock ──
+let _wakeLock = null;
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    _wakeLock = await navigator.wakeLock.request('screen');
+    _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+  } catch {}
 }
-document.getElementById('signals-install-btn').addEventListener('touchend', e => { e.preventDefault(); handleInstall(); });
-document.getElementById('signals-install-btn').addEventListener('click', handleInstall);
-document.getElementById('signals-install-dismiss').addEventListener('touchend', e => { e.preventDefault(); hideInstallBar(); });
-document.getElementById('signals-install-dismiss').addEventListener('click', hideInstallBar);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && _beaconActive) requestWakeLock();
+});
 </script>
+
+<!-- Install banner -->
 </body>
 </html>

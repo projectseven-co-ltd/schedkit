@@ -1,5 +1,19 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="96" fill="#0a0a0b"/>
-  <rect x="158" y="128" width="72" height="256" rx="20" fill="#DFFF00"/>
-  <rect x="282" y="128" width="72" height="256" rx="20" fill="#DFFF00"/>
+  <rect width="512" height="512" rx="96" fill="#0A0A0B"/>
+  <!-- Signal waves radiating from center dot -->
+  <!-- Inner wave -->
+  <path d="M 196 256 A 60 60 0 0 1 256 196" stroke="#00ffcc" stroke-width="28" fill="none" stroke-linecap="round"/>
+  <path d="M 316 256 A 60 60 0 0 0 256 196" stroke="#00ffcc" stroke-width="28" fill="none" stroke-linecap="round"/>
+  <!-- Middle wave -->
+  <path d="M 152 256 A 104 104 0 0 1 256 152" stroke="#00ffcc" stroke-width="24" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <path d="M 360 256 A 104 104 0 0 0 256 152" stroke="#00ffcc" stroke-width="24" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <!-- Outer wave -->
+  <path d="M 108 256 A 148 148 0 0 1 256 108" stroke="#00ffcc" stroke-width="20" fill="none" stroke-linecap="round" opacity="0.4"/>
+  <path d="M 404 256 A 148 148 0 0 0 256 108" stroke="#00ffcc" stroke-width="20" fill="none" stroke-linecap="round" opacity="0.4"/>
+  <!-- Center dot -->
+  <circle cx="256" cy="256" r="22" fill="#00ffcc"/>
+  <!-- Vertical stem -->
+  <line x1="256" y1="278" x2="256" y2="380" stroke="#00ffcc" stroke-width="24" stroke-linecap="round"/>
+  <!-- Base -->
+  <line x1="210" y1="380" x2="302" y2="380" stroke="#00ffcc" stroke-width="24" stroke-linecap="round"/>
 </svg>

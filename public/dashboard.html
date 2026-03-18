@@ -1720,14 +1720,6 @@ function sitrepHandleSSE(type, payload) {
     const dev2 = payload.device_id || (payload.meta ? (JSON.parse(payload.meta||'{}').device_id || null) : null) || `user-${payload.user_id}`;
     sitrepPushFeed('alert', `[!] Alert · ${dev2}${payload.note ? ` · ${payload.note}` : ''}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`, payload.created_at);
   }
-  if (type === 'signal.status_ok') {
-    const dev3 = payload.device_id || `user-${payload.user_id}`;
-    sitrepPushFeed('ok', `[✓] Check-in · ${dev3.slice(-8)}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`, payload.created_at);
-  }
-  if (type === 'signal.note') {
-    const dev4 = payload.device_id || `user-${payload.user_id}`;
-    sitrepPushFeed('muted', `[~] Note · ${dev4.slice(-8)}${payload.note ? ' · ' + payload.note.slice(0,80) : ''}`, payload.created_at);
-  }
 }
 
 // ── Kit Config tabs ───────────────────────────────────
@@ -1875,16 +1867,7 @@ function connectSignalStream() {
   signalStream.onmessage = (e) => {
     try {
       const evt = JSON.parse(e.data);
-      // Signals SSE sends { event: 'signal', signal: {...} }
-      if (evt.event === 'signal' && evt.signal) {
-        const s = evt.signal;
-        // Map to sitrepHandleSSE format (expects type='signal.beacon' etc, payload=signal)
-        sitrepHandleSSE('signal.' + s.type, s);
-        // Also route to war room map handler
-        if (typeof handleWarRoomSignal === 'function') handleWarRoomSignal(s);
-      } else if (evt.type && evt.type !== 'connected') {
-        sitrepHandleSSE(evt.type, evt.payload || {});
-      }
+      if (evt.type && evt.type !== 'connected') sitrepHandleSSE(evt.type, evt.payload || {});
     } catch {}
   };
   signalStream.onerror = () => {
@@ -4263,6 +4246,9 @@ window.addEventListener('load', () => initPush());
 /* Hidden camera input */
 #beacon-camera-input { display: none; }
 </style>
+
+<!-- FAB button -->
+<button id="beacon-fab" title="Beacon Mode" onclick="toggleBeaconPanel()" style="font-family:var(--font-mono);font-size:13px;letter-spacing:0.05em">[+]</button>
 
 <!-- Panel -->
 <div id="beacon-panel">
