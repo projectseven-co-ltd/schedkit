@@ -294,9 +294,13 @@ async function consumeLoginAndCreateSession(reply, link, user, { redirect, next 
     created_at: new Date().toISOString(),
   });
 
-  const destination = (next && next.startsWith('/') && !next.startsWith('//') && !next.includes(':'))
-    ? next
-    : ((!user?.name) ? '/onboarding' : '/dashboard');
+  // Only allow known safe destinations — no open redirect
+  const ALLOWED_PATHS = ['/dashboard', '/onboarding'];
+  const isAllowed = next && (
+    ALLOWED_PATHS.includes(next) ||
+    (next.startsWith('/dashboard') && !next.startsWith('//') && !next.includes(':'))
+  );
+  const destination = isAllowed ? next : ((!user?.name) ? '/onboarding' : '/dashboard');
   reply.header('Set-Cookie', `sk_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}; Secure`);
 
   if (redirect) return reply.redirect(destination);

@@ -77,9 +77,15 @@
 <button class="lights-btn" id="lightsBtn"><span>[◑]</span><span id="lightsBtnLabel">LIGHTS ON</span></button>
 <div id="lightsFlicker"></div>
 <script>
-// Validate ?next — only allow same-origin relative paths (no protocol-relative // or absolute URLs)
-const _rawNext = new URLSearchParams(window.location.search).get('next') || '';
-const _nextUrl = (_rawNext.startsWith('/') && !_rawNext.startsWith('//') && !_rawNext.includes(':')) ? _rawNext : '/dashboard';
+// Validate ?next — force same-origin by parsing through URL constructor
+function safeRedirect(path) {
+  try {
+    const url = new URL(path, window.location.origin);
+    if (url.origin !== window.location.origin) return '/dashboard';
+    return url.pathname + url.search + url.hash;
+  } catch { return '/dashboard'; }
+}
+const _nextUrl = safeRedirect(new URLSearchParams(window.location.search).get('next') || '/dashboard');
 const _isUpgrade = _nextUrl.includes('upgrade=');
 if (_isUpgrade) {
   document.getElementById('loginHeading').textContent = 'Create your account';
@@ -147,9 +153,7 @@ codeForm.addEventListener('submit', async e => {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) throw new Error(data.error || 'invalid_code');
-    const _dest = data.destination || '';
-    const _safeDest = (_dest.startsWith('/') && !_dest.startsWith('//') && !_dest.includes(':')) ? _dest : _nextUrl;
-    window.location.replace(_safeDest);
+    window.location.replace(safeRedirect(data.destination || _nextUrl));
   } catch {
     err.textContent = 'Invalid or expired code. Request a new email and try again.';
     err.style.display = 'block';
