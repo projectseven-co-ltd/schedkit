@@ -685,11 +685,8 @@ window.addEventListener('load', () => {
 function showInstallBar(iosMode = false) {
   const bar = document.getElementById('signals-install-bar');
   bar.style.display = 'flex';
-  document.querySelector('main').style.paddingBottom = '';
-  document.querySelector('nav').style.marginTop = bar.offsetHeight + 'px';
-  // recalc after render
   requestAnimationFrame(() => {
-    document.querySelector('nav').style.marginTop = bar.offsetHeight + 'px';
+    document.body.style.paddingTop = `calc(var(--safe-top) + ${bar.offsetHeight}px)`;
   });
   if (iosMode) {
     document.getElementById('signals-install-btn').textContent = 'HOW TO INSTALL';
@@ -708,14 +705,14 @@ document.getElementById('signals-install-btn')?.addEventListener('click', async 
   const { outcome } = await _deferredInstall.userChoice;
   _deferredInstall = null;
   document.getElementById('signals-install-bar').style.display = 'none';
-  document.querySelector('main').style.paddingBottom = '';
+  document.body.style.paddingTop = '';
   document.querySelector('nav').style.marginTop = '';
   if (outcome === 'accepted') localStorage.setItem('signals-install-dismissed', '1');
 });
 
 document.getElementById('signals-install-dismiss')?.addEventListener('click', () => {
   document.getElementById('signals-install-bar').style.display = 'none';
-  document.querySelector('main').style.paddingBottom = '';
+  document.body.style.paddingTop = '';
   document.querySelector('nav').style.marginTop = '';
   localStorage.setItem('signals-install-dismissed', '1');
 });
