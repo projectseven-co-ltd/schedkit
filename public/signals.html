@@ -685,6 +685,7 @@ window.addEventListener('load', () => {
 function showInstallBar(iosMode = false) {
   const bar = document.getElementById('signals-install-bar');
   bar.style.display = 'flex';
+  document.querySelector('main').style.paddingBottom = '160px';
   if (iosMode) {
     document.getElementById('signals-install-btn').textContent = 'HOW TO INSTALL';
     document.getElementById('signals-install-desc').textContent = 'Open signals.schedkit.net in Safari to install';
@@ -702,11 +703,13 @@ document.getElementById('signals-install-btn')?.addEventListener('click', async 
   const { outcome } = await _deferredInstall.userChoice;
   _deferredInstall = null;
   document.getElementById('signals-install-bar').style.display = 'none';
+  document.querySelector('main').style.paddingBottom = '';
   if (outcome === 'accepted') localStorage.setItem('signals-install-dismissed', '1');
 });
 
 document.getElementById('signals-install-dismiss')?.addEventListener('click', () => {
   document.getElementById('signals-install-bar').style.display = 'none';
+  document.querySelector('main').style.paddingBottom = '';
   localStorage.setItem('signals-install-dismissed', '1');
 });
 
