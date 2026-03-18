@@ -1867,7 +1867,16 @@ function connectSignalStream() {
   signalStream.onmessage = (e) => {
     try {
       const evt = JSON.parse(e.data);
-      if (evt.type && evt.type !== 'connected') sitrepHandleSSE(evt.type, evt.payload || {});
+      // Signals SSE sends { event: 'signal', signal: {...} }
+      if (evt.event === 'signal' && evt.signal) {
+        const s = evt.signal;
+        // Map to sitrepHandleSSE format (expects type='signal.beacon' etc, payload=signal)
+        sitrepHandleSSE('signal.' + s.type, s);
+        // Also route to war room map handler
+        if (typeof handleWarRoomSignal === 'function') handleWarRoomSignal(s);
+      } else if (evt.type && evt.type !== 'connected') {
+        sitrepHandleSSE(evt.type, evt.payload || {});
+      }
     } catch {}
   };
   signalStream.onerror = () => {

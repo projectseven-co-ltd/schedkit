@@ -1804,11 +1804,14 @@ body::after {
   }
 
   function handleSignalEvent(evt) {
-    const { type, payload } = evt;
-    if (!payload) return;
+    // SSE sends { event: 'signal', signal: {...} } — normalize both formats
+    const signal = evt.signal || evt.payload || evt;
+    const type = evt.event === 'signal' ? ('signal.' + signal.type) : (evt.type || '');
+    const payload = signal;
+    if (!payload || !type) return;
     let meta = {};
     try { meta = JSON.parse(payload.meta || '{}'); } catch {}
-    // device_id can come from meta (beacon pings) or directly on payload (beacon_off)
+    // device_id can come directly on signal or in meta
     const deviceId = payload.device_id || meta.device_id || ('user-' + payload.user_id);
     const shortId = deviceId.slice(-8);
 
