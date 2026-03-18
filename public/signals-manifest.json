@@ -1,11 +1,11 @@
 {
-  "name": "SchedKit Signals",
-  "short_name": "Signals",
-  "description": "Field signal sender — beacon, capture, SOS, NOAA alerts",
+  "name": "Beacon",
+  "short_name": "Beacon",
+  "description": "Field beacon — location ping, capture, SOS, NOAA alerts",
   "start_url": "/signals",
-  "scope": "/",
+  "scope": "/signals",
   "display": "standalone",
-  "background_color": "#0a0a0b",
+  "background_color": "#070e0d",
   "theme_color": "#00ffcc",
   "orientation": "portrait",
   "icons": [

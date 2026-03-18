@@ -6,9 +6,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Signals">
+<meta name="apple-mobile-web-app-title" content="Beacon">
 <meta name="theme-color" content="#00ffcc">
-<title>Signals — SchedKit</title>
+<title>Beacon — SchedKit</title>
 <link rel="icon" href="/signals-icon.svg" type="image/svg+xml">
 <link rel="manifest" href="/signals-manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -341,7 +341,7 @@
       <line x1="200" y1="390" x2="312" y2="390" stroke="#00ffcc" stroke-width="48" stroke-linecap="round"/>
     </svg>
     <div style="flex:1">
-      <div style="font-weight:700;color:#00ffcc;font-size:14px;margin-bottom:3px">Install Signals</div>
+      <div style="font-weight:700;color:#00ffcc;font-size:14px;margin-bottom:3px">Install Beacon</div>
       <div id="signals-install-desc" style="color:#3a5a54;font-size:11px">Install from signals.schedkit.net for the best experience</div>
     </div>
     <button id="signals-install-btn" style="background:#00ffcc;color:#0a0a0b;border:none;border-radius:8px;padding:9px 16px;font-family:'Fira Code',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.05em;white-space:nowrap">INSTALL</button>
@@ -400,10 +400,11 @@
   <!-- Signal tiles -->
   <div class="signal-grid">
     <!-- Location beacon -->
-    <div class="tile" id="tileBeacon" onclick="toggleBeacon()">
+    <div class="tile" id="tileBeacon">
       <div class="tile-icon">[◉]</div>
       <div class="tile-label">Beacon</div>
       <div class="tile-sub" id="beaconSub">tap to activate</div>
+      <div class="tile-sub" id="beaconHoldHint" style="display:none;color:var(--muted);font-size:10px">hold to deactivate</div>
     </div>
 
     <!-- Photo capture -->
@@ -519,14 +520,14 @@ function startLocationWatch() {
 
 // ── Beacon ──
 let _beaconInterval = null, _beaconActive = false;
-function toggleBeacon() {
-  _beaconActive ? stopBeacon() : startBeacon();
-}
+let _beaconHoldTimer = null, _beaconHoldStarted = false;
+
 function startBeacon() {
   _beaconActive = true;
   localStorage.setItem('signals_beacon', '1');
   document.getElementById('tileBeacon').classList.add('active');
   document.getElementById('beaconSub').textContent = 'sending…';
+  document.getElementById('beaconHoldHint').style.display = '';
   sendBeaconPing();
   _beaconInterval = setInterval(sendBeaconPing, 15000);
   requestWakeLock();
@@ -539,11 +540,33 @@ function stopBeacon() {
   _beaconInterval = null;
   document.getElementById('tileBeacon').classList.remove('active');
   document.getElementById('beaconSub').textContent = 'tap to activate';
-  if (_wakeLock) { _wakeLock.release(); _wakeLock = null; }
-  fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'},
+  document.getElementById('beaconHoldHint').style.display = 'none';
+  fetch('/v1/signals', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: 'beacon_off', source: 'phone', device_id: deviceId() }) }).catch(() => {});
   toast('[×] Beacon off', 'warn');
 }
+
+// Tap = activate (if not active); long press (800ms) = deactivate
+const _beaconTile = document.getElementById('tileBeacon');
+function _beaconPressStart(e) {
+  if (!_beaconActive) { startBeacon(); return; }
+  _beaconHoldStarted = true;
+  document.getElementById('tileBeacon').style.opacity = '0.6';
+  _beaconHoldTimer = setTimeout(() => {
+    if (_beaconHoldStarted) { stopBeacon(); }
+    document.getElementById('tileBeacon').style.opacity = '';
+    _beaconHoldStarted = false;
+  }, 800);
+}
+function _beaconPressEnd() {
+  if (_beaconHoldTimer) { clearTimeout(_beaconHoldTimer); _beaconHoldTimer = null; }
+  document.getElementById('tileBeacon').style.opacity = '';
+  _beaconHoldStarted = false;
+}
+_beaconTile.addEventListener('pointerdown', _beaconPressStart);
+_beaconTile.addEventListener('pointerup', _beaconPressEnd);
+_beaconTile.addEventListener('pointerleave', _beaconPressEnd);
+_beaconTile.addEventListener('contextmenu', e => e.preventDefault());
 async function sendBeaconPing() {
   const payload = { type: 'beacon', source: 'phone', device_id: deviceId() };
   if (_lastPos) { payload.lat = _lastPos.lat; payload.lng = _lastPos.lng; payload.accuracy = _lastPos.acc; }
