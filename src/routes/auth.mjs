@@ -294,13 +294,14 @@ async function consumeLoginAndCreateSession(reply, link, user, { redirect, next 
     created_at: new Date().toISOString(),
   });
 
-  // Only allow known safe destinations — no open redirect
-  const ALLOWED_PATHS = ['/dashboard', '/onboarding'];
-  const isAllowed = next && (
-    ALLOWED_PATHS.includes(next) ||
-    (next.startsWith('/dashboard') && !next.startsWith('//') && !next.includes(':'))
-  );
-  const destination = isAllowed ? next : ((!user?.name) ? '/onboarding' : '/dashboard');
+  // Build destination from scratch — never pass user input directly to redirect
+  const defaultDest = (!user?.name) ? '/onboarding' : '/dashboard';
+  // Only honour ?next if it starts with /dashboard (upgrade flow), reconstruct safely
+  let destination = defaultDest;
+  if (next && next.startsWith('/dashboard') && !next.includes('//') && !next.includes(':')) {
+    const qs = next.includes('?') ? next.slice(next.indexOf('?')) : '';
+    destination = '/dashboard' + qs;
+  }
   reply.header('Set-Cookie', `sk_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}; Secure`);
 
   if (redirect) return reply.redirect(destination);
