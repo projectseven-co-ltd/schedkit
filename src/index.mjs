@@ -44,9 +44,12 @@ const fastify = Fastify({ logger: true, bodyLimit: 10 * 1024 * 1024 }); // 10MB 
 await fastify.register(cors, { origin: true });
 await fastify.register(formbody);
 
-// Global rate limit — generous default, tightened per-route on auth endpoints
+// Global rate limit — 200 req/min per IP by default, tightened per-route on auth/sensitive endpoints
 await fastify.register(rateLimit, {
-  global: false, // opt-in per route; we set defaults only on sensitive routes
+  global: true,
+  max: 200,
+  timeWindow: '1 minute',
+  keyGenerator: (req) => req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip,
 });
 
 // Raw body access for Stripe webhook signature verification
