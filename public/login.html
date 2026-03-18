@@ -77,14 +77,9 @@
 <button class="lights-btn" id="lightsBtn"><span>[◑]</span><span id="lightsBtnLabel">LIGHTS ON</span></button>
 <div id="lightsFlicker"></div>
 <script>
-// If already have a valid session, redirect to destination
-// Sanitize ?next to prevent open redirect — only allow relative paths
-function sanitizeNext(url) {
-  if (!url) return '/dashboard';
-  if (url.startsWith('/') && !url.startsWith('//')) return url;
-  return '/dashboard';
-}
-const _nextUrl = sanitizeNext(new URLSearchParams(window.location.search).get('next'));
+// Validate ?next — only allow same-origin relative paths (no protocol-relative // or absolute URLs)
+const _rawNext = new URLSearchParams(window.location.search).get('next') || '';
+const _nextUrl = (_rawNext.startsWith('/') && !_rawNext.startsWith('//') && !_rawNext.includes(':')) ? _rawNext : '/dashboard';
 const _isUpgrade = _nextUrl.includes('upgrade=');
 if (_isUpgrade) {
   document.getElementById('loginHeading').textContent = 'Create your account';
@@ -152,7 +147,9 @@ codeForm.addEventListener('submit', async e => {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) throw new Error(data.error || 'invalid_code');
-    window.location.replace(sanitizeNext(data.destination) || _nextUrl);
+    const _dest = data.destination || '';
+    const _safeDest = (_dest.startsWith('/') && !_dest.startsWith('//') && !_dest.includes(':')) ? _dest : _nextUrl;
+    window.location.replace(_safeDest);
   } catch {
     err.textContent = 'Invalid or expired code. Request a new email and try again.';
     err.style.display = 'block';

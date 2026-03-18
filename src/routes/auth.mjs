@@ -294,7 +294,9 @@ async function consumeLoginAndCreateSession(reply, link, user, { redirect, next 
     created_at: new Date().toISOString(),
   });
 
-  const destination = sanitizeRedirect(next) || ((!user?.name) ? '/onboarding' : '/dashboard');
+  const destination = (next && next.startsWith('/') && !next.startsWith('//') && !next.includes(':'))
+    ? next
+    : ((!user?.name) ? '/onboarding' : '/dashboard');
   reply.header('Set-Cookie', `sk_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}; Secure`);
 
   if (redirect) return reply.redirect(destination);
