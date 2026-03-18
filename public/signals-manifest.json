@@ -1,0 +1,13 @@
+{
+  "name": "SchedKit Signals",
+  "short_name": "Signals",
+  "description": "Field signal sender for SchedKit — beacon, capture, SOS, NOAA alerts",
+  "start_url": "/signals",
+  "display": "standalone",
+  "background_color": "#0a0a0b",
+  "theme_color": "#0a0a0b",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

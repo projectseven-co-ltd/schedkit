@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Signals">
+<meta name="theme-color" content="#0a0a0b">
+<title>Signals — SchedKit</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/signals-manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --surface: #111114;
+    --surface2: #18181c;
+    --border: rgba(255,255,255,0.08);
+    --accent: #DFFF00;
+    --accent-dim: rgba(223,255,0,0.06);
+    --text: #e8e8ea;
+    --muted: #5a5a6e;
+    --red: #ff5f5f;
+    --green: #00ffcc;
+    --font-mono: 'Fira Code', monospace;
+    --font-sans: 'Space Grotesk', sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+    overscroll-behavior: none;
+  }
+
+  /* ── NAV ── */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,11,0.95);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-logo {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-decoration: none;
+  }
+  .nav-status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background .3s;
+  }
+  .status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+  .status-dot.warn { background: #ffaa00; box-shadow: 0 0 6px #ffaa00; }
+  .status-dot.err { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* ── MAIN ── */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow-y: auto;
+  }
+
+  /* ── SIGNAL TILES ── */
+  .signal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 20px;
+  }
+
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, transform .1s;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    min-height: 120px;
+    justify-content: center;
+  }
+  .tile:active { transform: scale(0.96); }
+  .tile.active { border-color: var(--accent); background: var(--accent-dim); }
+  .tile.active .tile-icon { color: var(--accent); }
+  .tile.sending { border-color: var(--accent); animation: tileFlash .4s ease; }
+  @keyframes tileFlash { 0%{background:rgba(223,255,0,0.2)} 100%{background:var(--surface)} }
+  .tile.wide { grid-column: 1 / -1; }
+  .tile.danger.active { border-color: var(--red); background: rgba(255,95,95,0.06); }
+  .tile.danger.active .tile-icon { color: var(--red); }
+
+  .tile-icon {
+    font-family: var(--font-mono);
+    font-size: 28px;
+    color: var(--muted);
+    transition: color .15s;
+    line-height: 1;
+  }
+  .tile-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: center;
+  }
+  .tile.active .tile-label { color: var(--accent); }
+  .tile.danger.active .tile-label { color: var(--red); }
+  .tile-sub {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    opacity: 0.7;
+  }
+  .tile-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    background: var(--accent);
+    color: #0a0a0b;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  /* ── NOAA FEED ── */
+  .noaa-section {
+    padding: 0 20px 20px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .section-refresh {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: color .15s;
+  }
+  .section-refresh:hover { color: var(--accent); }
+
+  .alert-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .alert-card:hover { border-color: rgba(255,255,255,0.15); }
+  .alert-card.extreme { border-left: 3px solid var(--red); }
+  .alert-card.severe { border-left: 3px solid #ff8800; }
+  .alert-card.moderate { border-left: 3px solid #ffaa00; }
+  .alert-card.minor { border-left: 3px solid var(--muted); }
+  .alert-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .alert-event { font-size: 13px; font-weight: 600; color: var(--text); }
+  .alert-severity { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; flex-shrink: 0; }
+  .alert-severity.extreme { background: rgba(255,95,95,0.15); color: var(--red); }
+  .alert-severity.severe { background: rgba(255,136,0,0.15); color: #ff8800; }
+  .alert-severity.moderate { background: rgba(255,170,0,0.12); color: #ffaa00; }
+  .alert-severity.minor { background: rgba(255,255,255,0.05); color: var(--muted); }
+  .alert-area { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .alert-time { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+  .noaa-empty { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: center; padding: 24px; }
+
+  /* ── LOCATION STRIP ── */
+  .location-strip {
+    margin: 0 20px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .location-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .location-coords {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .location-age {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: calc(20px + var(--safe-bottom));
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+    z-index: 999;
+    transition: transform .25s ease, opacity .25s;
+    opacity: 0;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.ok { border-color: var(--green); color: var(--green); }
+  .toast.err { border-color: var(--red); color: var(--red); }
+  .toast.warn { border-color: #ffaa00; color: #ffaa00; }
+
+  /* ── VIDEO OVERLAY ── */
+  .video-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 200;
+    flex-direction: column;
+  }
+  .video-overlay.open { display: flex; }
+  .video-preview {
+    flex: 1;
+    width: 100%;
+    object-fit: cover;
+    background: #000;
+  }
+  .video-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    padding-bottom: calc(16px + var(--safe-bottom));
+    background: rgba(0,0,0,0.9);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    gap: 16px;
+  }
+  .video-btn {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .video-btn.record { border-color: var(--red); color: var(--red); }
+  .video-btn.record.recording { background: rgba(255,95,95,0.15); animation: recPulse 1s infinite; }
+  @keyframes recPulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+  .video-btn.close-vid { color: var(--muted); }
+  .video-status {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/dashboard" class="nav-logo">[SC] SIGNALS</a>
+  <div class="nav-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">offline</span>
+  </div>
+</nav>
+
+<main>
+  <!-- Signal tiles -->
+  <div class="signal-grid">
+    <!-- Location beacon -->
+    <div class="tile" id="tileBeacon" onclick="toggleBeacon()">
+      <div class="tile-icon">[📍]</div>
+      <div class="tile-label">Beacon</div>
+      <div class="tile-sub" id="beaconSub">tap to activate</div>
+    </div>
+
+    <!-- Photo capture -->
+    <div class="tile" id="tileCapture" onclick="sendCapture()">
+      <div class="tile-icon">[📷]</div>
+      <div class="tile-label">Capture</div>
+      <div class="tile-sub">send photo</div>
+    </div>
+
+    <!-- Live video -->
+    <div class="tile" id="tileVideo" onclick="openVideo()">
+      <div class="tile-icon">[🎥]</div>
+      <div class="tile-label">Live Video</div>
+      <div class="tile-sub">stream to dashboard</div>
+      <div class="tile-badge">BETA</div>
+    </div>
+
+    <!-- Status ping -->
+    <div class="tile" id="tileStatus" onclick="sendStatus()">
+      <div class="tile-icon">[✓]</div>
+      <div class="tile-label">Check In</div>
+      <div class="tile-sub">send status OK</div>
+    </div>
+
+    <!-- SOS — full width -->
+    <div class="tile wide danger" id="tileSOS" onclick="sendSOS()">
+      <div class="tile-icon">[!]</div>
+      <div class="tile-label">SOS</div>
+      <div class="tile-sub">hold 2 seconds to send emergency signal</div>
+    </div>
+  </div>
+
+  <!-- Location strip -->
+  <div class="location-strip">
+    <div class="location-label">GPS</div>
+    <div class="location-coords" id="locationCoords">acquiring…</div>
+    <div class="location-age" id="locationAge">—</div>
+  </div>
+
+  <!-- NOAA alerts -->
+  <div class="noaa-section">
+    <div class="section-header">
+      <div class="section-title">[⚡] NOAA Alerts</div>
+      <button class="section-refresh" onclick="loadNOAA()">[↻] refresh</button>
+    </div>
+    <div id="noaaFeed"><div class="noaa-empty">loading alerts…</div></div>
+  </div>
+</main>
+
+<!-- Video overlay -->
+<div class="video-overlay" id="videoOverlay">
+  <video class="video-preview" id="videoPreview" autoplay muted playsinline></video>
+  <div class="video-controls">
+    <button class="video-btn close-vid" onclick="closeVideo()">✕ Close</button>
+    <div class="video-status" id="videoStatus">ready</div>
+    <button class="video-btn record" id="recordBtn" onclick="toggleRecord()">⏺ Record</button>
+  </div>
+</div>
+
+<!-- Hidden inputs -->
+<input type="file" id="captureInput" accept="image/*" capture="environment" style="display:none" onchange="uploadCapture(this)">
+<div id="toast" class="toast"></div>
+
+<script>
+// ── Auth check ──
+(async () => {
+  try {
+    const r = await fetch('/v1/auth/me', { credentials: 'include' });
+    if (!r.ok) { window.location.replace('/login?next=/signals'); return; }
+    const me = await r.json();
+    window._me = me;
+    setStatus('live', me.name || me.email || 'online');
+    startBeaconIfStored();
+    loadNOAA();
+    startLocationWatch();
+  } catch {
+    setStatus('err', 'offline');
+  }
+})();
+
+// ── Status ──
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  const label = document.getElementById('statusText');
+  dot.className = 'status-dot ' + state;
+  label.textContent = text;
+}
+
+// ── Toast ──
+let _toastTimer;
+function toast(msg, type = 'ok', ms = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+// ── Location ──
+let _lastPos = null, _watchId = null, _locationAge = null;
+function startLocationWatch() {
+  if (!navigator.geolocation) return;
+  _watchId = navigator.geolocation.watchPosition(pos => {
+    _lastPos = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+    _locationAge = Date.now();
+    const el = document.getElementById('locationCoords');
+    el.textContent = `${_lastPos.lat.toFixed(5)}, ${_lastPos.lng.toFixed(5)}`;
+    document.getElementById('locationAge').textContent = `±${Math.round(_lastPos.acc)}m`;
+  }, () => {
+    document.getElementById('locationCoords').textContent = 'unavailable';
+  }, { enableHighAccuracy: true, maximumAge: 10000 });
+}
+
+// ── Beacon ──
+let _beaconInterval = null, _beaconActive = false;
+function toggleBeacon() {
+  _beaconActive ? stopBeacon() : startBeacon();
+}
+function startBeacon() {
+  _beaconActive = true;
+  localStorage.setItem('signals_beacon', '1');
+  document.getElementById('tileBeacon').classList.add('active');
+  document.getElementById('beaconSub').textContent = 'sending…';
+  sendBeaconPing();
+  _beaconInterval = setInterval(sendBeaconPing, 15000);
+  toast('[+] Beacon activated', 'ok');
+}
+function stopBeacon() {
+  _beaconActive = false;
+  localStorage.removeItem('signals_beacon');
+  clearInterval(_beaconInterval);
+  _beaconInterval = null;
+  document.getElementById('tileBeacon').classList.remove('active');
+  document.getElementById('beaconSub').textContent = 'tap to activate';
+  fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ type: 'beacon_off', source: 'phone', device_id: deviceId() }) }).catch(() => {});
+  toast('[×] Beacon off', 'warn');
+}
+async function sendBeaconPing() {
+  const payload = { type: 'beacon', source: 'phone', device_id: deviceId() };
+  if (_lastPos) { payload.lat = _lastPos.lat; payload.lng = _lastPos.lng; payload.accuracy = _lastPos.acc; }
+  try {
+    await fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    document.getElementById('beaconSub').textContent = 'last: ' + new Date().toLocaleTimeString();
+  } catch { document.getElementById('beaconSub').textContent = 'retry…'; }
+}
+function startBeaconIfStored() {
+  if (localStorage.getItem('signals_beacon')) startBeacon();
+}
+function deviceId() {
+  let id = localStorage.getItem('signals_device_id');
+  if (!id) { id = 'DEV-' + Math.random().toString(36).slice(2,8).toUpperCase(); localStorage.setItem('signals_device_id', id); }
+  return id;
+}
+
+// ── Photo capture ──
+function sendCapture() { document.getElementById('captureInput').click(); }
+async function uploadCapture(input) {
+  const file = input.files[0]; if (!file) return;
+  const tile = document.getElementById('tileCapture');
+  tile.classList.add('sending');
+  toast('[…] uploading photo', 'warn', 10000);
+  try {
+    const mime = file.type || 'image/jpeg';
+    const buf = await file.arrayBuffer();
+    const res = await fetch('/v1/upload/capture', { method: 'POST', credentials: 'include', headers: {'Content-Type': mime}, body: buf });
+    const data = await res.json();
+    if (!res.ok) throw new Error();
+    // Also fire a signal
+    await fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ type: 'capture', source: 'phone', device_id: deviceId(), url: data.url, lat: _lastPos?.lat, lng: _lastPos?.lng }) });
+    toast('[✓] Photo sent', 'ok');
+  } catch { toast('[×] Upload failed', 'err'); }
+  finally { tile.classList.remove('sending'); input.value = ''; }
+}
+
+// ── Status check-in ──
+async function sendStatus() {
+  const tile = document.getElementById('tileStatus');
+  tile.classList.add('sending');
+  try {
+    await fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ type: 'status_ok', source: 'phone', device_id: deviceId(), lat: _lastPos?.lat, lng: _lastPos?.lng }) });
+    toast('[✓] Status OK sent', 'ok');
+  } catch { toast('[×] Failed', 'err'); }
+  setTimeout(() => tile.classList.remove('sending'), 600);
+}
+
+// ── SOS ──
+let _sosTimer = null;
+const sosTile = document.getElementById('tileSOS');
+sosTile.addEventListener('pointerdown', () => {
+  _sosTimer = setTimeout(async () => {
+    _sosTimer = null;
+    sosTile.classList.add('active');
+    try {
+      await fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ type: 'sos', source: 'phone', device_id: deviceId(), severity: 'critical', lat: _lastPos?.lat, lng: _lastPos?.lng }) });
+      toast('[!] SOS SENT', 'err', 5000);
+    } catch { toast('[×] SOS failed — try again', 'err'); }
+    setTimeout(() => sosTile.classList.remove('active'), 3000);
+  }, 2000);
+});
+sosTile.addEventListener('pointerup', () => { if (_sosTimer) { clearTimeout(_sosTimer); _sosTimer = null; } });
+sosTile.addEventListener('pointercancel', () => { if (_sosTimer) { clearTimeout(_sosTimer); _sosTimer = null; } });
+
+// ── Live video ──
+let _stream = null, _recorder = null, _ws = null;
+async function openVideo() {
+  try {
+    _stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
+    document.getElementById('videoPreview').srcObject = _stream;
+    document.getElementById('videoOverlay').classList.add('open');
+    document.getElementById('videoStatus').textContent = 'preview — tap record to stream';
+  } catch (e) {
+    toast('[×] Camera access denied', 'err');
+  }
+}
+function closeVideo() {
+  stopRecord();
+  if (_stream) { _stream.getTracks().forEach(t => t.stop()); _stream = null; }
+  document.getElementById('videoOverlay').classList.remove('open');
+  document.getElementById('videoPreview').srcObject = null;
+}
+function toggleRecord() { _recorder ? stopRecord() : startRecord(); }
+function startRecord() {
+  if (!_stream) return;
+  // WebSocket stream to server
+  const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+  _ws = new WebSocket(`${wsProto}://${location.host}/v1/signals/video-stream?device=${deviceId()}`);
+  _ws.onopen = () => {
+    _recorder = new MediaRecorder(_stream, { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: 500000 });
+    _recorder.ondataavailable = e => { if (_ws.readyState === 1 && e.data.size > 0) _ws.send(e.data); };
+    _recorder.start(500); // 500ms chunks
+    document.getElementById('recordBtn').classList.add('recording');
+    document.getElementById('recordBtn').textContent = '⏹ Stop';
+    document.getElementById('videoStatus').textContent = '⏺ streaming live';
+    toast('[⏺] Live stream started', 'ok');
+  };
+  _ws.onerror = () => { toast('[×] Stream failed', 'err'); stopRecord(); };
+}
+function stopRecord() {
+  if (_recorder) { _recorder.stop(); _recorder = null; }
+  if (_ws) { _ws.close(); _ws = null; }
+  const btn = document.getElementById('recordBtn');
+  btn.classList.remove('recording');
+  btn.textContent = '⏺ Record';
+  document.getElementById('videoStatus').textContent = 'stopped';
+}
+
+// ── NOAA ──
+let _noaaState = ''; // user's state from profile or geolocation
+async function loadNOAA() {
+  const feed = document.getElementById('noaaFeed');
+  feed.innerHTML = '<div class="noaa-empty">loading…</div>';
+  try {
+    // Use coordinates if available, else fall back to nationwide
+    let url = 'https://api.weather.gov/alerts/active?status=actual&message_type=alert&limit=10';
+    if (_lastPos) {
+      url = `https://api.weather.gov/alerts/active?point=${_lastPos.lat.toFixed(4)},${_lastPos.lng.toFixed(4)}&status=actual&limit=10`;
+    }
+    const res = await fetch(url, { headers: { 'User-Agent': 'SchedKit-Signals/1.0 (ceo@schedkit.net)' } });
+    const data = await res.json();
+    const alerts = data.features || [];
+    if (!alerts.length) {
+      feed.innerHTML = '<div class="noaa-empty">[✓] No active alerts in your area</div>';
+      return;
+    }
+    feed.innerHTML = alerts.map(a => {
+      const p = a.properties;
+      const sev = (p.severity || 'minor').toLowerCase();
+      const onset = p.onset ? new Date(p.onset).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+      const area = p.areaDesc ? p.areaDesc.split(';')[0].trim() : '—';
+      return `<div class="alert-card ${sev}" onclick="injectNOAASignal(${JSON.stringify(JSON.stringify(p))})">
+        <div class="alert-header">
+          <div class="alert-event">${p.event || 'Weather Alert'}</div>
+          <div class="alert-severity ${sev}">${sev}</div>
+        </div>
+        <div class="alert-area">${area}</div>
+        <div class="alert-time">Onset: ${onset}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    feed.innerHTML = '<div class="noaa-empty">[×] Could not load NOAA alerts</div>';
+  }
+}
+
+async function injectNOAASignal(propsJson) {
+  const p = JSON.parse(propsJson);
+  try {
+    await fetch('/v1/signals', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        type: 'noaa_alert',
+        source: 'noaa',
+        severity: p.severity?.toLowerCase() || 'minor',
+        title: p.event,
+        description: p.headline || p.description?.slice(0, 300),
+        area: p.areaDesc,
+        onset: p.onset,
+        expires: p.expires,
+        noaa_id: p.id,
+      })
+    });
+    toast('[✓] Alert injected as signal', 'ok');
+  } catch { toast('[×] Failed to inject', 'err'); }
+}
+
+// ── PWA install ──
+let _deferredInstall = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredInstall = e;
+});
+</script>
+
+</body>
+</html>

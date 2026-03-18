@@ -191,6 +191,11 @@ fastify.get('/onboarding', { config: { rateLimit: { max: 60, timeWindow: '1 minu
   return reply.type('text/html').send(readFileSync(join(__dirname, '../public/onboarding.html')));
 });
 
+fastify.get('/signals', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } }, schema: { hide: true } }, async (req, reply) => {
+  const { readFileSync } = await import('fs');
+  return reply.type('text/html').send(readFileSync(join(__dirname, '../public/signals.html')));
+});
+
 // 404 handler
 fastify.setNotFoundHandler(async (req, reply) => {
   const { readFileSync } = await import('fs');

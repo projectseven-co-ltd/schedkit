@@ -1,399 +1,148 @@
-// src/routes/signals.mjs — Beacon Mode + Signal feed
-//
-// Signal types:
-//   beacon   — periodic GPS ping from an active operator
-//   capture  — photo/image attached to a signal
-//   note     — text note with optional coords
-//   checkin  — manual "I'm here" with location
-//   alert    — high-priority signal (triggers push notification)
-//
-// Org scoping: signals are tagged with the sender's active org_id.
-// SSE stream only delivers signals from orgs the viewer is a member of.
-
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
-import { requireSession } from '../middleware/session.mjs';
+import { requireSession } from '../lib/auth.mjs';
 
-// ── In-process SSE clients ────────────────────────────
-// Map: orgId (string) → Set of reply objects
-const signalClientsByOrg = new Map();
+const SIGNAL_TYPES = ['beacon', 'beacon_off', 'capture', 'status_ok', 'sos', 'noaa_alert', 'webhook', 'scheduled'];
+const SEVERITIES = ['info', 'minor', 'moderate', 'severe', 'critical'];
 
-// ── Active beacon tracking (server-side) ─────────────
-// Map: deviceId (string) → { userId, orgId, firstSeen: ms }
-// Used to detect beacon_on (first ping from device) without a DB read per ping.
-// Cleared on beacon_off or stale prune (>5min since last ping).
-const _activeBeacons = new Map();
-const BEACON_STALE_MS = 5 * 60 * 1000; // 5 minutes
-
-// Prune stale beacons every 2 minutes
-setInterval(() => {
-  const cutoff = Date.now() - BEACON_STALE_MS;
-  for (const [k, v] of _activeBeacons) {
-    if (v.lastSeen < cutoff) _activeBeacons.delete(k);
-  }
-}, 120_000);
-
-export function broadcastSignal(orgId, event) {
-  const clients = signalClientsByOrg.get(String(orgId));
-  if (!clients) return;
-  const data = 'data: ' + JSON.stringify(event) + '\n\n';
-  for (const reply of clients) {
-    try { reply.raw.write(data); } catch { clients.delete(reply); }
-  }
-}
-
-// ── Helpers ───────────────────────────────────────────
-
-// Get all org IDs a user belongs to (as owner or member)
-async function getUserOrgIds(userId) {
-  try {
-    const memberships = await db.find(tables.org_members, `(user_id,eq,${userId})`);
-    return (memberships.list || []).map(m => String(m.org_id)).filter(Boolean);
-  } catch { return []; }
-}
-
-// Get the "primary" org for a user — first org they own, or first membership
-async function getPrimaryOrgId(userId) {
-  const ids = await getUserOrgIds(userId);
-  return ids[0] || null;
-}
-
-const signalCreateExample = {
-  type: 'beacon',
-  lat: 35.4676,
-  lng: -97.5164,
-  accuracy: 10,
-  meta: { device_id: 'dev-abc123-xyz', battery: 81 },
-};
-
-const signalResponseExample = {
-  Id: 301,
-  user_id: 7,
-  org_id: 4,
-  type: 'beacon',
-  lat: 35.4676,
-  lng: -97.5164,
-  accuracy: 10,
-  meta: '{"device_id":"dev-abc123-xyz","battery":81}',
-  created_at: '2026-03-15T18:00:00Z',
-  user_name: 'Olson Ops',
-};
-
-// ── Routes ────────────────────────────────────────────
 export default async function signalsRoutes(fastify) {
 
-  // POST /v1/signals — create a signal
+  // POST /v1/signals — ingest a signal from any source
   fastify.post('/signals', {
     preHandler: requireSession,
     schema: {
       tags: ['Signals'],
-      summary: 'Create a signal (beacon ping, capture, note, alert)',
-      description: 'Create a new org-scoped signal. Beacon pings are broadcast live and only persist a `beacon_on` record on first activation; other signal types are written to storage and optionally trigger push notifications.',
+      summary: 'Ingest a signal',
+      description: 'Submit a signal from any source (phone, NOAA, webhook, hardware). Stored and broadcast via SSE to dashboard.',
       body: {
         type: 'object',
-        required: ['type'],
+        required: ['type', 'source'],
         properties: {
-          type:      { type: 'string', enum: ['beacon','capture','note','checkin','alert'] },
-          lat:       { type: 'number' },
-          lng:       { type: 'number' },
-          accuracy:  { type: 'number' },
-          image_url: { type: 'string' },
-          note:      { type: 'string' },
-          ticket_id: { type: 'number' },
-          org_id:    { type: 'number', description: 'Override org — defaults to user primary org' },
-          meta:      { type: 'object', additionalProperties: true },
+          type: { type: 'string', enum: SIGNAL_TYPES },
+          source: { type: 'string' },
+          device_id: { type: 'string' },
+          severity: { type: 'string', enum: SEVERITIES },
+          lat: { type: 'number' },
+          lng: { type: 'number' },
+          accuracy: { type: 'number' },
+          url: { type: 'string' },
+          title: { type: 'string' },
+          description: { type: 'string' },
+          area: { type: 'string' },
+          onset: { type: 'string' },
+          expires: { type: 'string' },
+          noaa_id: { type: 'string' },
+          org_id: { type: 'number' },
         },
-        examples: [signalCreateExample],
       },
-      response: { 201: { type: 'object', additionalProperties: true, example: signalResponseExample } },
+      response: {
+        200: { type: 'object', properties: { ok: { type: 'boolean' }, signal_id: { type: 'string' } } },
+      },
     },
   }, async (req, reply) => {
-    const { type, lat, lng, accuracy, image_url, note, ticket_id, meta } = req.body;
-
-    // Resolve org — use provided, else primary
-    let orgId = req.body.org_id || null;
-    if (!orgId) orgId = await getPrimaryOrgId(req.user.Id);
-
-    // ── Beacon fast-path: skip DB write for pings, broadcast only ────────
-    // Beacon pings are ephemeral — only the live position matters.
-    // EXCEPT: first ping from a device writes a beacon_on log entry.
-    if (type === 'beacon') {
-      const deviceId = (meta && meta.device_id) ? meta.device_id : null;
-      const beaconKey = deviceId || `user-${req.user.Id}`;
-      const isNew = !_activeBeacons.has(beaconKey);
-
-      _activeBeacons.set(beaconKey, { userId: req.user.Id, orgId, lastSeen: Date.now() });
-
-      // First ping — write beacon_on to DB
-      if (isNew) {
-        try {
-          await db.create(tables.signals, {
-            user_id: req.user.Id,
-            org_id: orgId || null,
-            type: 'beacon_on',
-            lat: lat ?? null,
-            lng: lng ?? null,
-            accuracy: accuracy ?? null,
-            meta: JSON.stringify({ device_id: deviceId }),
-            created_at: new Date().toISOString(),
-          });
-        } catch (e) {
-          fastify.log.warn('beacon_on db write failed: ' + e.message);
-        }
-      }
-
-      const result = {
-        Id: null,
-        user_id: req.user.Id,
-        org_id: orgId,
-        type: 'beacon',
-        lat: lat ?? null,
-        lng: lng ?? null,
-        accuracy: accuracy ?? null,
-        meta: meta ? JSON.stringify(meta) : null,
-        created_at: new Date().toISOString(),
-        user_name: req.user.name || req.user.email,
-      };
-      if (orgId) broadcastSignal(orgId, { type: 'signal.beacon', payload: result });
-      return reply.code(201).send(result);
-    }
-    // ── End beacon fast-path ──────────────────────────────────────────────
-
-    let signal;
-    try {
-      signal = await db.create(tables.signals, {
-        user_id:    req.user.Id,
-        org_id:     orgId,
-        type,
-        lat:        lat ?? null,
-        lng:        lng ?? null,
-        accuracy:   accuracy ?? null,
-        image_url:  image_url ?? null,
-        note:       note ?? null,
-        ticket_id:  ticket_id ?? null,
-        meta:       meta ? JSON.stringify(meta) : null,
-        created_at: new Date().toISOString(),
-      });
-    } catch (e) {
-      fastify.log.error('signals create error: ' + e.message);
-      return reply.code(500).send({ error: 'Failed to save signal: ' + e.message });
-    }
-
-    const result = {
-      ...signal,
-      user_name: req.user.name || req.user.email,
-      org_id:    orgId,
+    const userId = req.user?.Id;
+    const signal = {
+      user_id: String(userId),
+      type: req.body.type,
+      source: req.body.source,
+      device_id: req.body.device_id || null,
+      severity: req.body.severity || 'info',
+      lat: req.body.lat ?? null,
+      lng: req.body.lng ?? null,
+      accuracy: req.body.accuracy ?? null,
+      url: req.body.url || null,
+      title: req.body.title || null,
+      description: req.body.description || null,
+      area: req.body.area || null,
+      onset: req.body.onset || null,
+      expires: req.body.expires || null,
+      noaa_id: req.body.noaa_id || null,
+      org_id: req.body.org_id || null,
+      created_at: new Date().toISOString(),
     };
 
-    // Broadcast to org channel
-    if (orgId) broadcastSignal(orgId, { type: 'signal.' + type, payload: result });
+    // Persist
+    const record = await db.create(tables.signals, signal);
 
-    // Alert type → push notification to org members
-    if (type === 'alert' && orgId) {
-      try {
-        const { sendPushToUser } = await import('./push.mjs');
-        // Notify all org members
-        const members = await db.find(tables.org_members, `(org_id,eq,${orgId})`);
-        const memberIds = (members.list || []).map(m => m.user_id);
-        await Promise.allSettled(memberIds.map(uid => sendPushToUser(uid, {
-          title: '[~] ALERT SIGNAL',
-          body: `${req.user.name || 'Operator'}: ${note || 'Alert signal received'}`,
-          url: '/incidents/war-room',
-          tag: 'signal-alert-' + signal.Id,
-          requireInteraction: true,
-        })));
-      } catch {}
-    }
+    // Broadcast via SSE to all connected dashboard clients
+    broadcastSignal(fastify, { ...signal, id: record?.Id });
 
-    return reply.code(201).send(result);
+    return { ok: true, signal_id: String(record?.Id || '') };
   });
 
-  // GET /v1/signals — list signals for user's orgs
+  // GET /v1/signals — list recent signals
   fastify.get('/signals', {
     preHandler: requireSession,
     schema: {
       tags: ['Signals'],
-      summary: 'List signals for the authenticated user\'s orgs',
-      description: 'Return persisted signals for the orgs the current user belongs to. Beacon pings themselves are live-only, so use this for captures, notes, alerts, and audit records.',
+      summary: 'List recent signals',
       querystring: {
         type: 'object',
         properties: {
-          type:   { type: 'string' },
+          limit: { type: 'integer', default: 50, maximum: 200 },
+          type: { type: 'string' },
+          source: { type: 'string' },
           org_id: { type: 'integer' },
-          limit:  { type: 'integer', default: 100 },
-          since:  { type: 'string' },
-          before: { type: 'string' },
         },
       },
-      response: { 200: { type: 'object', additionalProperties: true, example: { signals: [signalResponseExample], total: 1 } } },
-    },
-  }, async (req) => {
-    const { type, org_id, limit = 100, since, before } = req.query;
-
-    let orgIds = org_id ? [String(org_id)] : await getUserOrgIds(req.user.Id);
-
-    // If user has no orgs, fall back to just their own signals
-    let where;
-    if (orgIds.length > 0) {
-      const orgFilter = orgIds.map(id => `(org_id,eq,${id})`).join('~or');
-      where = `(${orgFilter})`;
-    } else {
-      where = `(user_id,eq,${req.user.Id})`;
-    }
-
-    if (type) where += `~and(type,eq,${type})`;
-    // Note: NocoDB v0.301.3 does not support datetime gt/lt filtering.
-    // Fetch all and filter by date in JS below.
-
-    const result = await db.list(tables.signals, { where, sort: '-created_at', limit });
-    let signals = result.list || [];
-
-    // Apply since/before filtering in JS (NocoDB doesn't support datetime comparison)
-    if (since) {
-      const sinceMs = new Date(since).getTime();
-      signals = signals.filter(s => {
-        const t = new Date(s.created_at || s.CreatedAt || 0).getTime();
-        return !isNaN(t) && t >= sinceMs;
-      });
-    }
-    if (before) {
-      const beforeMs = new Date(before).getTime();
-      signals = signals.filter(s => {
-        const t = new Date(s.created_at || s.CreatedAt || 0).getTime();
-        return !isNaN(t) && t < beforeMs;
-      });
-    }
-
-    return { signals, total: signals.length };
-  });
-
-  // DELETE /v1/signals/beacon — stop beacon, persist beacon_off log entry
-  fastify.delete('/signals/beacon', {
-    preHandler: requireSession,
-    schema: {
-      tags: ['Signals'],
-      summary: 'Stop beacon and broadcast beacon_off',
-      description: 'Stop the current device beacon, clear it from the active tracker, write a `beacon_off` audit record, and broadcast the stop event to the org stream.',
-      body: {
-        type: 'object',
-        properties: { device_id: { type: 'string' } },
-        examples: [{ device_id: 'dev-abc123-xyz' }],
-      },
-      response: { 200: { type: 'object', properties: { ok: { type: 'boolean' } }, example: { ok: true } } },
-    },
-  }, async (req) => {
-    const orgId = await getPrimaryOrgId(req.user.Id);
-    const deviceId = req.body?.device_id || req.query?.device_id || null;
-    const beaconKey = deviceId || `user-${req.user.Id}`;
-    // Clear active beacon tracker so next start logs beacon_on again
-    _activeBeacons.delete(beaconKey);
-    // Persist beacon_off to DB for audit trail
-    let logEntry = null;
-    try {
-      logEntry = await db.create(tables.signals, {
-        user_id: req.user.Id,
-        org_id: orgId || null,
-        type: 'beacon_off',
-        meta: JSON.stringify({ device_id: deviceId }),
-        created_at: new Date().toISOString(),
-      });
-    } catch (e) {
-      fastify.log.warn('beacon_off db write failed: ' + e.message);
-    }
-    const payload = {
-      user_id: req.user.Id,
-      org_id: orgId,
-      device_id: deviceId,
-      created_at: logEntry?.created_at || new Date().toISOString(),
-    };
-    if (orgId) broadcastSignal(orgId, { type: 'signal.beacon_off', payload });
-    return { ok: true };
-  });
-
-  // GET /v1/signals/log — beacon lifecycle log (beacon_off events + persisted signals)
-  fastify.get('/signals/log', {
-    preHandler: requireSession,
-    schema: {
-      tags: ['Signals'],
-      summary: 'List signal audit log entries',
-      description: 'Return persisted signal log records such as `beacon_off`, `capture`, `alert`, or other audit-worthy signal entries for the current org.',
-      querystring: {
-        type: 'object',
-        properties: {
-          limit: { type: 'integer', default: 50, maximum: 500 },
-          offset: { type: 'integer', default: 0 },
-          type: { type: 'string', description: 'Filter by signal type (e.g. beacon_off, alert, capture)' },
-          device_id: { type: 'string' },
-        },
-      },
-      response: { 200: { type: 'object', additionalProperties: true, example: { entries: [{ ...signalResponseExample, type: 'alert', note: 'Pipe pressure drop' }], total: 1, limit: 50, offset: 0 } } },
-    },
-  }, async (req) => {
-    const orgId = await getPrimaryOrgId(req.user.Id);
-    const { limit = 50, offset = 0, type: typeFilter, device_id: deviceFilter } = req.query;
-    let where = orgId ? `(org_id,eq,${orgId})` : `(user_id,eq,${req.user.Id})`;
-    if (typeFilter) where += `~and(type,eq,${typeFilter})`;
-    if (deviceFilter) where += `~and(meta,like,%${deviceFilter}%)`;
-    const result = await db.find(tables.signals, where, { limit, offset, sort: '-created_at' });
-    return {
-      entries: result?.list || [],
-      total: result?.pageInfo?.totalRows || 0,
-      limit,
-      offset,
-    };
-  });
-
-  // GET /v1/signals/stream — SSE stream scoped to user's orgs
-  fastify.get('/signals/stream', {
-    schema: {
-      tags: ['Signals'],
-      summary: 'Open SSE stream for live signals',
-      description: 'Open a server-sent events stream that emits live signal events for the orgs the authenticated user belongs to.',
       response: {
-        200: {
-          type: 'string',
-          example: 'data: {"type":"connected","org_ids":["4"]}\n\ndata: {"type":"signal.beacon","payload":{"device_id":"dev-abc123-xyz"}}\n\n',
-        },
+        200: { type: 'object', properties: { signals: { type: 'array', items: { type: 'object' } } } },
       },
+    },
+  }, async (req) => {
+    const { limit = 50, type, source, org_id } = req.query;
+    const filters = [];
+    if (type) filters.push(`(type,eq,${type})`);
+    if (source) filters.push(`(source,eq,${source})`);
+    if (org_id) filters.push(`(org_id,eq,${org_id})`);
+    const where = filters.length ? filters.join('~and') : undefined;
+    const result = await db.find(tables.signals, where, { limit, sort: '-created_at' });
+    return { signals: result.list || [] };
+  });
+
+  // GET /v1/signals/stream — SSE stream for signals (used by dashboard)
+  fastify.get('/signals/stream', {
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    schema: {
+      tags: ['Signals'],
+      summary: 'SSE stream for live signals',
+      hide: false,
     },
   }, async (req, reply) => {
-    // Auth: session cookie or api_key query param
-    let user = null;
-    try {
-      await requireSession(req, reply);
-      user = req.user;
-    } catch {
-      return reply.code(401).send({ error: 'unauthorized' });
+    const userId = req.user?.Id ? String(req.user.Id) : null;
+    if (!userId) {
+      // Try session auth
+      const sessionToken = req.cookies?.sk_session || req.headers['x-session-token'];
+      if (!sessionToken) return reply.code(401).send({ error: 'unauthorized' });
     }
-    if (!user) return;
-
-    const orgIds = await getUserOrgIds(user.Id);
 
     reply.raw.writeHead(200, {
-      'Content-Type':  'text/event-stream',
+      'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection':    'keep-alive',
+      'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
     });
-    reply.raw.write('data: {"type":"connected","org_ids":' + JSON.stringify(orgIds) + '}\n\n');
 
-    // Register in each org channel
-    for (const orgId of orgIds) {
-      if (!signalClientsByOrg.has(orgId)) signalClientsByOrg.set(orgId, new Set());
-      signalClientsByOrg.get(orgId).add(reply);
-    }
+    const clientId = Math.random().toString(36).slice(2);
+    if (!fastify._signalClients) fastify._signalClients = new Map();
+    fastify._signalClients.set(clientId, reply.raw);
 
-    const keepalive = setInterval(() => {
-      try { reply.raw.write(': ping\n\n'); } catch { clearInterval(keepalive); }
+    const keepAlive = setInterval(() => {
+      reply.raw.write(':keepalive\n\n');
     }, 25000);
 
     req.raw.on('close', () => {
-      for (const orgId of orgIds) {
-        signalClientsByOrg.get(orgId)?.delete(reply);
-      }
-      clearInterval(keepalive);
+      clearInterval(keepAlive);
+      if (fastify._signalClients) fastify._signalClients.delete(clientId);
     });
-
-    await new Promise(() => {});
   });
+}
+
+// Broadcast a signal event to all SSE clients
+function broadcastSignal(fastify, signal) {
+  if (!fastify._signalClients?.size) return;
+  const payload = `data: ${JSON.stringify({ event: 'signal', signal })}\n\n`;
+  for (const [id, raw] of fastify._signalClients) {
+    try { raw.write(payload); } catch { fastify._signalClients.delete(id); }
+  }
 }
