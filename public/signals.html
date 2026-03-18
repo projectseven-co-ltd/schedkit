@@ -7,22 +7,22 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Signals">
-<meta name="theme-color" content="#0a0a0b">
+<meta name="theme-color" content="#00ffcc">
 <title>Signals — SchedKit</title>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/signals-icon.svg" type="image/svg+xml">
 <link rel="manifest" href="/signals-manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0a0a0b;
-    --surface: #111114;
-    --surface2: #18181c;
-    --border: rgba(255,255,255,0.08);
-    --accent: #DFFF00;
-    --accent-dim: rgba(223,255,0,0.06);
+    --surface: #070e0d;
+    --surface2: #0c1a18;
+    --border: rgba(0,255,204,0.1);
+    --accent: #00ffcc;
+    --accent-dim: rgba(0,255,204,0.06);
     --text: #e8e8ea;
-    --muted: #5a5a6e;
+    --muted: #3a5a54;
     --red: #ff5f5f;
     --green: #00ffcc;
     --font-mono: 'Fira Code', monospace;
@@ -328,7 +328,19 @@
 <body>
 
 <nav>
-  <a href="/dashboard" class="nav-logo">[SC] SIGNALS</a>
+  <a href="/dashboard" class="nav-logo">
+    <svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:7px">
+      <path d="M196 256 A60 60 0 0 1 256 196" stroke="#00ffcc" stroke-width="60" fill="none" stroke-linecap="round"/>
+      <path d="M316 256 A60 60 0 0 0 256 196" stroke="#00ffcc" stroke-width="60" fill="none" stroke-linecap="round"/>
+      <path d="M152 256 A104 104 0 0 1 256 152" stroke="#00ffcc" stroke-width="48" fill="none" stroke-linecap="round" opacity="0.65"/>
+      <path d="M360 256 A104 104 0 0 0 256 152" stroke="#00ffcc" stroke-width="48" fill="none" stroke-linecap="round" opacity="0.65"/>
+      <path d="M108 256 A148 148 0 0 1 256 108" stroke="#00ffcc" stroke-width="40" fill="none" stroke-linecap="round" opacity="0.35"/>
+      <path d="M404 256 A148 148 0 0 0 256 108" stroke="#00ffcc" stroke-width="40" fill="none" stroke-linecap="round" opacity="0.35"/>
+      <circle cx="256" cy="256" r="44" fill="#00ffcc"/>
+      <line x1="256" y1="300" x2="256" y2="390" stroke="#00ffcc" stroke-width="48" stroke-linecap="round"/>
+      <line x1="200" y1="390" x2="312" y2="390" stroke="#00ffcc" stroke-width="48" stroke-linecap="round"/>
+    </svg>SIGNALS
+  </a>
   <div class="nav-status">
     <div class="status-dot" id="statusDot"></div>
     <span id="statusText">offline</span>
