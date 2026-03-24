@@ -561,7 +561,7 @@ tr:hover td{background:var(--surface2)}
         <div class="sitrep-stat" id="sitrep-tile-signals">
           <div class="sitrep-stat-label">Active Signals</div>
           <div class="sitrep-stat-value" id="sitrep-signals-active">—</div>
-          <div class="sitrep-stat-sub">alerts api coming soon</div>
+          <div class="sitrep-stat-sub">active alerts</div>
           <div class="sitrep-stat-icon">[~]</div>
         </div>
         <div class="sitrep-stat ok" id="sitrep-tile-sla">
@@ -717,13 +717,121 @@ tr:hover td{background:var(--surface2)}
       <div id="org-detail" style="display:none;margin-top:24px"></div>
     </div>
 
-    <!-- SIGNALS (placeholder) -->
+    <!-- SIGNALS -->
     <div class="section" id="section-signals">
-      <div class="placeholder-section">
-        <div class="ph-icon">[~]</div>
-        <h3>Signals</h3>
-        <p>The Signals API is coming soon. Wire any inbound signal — weather alerts, sensor readings, webhooks, booking events — to any outbound action. Physical or digital.</p>
-        <span class="ph-badge">Coming in Phase 2</span>
+      <div class="page-header" style="margin-bottom:16px">
+        <h2>Signals</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="sitrep-status-bar" style="margin:0;padding:7px 12px" id="signals-stream-status">
+            <div class="sitrep-status-dot" id="signals-stream-dot" style="background:var(--muted);animation:none"></div>
+            <span id="signals-stream-label" style="font-size:10px">connecting…</span>
+          </div>
+          <button class="btn-primary" onclick="openFireAlertModal()" style="font-size:11px;padding:7px 14px">[!] Fire Alert</button>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">
+        <div class="sitrep-stat" id="sig-stat-firing">
+          <div class="sitrep-stat-label">Firing</div>
+          <div class="sitrep-stat-value" id="sig-firing-count">—</div>
+          <div class="sitrep-stat-sub">active alerts</div>
+          <div class="sitrep-stat-icon">[!]</div>
+        </div>
+        <div class="sitrep-stat ok" id="sig-stat-acked">
+          <div class="sitrep-stat-label">Acked</div>
+          <div class="sitrep-stat-value" id="sig-acked-count">—</div>
+          <div class="sitrep-stat-sub">acknowledged</div>
+          <div class="sitrep-stat-icon">[~]</div>
+        </div>
+        <div class="sitrep-stat" id="sig-stat-beacons">
+          <div class="sitrep-stat-label">Beacons</div>
+          <div class="sitrep-stat-value" id="sig-beacon-count">—</div>
+          <div class="sitrep-stat-sub">active operators</div>
+          <div class="sitrep-stat-icon">[*]</div>
+        </div>
+        <div class="sitrep-stat info" id="sig-stat-today">
+          <div class="sitrep-stat-label">Today</div>
+          <div class="sitrep-stat-value" id="sig-today-count">—</div>
+          <div class="sitrep-stat-sub">total signals</div>
+          <div class="sitrep-stat-icon">[=]</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:16px">
+
+        <!-- Alert feed -->
+        <div class="sitrep-panel live">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:11px;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted)">ALERT FEED</div>
+            <div style="display:flex;gap:8px">
+              <button onclick="loadAlerts('firing')" class="sig-filter-btn active" data-filter="firing" style="font-size:10px;font-family:var(--font-mono);background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);padding:3px 8px;cursor:pointer">FIRING</button>
+              <button onclick="loadAlerts('acked')" class="sig-filter-btn" data-filter="acked" style="font-size:10px;font-family:var(--font-mono);background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);padding:3px 8px;cursor:pointer">ACKED</button>
+              <button onclick="loadAlerts()" class="sig-filter-btn" data-filter="all" style="font-size:10px;font-family:var(--font-mono);background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);padding:3px 8px;cursor:pointer">ALL</button>
+            </div>
+          </div>
+          <div id="alerts-feed" style="max-height:420px;overflow-y:auto">
+            <div style="padding:40px;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono)">loading…</div>
+          </div>
+        </div>
+
+        <!-- Live signal stream -->
+        <div class="sitrep-panel live">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:11px;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted)">LIVE STREAM</div>
+            <div class="sitrep-feed-live" id="signals-live-dot" style="font-size:10px;font-family:var(--font-mono);color:var(--accent)">● LIVE</div>
+          </div>
+          <div id="signals-live-feed" style="max-height:420px;overflow-y:auto">
+            <div style="padding:40px 16px;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono)">waiting for signals…</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- API snippet -->
+      <div style="margin-top:20px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:10px;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted);margin-bottom:10px">FIRE AN ALERT — API</div>
+        <pre style="font-size:11px;color:var(--text);overflow-x:auto;margin:0;line-height:1.6"><code id="alerts-api-snippet">curl -X POST https://schedkit.net/v1/alerts \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Pressure sensor offline",
+    "body": "Unit-7 at Site Alpha not reporting",
+    "severity": "critical",
+    "source": "sensor",
+    "source_ref": "sensor-unit-7"
+  }'</code></pre>
+        <button onclick="copyAlertsSnippet()" style="margin-top:10px;font-size:10px;font-family:var(--font-mono);background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);padding:4px 10px;cursor:pointer">[ copy ]</button>
+      </div>
+    </div>
+
+    <!-- Fire Alert Modal -->
+    <div id="fire-alert-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;display:none;align-items:center;justify-content:center">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:460px;margin:16px">
+        <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">[!] FIRE ALERT</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <input id="al-title" type="text" placeholder="Alert title *" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;width:100%;box-sizing:border-box" />
+          <textarea id="al-body" placeholder="Description (optional)" rows="3" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;width:100%;box-sizing:border-box;resize:vertical;font-family:inherit"></textarea>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <select id="al-severity" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px">
+              <option value="warning">Warning</option>
+              <option value="critical">Critical</option>
+              <option value="info">Info</option>
+            </select>
+            <select id="al-source" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px">
+              <option value="api">API</option>
+              <option value="sensor">Sensor</option>
+              <option value="webhook">Webhook</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="noaa">NOAA</option>
+            </select>
+          </div>
+          <input id="al-source-ref" type="text" placeholder="Source ref (optional, e.g. sensor-unit-7)" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;width:100%;box-sizing:border-box" />
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button onclick="closeFireAlertModal()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 16px;color:var(--muted);font-size:12px;font-family:var(--font-mono);cursor:pointer">cancel</button>
+          <button onclick="submitFireAlert()" class="btn-primary" style="font-size:12px;padding:8px 16px">[!] Fire</button>
+        </div>
       </div>
     </div>
 
@@ -1486,7 +1594,7 @@ async function loadSection(name) {
   if (name === 'sitrep') await loadSitrep();
   if (name === 'assignments') await loadAssignments();
   if (name === 'tickets') await loadTickets();
-  if (name === 'signals') {} // placeholder
+  if (name === 'signals') { initSignalsPage(); }
   if (name === 'kit') await loadKitTab(currentKitTab || 'event-types');
   if (name === 'event-types') await loadEventTypes();
   if (name === 'availability') await loadAvailability();
@@ -1860,6 +1968,7 @@ let activeTicket = null;
 let ticketRepliesCache = {};
 let ticketStream = null;
 let signalStream = null;
+let alertStream = null;
 
 function connectSignalStream() {
   if (signalStream) return;
@@ -1867,7 +1976,10 @@ function connectSignalStream() {
   signalStream.onmessage = (e) => {
     try {
       const evt = JSON.parse(e.data);
-      if (evt.type && evt.type !== 'connected') sitrepHandleSSE(evt.type, evt.payload || {});
+      if (evt.type && evt.type !== 'connected') {
+        sitrepHandleSSE(evt.type, evt.payload || {});
+        pushSignalsLiveFeed(evt.type, evt.payload || {});
+      }
     } catch {}
   };
   signalStream.onerror = () => {
@@ -1875,6 +1987,218 @@ function connectSignalStream() {
     signalStream = null;
     setTimeout(connectSignalStream, 5000);
   };
+}
+
+// ── Signals Page ──────────────────────────────────────
+
+let _sigFilter = 'firing';
+let _sigBeaconCount = 0;
+
+function initSignalsPage() {
+  loadAlerts(_sigFilter);
+  loadSignalStats();
+  connectAlertStream();
+  // Populate API snippet with real key
+  if (currentUser?.api_key) {
+    const el = document.getElementById('alerts-api-snippet');
+    if (el) el.textContent = el.textContent.replace('YOUR_API_KEY', currentUser.api_key);
+  }
+}
+
+async function loadSignalStats() {
+  try {
+    const [firing, acked] = await Promise.all([
+      apiFetch('/v1/alerts?status=firing&limit=1'),
+      apiFetch('/v1/alerts?status=acked&limit=1'),
+    ]);
+    const firingEl = document.getElementById('sig-firing-count');
+    const ackedEl  = document.getElementById('sig-acked-count');
+    if (firingEl) firingEl.textContent = firing?.total ?? '—';
+    if (ackedEl)  ackedEl.textContent  = acked?.total  ?? '—';
+
+    const firingCard = document.getElementById('sig-stat-firing');
+    if (firingCard) {
+      firingCard.classList.toggle('crit', (firing?.total || 0) > 0);
+    }
+  } catch {}
+}
+
+async function loadAlerts(filter) {
+  _sigFilter = filter || 'firing';
+  // Update filter buttons
+  document.querySelectorAll('.sig-filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === _sigFilter);
+    b.style.color = b.dataset.filter === _sigFilter ? 'var(--accent)' : 'var(--muted)';
+    b.style.borderColor = b.dataset.filter === _sigFilter ? 'var(--accent-border)' : 'var(--border)';
+  });
+
+  const feed = document.getElementById('alerts-feed');
+  if (!feed) return;
+  feed.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono)">loading…</div>';
+
+  try {
+    const qs = _sigFilter !== 'all' ? `?status=${_sigFilter}&limit=50` : '?limit=50';
+    const data = await apiFetch('/v1/alerts' + qs);
+    const alerts = data?.alerts || [];
+
+    if (!alerts.length) {
+      feed.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono)">no alerts</div>';
+      return;
+    }
+
+    feed.innerHTML = alerts.map(a => renderAlertRow(a)).join('');
+  } catch (e) {
+    feed.innerHTML = '<div style="padding:32px;text-align:center;color:#ff5f5f;font-size:12px;font-family:var(--font-mono)">failed to load alerts</div>';
+  }
+}
+
+function renderAlertRow(a) {
+  const sevColor = a.severity === 'critical' ? '#ff5f5f' : a.severity === 'warning' ? '#fbbf24' : '#60a5fa';
+  const statusColor = a.status === 'firing' ? '#ff5f5f' : a.status === 'acked' ? '#fbbf24' : '#4ade80';
+  const ts = a.fired_at ? new Date(a.fired_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const actions = a.status === 'firing'
+    ? `<button onclick="ackAlert(${a.Id})" style="font-size:10px;font-family:var(--font-mono);background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--muted);cursor:pointer">ack</button>
+       <button onclick="resolveAlert(${a.Id})" style="font-size:10px;font-family:var(--font-mono);background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--muted);cursor:pointer">resolve</button>`
+    : a.status === 'acked'
+    ? `<button onclick="resolveAlert(${a.Id})" style="font-size:10px;font-family:var(--font-mono);background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--muted);cursor:pointer">resolve</button>`
+    : '';
+
+  return `<div class="sitrep-feed-item" id="alert-row-${a.Id}" style="flex-direction:column;gap:4px;padding:12px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0">
+        <span style="font-family:var(--font-mono);font-size:10px;color:${sevColor};flex-shrink:0">[${(a.severity||'').toUpperCase()}]</span>
+        <span style="font-size:12px;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(a.title||'')}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span style="font-family:var(--font-mono);font-size:10px;color:${statusColor}">${a.status||''}</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${ts}</span>
+      </div>
+    </div>
+    ${a.body ? `<div style="font-size:11px;color:var(--muted);padding-left:0">${escHtml(a.body)}</div>` : ''}
+    <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);background:var(--surface2);padding:1px 6px;border-radius:3px">${a.source||'api'}</span>
+      ${a.source_ref ? `<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${escHtml(a.source_ref)}</span>` : ''}
+      ${a.ticket_id ? `<span style="font-family:var(--font-mono);font-size:10px;color:#60a5fa">→ ticket #${a.ticket_id}</span>` : ''}
+      <div style="margin-left:auto;display:flex;gap:6px">${actions}</div>
+    </div>
+  </div>`;
+}
+
+async function ackAlert(id) {
+  try {
+    await apiFetch(`/v1/alerts/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'acked' }) });
+    loadAlerts(_sigFilter);
+    loadSignalStats();
+  } catch { toast('Failed to ack alert', 'error'); }
+}
+
+async function resolveAlert(id) {
+  try {
+    await apiFetch(`/v1/alerts/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'resolved' }) });
+    loadAlerts(_sigFilter);
+    loadSignalStats();
+    toast('Alert resolved', 'ok');
+  } catch { toast('Failed to resolve', 'error'); }
+}
+
+function pushSignalsLiveFeed(type, payload) {
+  const feed = document.getElementById('signals-live-feed');
+  if (!feed) return;
+  // Clear placeholder
+  if (feed.querySelector('[data-placeholder]')) feed.innerHTML = '';
+
+  const typeLabel = type.replace('signal.', '').replace('alert.', '').toUpperCase();
+  const color = type.includes('alert') ? '#ff5f5f'
+    : type.includes('beacon') ? '#00ffcc'
+    : type.includes('capture') ? '#a78bfa'
+    : 'var(--accent)';
+  const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const label = payload?.title || payload?.note || payload?.type || type;
+
+  const row = document.createElement('div');
+  row.className = 'sitrep-feed-item';
+  row.innerHTML = `
+    <span class="sitrep-feed-dot" style="background:${color};flex-shrink:0;margin-top:3px"></span>
+    <div style="flex:1;min-width:0">
+      <span style="font-family:var(--font-mono);font-size:10px;color:${color}">[${typeLabel}]</span>
+      <span style="font-size:11px;color:var(--text);margin-left:6px">${escHtml(String(label).slice(0,80))}</span>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px">${ts}</div>
+    </div>`;
+  feed.prepend(row);
+  // Keep max 60 items
+  while (feed.children.length > 60) feed.removeChild(feed.lastChild);
+}
+
+function connectAlertStream() {
+  if (alertStream) return;
+  alertStream = new EventSource('/v1/alerts/stream', { withCredentials: true });
+  const dot   = document.getElementById('signals-stream-dot');
+  const label = document.getElementById('signals-stream-label');
+
+  alertStream.onopen = () => {
+    if (dot)   { dot.style.background = 'var(--accent)'; dot.style.animation = ''; }
+    if (label) label.textContent = 'live';
+  };
+  alertStream.onmessage = (e) => {
+    try {
+      const evt = JSON.parse(e.data);
+      if (evt.type === 'connected') {
+        if (dot)   { dot.style.background = 'var(--accent)'; dot.style.animation = ''; }
+        if (label) label.textContent = 'live';
+        return;
+      }
+      pushSignalsLiveFeed(evt.type, evt.payload || {});
+      // Refresh alert list on relevant events
+      if (evt.type.startsWith('alert.')) {
+        loadAlerts(_sigFilter);
+        loadSignalStats();
+      }
+    } catch {}
+  };
+  alertStream.onerror = () => {
+    if (dot)   { dot.style.background = 'var(--muted)'; dot.style.animation = 'none'; }
+    if (label) label.textContent = 'reconnecting…';
+    alertStream?.close();
+    alertStream = null;
+    setTimeout(connectAlertStream, 5000);
+  };
+}
+
+function openFireAlertModal() {
+  const m = document.getElementById('fire-alert-modal');
+  if (m) { m.style.display = 'flex'; }
+}
+function closeFireAlertModal() {
+  const m = document.getElementById('fire-alert-modal');
+  if (m) { m.style.display = 'none'; }
+}
+
+async function submitFireAlert() {
+  const title = document.getElementById('al-title')?.value?.trim();
+  if (!title) { toast('Title is required', 'error'); return; }
+  const body = {
+    title,
+    body: document.getElementById('al-body')?.value?.trim() || undefined,
+    severity: document.getElementById('al-severity')?.value || 'warning',
+    source: document.getElementById('al-source')?.value || 'api',
+    source_ref: document.getElementById('al-source-ref')?.value?.trim() || undefined,
+  };
+  try {
+    await apiFetch('/v1/alerts', { method: 'POST', body: JSON.stringify(body) });
+    closeFireAlertModal();
+    toast(`Alert fired: ${title}`, body.severity === 'critical' ? 'error' : 'ok');
+    loadAlerts(_sigFilter);
+    loadSignalStats();
+  } catch (e) { toast('Failed to fire alert', 'error'); }
+}
+
+function copyAlertsSnippet() {
+  const el = document.getElementById('alerts-api-snippet');
+  if (el) navigator.clipboard?.writeText(el.textContent).then(() => toast('Copied', 'ok'));
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function renderPlanTiers() {

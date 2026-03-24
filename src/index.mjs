@@ -38,6 +38,7 @@ import incidentStatusRoutes from './routes/incidentStatus.mjs';
 import settingsRoutes from './routes/settings.mjs';
 import uploadsRoutes from './routes/uploads.mjs';
 import billingRoutes from './routes/billing.mjs';
+import alertsRoutes from './routes/alerts.mjs';
 
 const fastify = Fastify({ logger: true, bodyLimit: 10 * 1024 * 1024 }); // 10MB for image captures
 
@@ -91,6 +92,7 @@ await fastify.register(swagger, {
       { name: 'Tickets', description: 'Ticket and incident management. **Tickets and incidents are the same object** — every record is accessible via both `/v1/tickets` (async/helpdesk) and `/v1/incidents` (real-time SSE/dispatch). The `source` field (`api`, `email`, `webhook`, `alert`) and `priority` together imply context. Neither endpoint enforces a use case.' },
       { name: 'Incidents', description: 'Real-time incident coordination layer. **Same underlying records as `/v1/tickets`** — no separate table. Adds SSE streaming, responder management, and reply threads on top of the ticket object. Use `/v1/incidents` for ops war rooms, dispatch systems, or alert pipelines. Use `/v1/tickets` for helpdesk or ITSM flows. Both share identical data.' },
       { name: 'Settings', description: 'User settings management. Get or update per-user configuration — currently `ntfy_topic` for push notifications via ntfy.sh.' },
+      { name: 'Alerts', description: 'Inbound signal alerts — fire, acknowledge, and resolve alerts from any source (sensor, webhook, NOAA, API). Critical alerts auto-create incident tickets. Live events via SSE stream.' },
     ],
     servers: [{ url: 'https://schedkit.net', description: 'Production' }],
     components: {
@@ -167,6 +169,7 @@ fastify.addContentTypeParser('image/png', { parseAs: 'buffer' }, (_req, body, do
 
 await fastify.register(uploadsRoutes, { prefix: '/v1' });
 await fastify.register(billingRoutes, { prefix: '/v1' });
+await fastify.register(alertsRoutes, { prefix: '/v1' });
 
 // Page routes (no prefix)
 fastify.get('/login', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } }, schema: { hide: true } }, async (req, reply) => {
