@@ -770,7 +770,7 @@ tr:hover td{background:var(--surface2)}
               <button onclick="loadAlerts()" class="sig-filter-btn" data-filter="all" style="font-size:10px;font-family:var(--font-mono);background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);padding:3px 8px;cursor:pointer">ALL</button>
             </div>
           </div>
-          <div id="alerts-feed" style="max-height:420px;overflow-y:auto">
+          <div id="alerts-feed" style="height:380px;overflow-y:auto">
             <div style="padding:40px;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono)">loading…</div>
           </div>
         </div>
@@ -781,8 +781,8 @@ tr:hover td{background:var(--surface2)}
             <div style="font-size:11px;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted)">LIVE STREAM</div>
             <div class="sitrep-feed-live" id="signals-live-dot" style="font-size:10px;font-family:var(--font-mono);color:var(--accent)">● LIVE</div>
           </div>
-          <div id="signals-live-feed" style="max-height:420px;overflow-y:auto">
-            <div style="padding:40px 16px;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono)">waiting for signals…</div>
+          <div id="signals-live-feed" style="height:380px;overflow-y:auto;display:flex;flex-direction:column">
+            <div class="sig-live-placeholder" style="padding:40px 16px;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono)">waiting for signals…</div>
           </div>
         </div>
 
@@ -1994,11 +1994,9 @@ function connectSignalStream() {
 let _sigFilter = 'firing';
 let _sigBeaconCount = 0;
 
-function initSignalsPage() {
-  loadAlerts(_sigFilter);
-  loadSignalStats();
+async function initSignalsPage() {
+  await Promise.all([loadAlerts(_sigFilter), loadSignalStats()]);
   connectAlertStream();
-  // Populate API snippet with real key
   if (currentUser?.api_key) {
     const el = document.getElementById('alerts-api-snippet');
     if (el) el.textContent = el.textContent.replace('YOUR_API_KEY', currentUser.api_key);
@@ -2007,53 +2005,49 @@ function initSignalsPage() {
 
 async function loadSignalStats() {
   try {
-    const [firing, acked] = await Promise.all([
+    const [fr, ar] = await Promise.all([
       apiFetch('/v1/alerts?status=firing&limit=1'),
       apiFetch('/v1/alerts?status=acked&limit=1'),
     ]);
-    const firingEl = document.getElementById('sig-firing-count');
-    const ackedEl  = document.getElementById('sig-acked-count');
-    if (firingEl) firingEl.textContent = firing?.total ?? '—';
-    if (ackedEl)  ackedEl.textContent  = acked?.total  ?? '—';
-
-    const firingCard = document.getElementById('sig-stat-firing');
-    if (firingCard) {
-      firingCard.classList.toggle('crit', (firing?.total || 0) > 0);
-    }
+    const firing = await fr?.json();
+    const acked  = await ar?.json();
+    const fe = document.getElementById('sig-firing-count');
+    const ae = document.getElementById('sig-acked-count');
+    if (fe) fe.textContent = firing?.total ?? '—';
+    if (ae) ae.textContent = acked?.total  ?? '—';
+    const fc = document.getElementById('sig-stat-firing');
+    if (fc) fc.classList.toggle('crit', (firing?.total || 0) > 0);
   } catch {}
 }
 
 async function loadAlerts(filter) {
   _sigFilter = filter || 'firing';
-  // Update filter buttons
   document.querySelectorAll('.sig-filter-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.filter === _sigFilter);
-    b.style.color = b.dataset.filter === _sigFilter ? 'var(--accent)' : 'var(--muted)';
-    b.style.borderColor = b.dataset.filter === _sigFilter ? 'var(--accent-border)' : 'var(--border)';
+    const on = b.dataset.filter === _sigFilter;
+    b.classList.toggle('active', on);
+    b.style.color = on ? 'var(--accent)' : 'var(--muted)';
+    b.style.borderColor = on ? 'var(--accent-border)' : 'var(--border)';
   });
-
   const feed = document.getElementById('alerts-feed');
   if (!feed) return;
   feed.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono)">loading…</div>';
-
   try {
     const qs = _sigFilter !== 'all' ? `?status=${_sigFilter}&limit=50` : '?limit=50';
-    const data = await apiFetch('/v1/alerts' + qs);
+    const res = await apiFetch('/v1/alerts' + qs);
+    const data = await res?.json();
     const alerts = data?.alerts || [];
-
     if (!alerts.length) {
       feed.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono)">no alerts</div>';
       return;
     }
-
     feed.innerHTML = alerts.map(a => renderAlertRow(a)).join('');
-  } catch (e) {
-    feed.innerHTML = '<div style="padding:32px;text-align:center;color:#ff5f5f;font-size:12px;font-family:var(--font-mono)">failed to load alerts</div>';
+  } catch {
+    feed.innerHTML = '<div style="padding:32px;text-align:center;color:#ff5f5f;font-size:12px;font-family:var(--font-mono)">failed to load</div>';
   }
 }
 
 function renderAlertRow(a) {
-  const sevColor = a.severity === 'critical' ? '#ff5f5f' : a.severity === 'warning' ? '#fbbf24' : '#60a5fa';
+  const sevColor    = a.severity === 'critical' ? '#ff5f5f' : a.severity === 'warning' ? '#fbbf24' : '#60a5fa';
   const statusColor = a.status === 'firing' ? '#ff5f5f' : a.status === 'acked' ? '#fbbf24' : '#4ade80';
   const ts = a.fired_at ? new Date(a.fired_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   const actions = a.status === 'firing'
@@ -2062,7 +2056,6 @@ function renderAlertRow(a) {
     : a.status === 'acked'
     ? `<button onclick="resolveAlert(${a.Id})" style="font-size:10px;font-family:var(--font-mono);background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--muted);cursor:pointer">resolve</button>`
     : '';
-
   return `<div class="sitrep-feed-item" id="alert-row-${a.Id}" style="flex-direction:column;gap:4px;padding:12px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="display:flex;align-items:center;gap:8px;min-width:0">
@@ -2074,7 +2067,7 @@ function renderAlertRow(a) {
         <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${ts}</span>
       </div>
     </div>
-    ${a.body ? `<div style="font-size:11px;color:var(--muted);padding-left:0">${escHtml(a.body)}</div>` : ''}
+    ${a.body ? `<div style="font-size:11px;color:var(--muted)">${escHtml(a.body)}</div>` : ''}
     <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
       <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);background:var(--surface2);padding:1px 6px;border-radius:3px">${a.source||'api'}</span>
       ${a.source_ref ? `<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${escHtml(a.source_ref)}</span>` : ''}
@@ -2085,47 +2078,51 @@ function renderAlertRow(a) {
 }
 
 async function ackAlert(id) {
-  try {
-    await apiFetch(`/v1/alerts/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'acked' }) });
-    loadAlerts(_sigFilter);
-    loadSignalStats();
-  } catch { toast('Failed to ack alert', 'error'); }
+  const res = await apiFetch(`/v1/alerts/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'acked' }) });
+  if (res?.ok) { loadAlerts(_sigFilter); loadSignalStats(); }
+  else toast('Failed to ack', 'error');
 }
 
 async function resolveAlert(id) {
-  try {
-    await apiFetch(`/v1/alerts/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'resolved' }) });
-    loadAlerts(_sigFilter);
-    loadSignalStats();
-    toast('Alert resolved', 'ok');
-  } catch { toast('Failed to resolve', 'error'); }
+  const res = await apiFetch(`/v1/alerts/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'resolved' }) });
+  if (res?.ok) { loadAlerts(_sigFilter); loadSignalStats(); toast('Alert resolved', 'ok'); }
+  else toast('Failed to resolve', 'error');
 }
 
 function pushSignalsLiveFeed(type, payload) {
   const feed = document.getElementById('signals-live-feed');
   if (!feed) return;
-  // Clear placeholder
-  if (feed.querySelector('[data-placeholder]')) feed.innerHTML = '';
+  // Remove empty-state placeholder on first event
+  const ph = feed.querySelector('.sig-live-placeholder');
+  if (ph) ph.remove();
 
-  const typeLabel = type.replace('signal.', '').replace('alert.', '').toUpperCase();
-  const color = type.includes('alert') ? '#ff5f5f'
-    : type.includes('beacon') ? '#00ffcc'
-    : type.includes('capture') ? '#a78bfa'
-    : 'var(--accent)';
+  const isBeacon  = type.includes('beacon');
+  const isAlert   = type.includes('alert');
+  const isCapture = type.includes('capture');
+  const typeLabel = type.split('.').pop().toUpperCase();
+  const color = isAlert ? '#ff5f5f' : isBeacon ? '#00ffcc' : isCapture ? '#a78bfa' : 'var(--accent)';
   const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const label = payload?.title || payload?.note || payload?.type || type;
+
+  // Beacon: show device_id (same as war room)
+  let label;
+  if (isBeacon) {
+    let devId = 'unknown';
+    try { devId = payload.meta ? (JSON.parse(payload.meta).device_id || `user-${payload.user_id}`) : (payload.device_id || `user-${payload.user_id}`); } catch {}
+    label = devId;
+  } else {
+    label = payload?.title || payload?.note || payload?.user_name || type;
+  }
 
   const row = document.createElement('div');
   row.className = 'sitrep-feed-item';
-  row.innerHTML = `
-    <span class="sitrep-feed-dot" style="background:${color};flex-shrink:0;margin-top:3px"></span>
+  row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border)';
+  row.innerHTML = `<span class="sitrep-feed-dot" style="background:${color};flex-shrink:0;margin-top:4px;width:6px;height:6px;border-radius:50%"></span>
     <div style="flex:1;min-width:0">
       <span style="font-family:var(--font-mono);font-size:10px;color:${color}">[${typeLabel}]</span>
       <span style="font-size:11px;color:var(--text);margin-left:6px">${escHtml(String(label).slice(0,80))}</span>
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px">${ts}</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:1px">${ts}</div>
     </div>`;
   feed.prepend(row);
-  // Keep max 60 items
   while (feed.children.length > 60) feed.removeChild(feed.lastChild);
 }
 
@@ -2133,63 +2130,55 @@ function connectAlertStream() {
   if (alertStream) return;
   alertStream = new EventSource('/v1/alerts/stream', { withCredentials: true });
   const dot   = document.getElementById('signals-stream-dot');
-  const label = document.getElementById('signals-stream-label');
-
-  alertStream.onopen = () => {
-    if (dot)   { dot.style.background = 'var(--accent)'; dot.style.animation = ''; }
-    if (label) label.textContent = 'live';
-  };
+  const lbl   = document.getElementById('signals-stream-label');
+  const setLive = () => { if (dot) { dot.style.background='var(--accent)'; dot.style.animation=''; } if (lbl) lbl.textContent='live'; };
+  alertStream.onopen = setLive;
   alertStream.onmessage = (e) => {
     try {
       const evt = JSON.parse(e.data);
-      if (evt.type === 'connected') {
-        if (dot)   { dot.style.background = 'var(--accent)'; dot.style.animation = ''; }
-        if (label) label.textContent = 'live';
-        return;
-      }
+      if (evt.type === 'connected') { setLive(); return; }
       pushSignalsLiveFeed(evt.type, evt.payload || {});
-      // Refresh alert list on relevant events
-      if (evt.type.startsWith('alert.')) {
-        loadAlerts(_sigFilter);
-        loadSignalStats();
-      }
+      if (evt.type.startsWith('alert.')) { loadAlerts(_sigFilter); loadSignalStats(); }
     } catch {}
   };
   alertStream.onerror = () => {
-    if (dot)   { dot.style.background = 'var(--muted)'; dot.style.animation = 'none'; }
-    if (label) label.textContent = 'reconnecting…';
-    alertStream?.close();
-    alertStream = null;
+    if (dot) { dot.style.background='var(--muted)'; dot.style.animation='none'; }
+    if (lbl) lbl.textContent='reconnecting…';
+    alertStream?.close(); alertStream = null;
     setTimeout(connectAlertStream, 5000);
   };
 }
 
 function openFireAlertModal() {
   const m = document.getElementById('fire-alert-modal');
-  if (m) { m.style.display = 'flex'; }
+  if (m) m.style.display = 'flex';
 }
 function closeFireAlertModal() {
   const m = document.getElementById('fire-alert-modal');
-  if (m) { m.style.display = 'none'; }
+  if (m) m.style.display = 'none';
 }
 
 async function submitFireAlert() {
   const title = document.getElementById('al-title')?.value?.trim();
   if (!title) { toast('Title is required', 'error'); return; }
-  const body = {
+  const severity = document.getElementById('al-severity')?.value || 'warning';
+  const payload = {
     title,
     body: document.getElementById('al-body')?.value?.trim() || undefined,
-    severity: document.getElementById('al-severity')?.value || 'warning',
+    severity,
     source: document.getElementById('al-source')?.value || 'api',
     source_ref: document.getElementById('al-source-ref')?.value?.trim() || undefined,
   };
-  try {
-    await apiFetch('/v1/alerts', { method: 'POST', body: JSON.stringify(body) });
+  const res = await apiFetch('/v1/alerts', { method: 'POST', body: JSON.stringify(payload) });
+  if (res?.ok) {
     closeFireAlertModal();
-    toast(`Alert fired: ${title}`, body.severity === 'critical' ? 'error' : 'ok');
+    document.getElementById('al-title').value = '';
+    document.getElementById('al-body').value = '';
+    document.getElementById('al-source-ref').value = '';
+    toast(`Alert fired: ${title}`, severity === 'critical' ? 'error' : 'ok');
     loadAlerts(_sigFilter);
     loadSignalStats();
-  } catch (e) { toast('Failed to fire alert', 'error'); }
+  } else { toast('Failed to fire alert', 'error'); }
 }
 
 function copyAlertsSnippet() {

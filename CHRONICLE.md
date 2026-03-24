@@ -16,6 +16,21 @@
 - SchedKit is an API-FirstResponder platform. Tagline: Signal anything. Coordinate everything. Physical or digital. _(trust: low 50)_
 - Stripe integration pending — Checkout + webhook to flip user plan on payment. _(trust: low 50)_
 - Hardware layer: ESP32 devices with LED strip and relay GPIO, polling SchedKit alerts API directly. _(trust: low 50)_
+- feat: Alerts API (/v1/alerts) + Signals dashboard page
+
+- New NocoDB alerts table (m00769mnao3ujmr)
+- POST /v1/alerts — fire alert (info/warning/critical)
+- GET /v1/alerts — list with status/severity filters
+- GET /v1/alerts/:id — single alert
+- PATCH /v1/alerts/:id — ack or resolve
+- DELETE /v1/alerts/:id — hard delete
+- GET /v1/alerts/stream — SSE for live alert events
+- Critical alerts auto-create incident ticket (1h SLA)
+- ntfy + web push notifications on warning/critical
+- Signals dashboard section: live alert feed, stats tiles,
+  filter (firing/acked/all), Fire Alert modal, SSE stream,
+  ack/resolve actions, API snippet with real key prefilled
+- Both signals SSE and alerts SSE wired to live feed panel _(trust: low 50)_
 
 ## Preferences
 
