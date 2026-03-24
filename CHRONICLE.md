@@ -31,6 +31,15 @@
   filter (firing/acked/all), Fire Alert modal, SSE stream,
   ack/resolve actions, API snippet with real key prefilled
 - Both signals SSE and alerts SSE wired to live feed panel _(trust: low 50)_
+- fix: signals page - proper apiFetch .json(), scrollable feeds, beacon device names, live feed placeholder
+
+- apiFetch returns Response, must call .json() — was treating it as parsed data
+- Alert feed and live stream panels: fixed 380px height, overflow-y:auto (no unbounded growth)
+- Live feed placeholder uses .sig-live-placeholder class, removed on first event
+- Beacon labels show device_id from meta (same as war room), not raw type string
+- Signal SSE events (beacons, captures) now also push to signals live feed panel
+- ack/resolve check res.ok before refresh
+- submitFireAlert clears form fields on success _(trust: low 50)_
 
 ## Preferences
 

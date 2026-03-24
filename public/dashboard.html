@@ -1979,6 +1979,11 @@ function connectSignalStream() {
       if (evt.type && evt.type !== 'connected') {
         sitrepHandleSSE(evt.type, evt.payload || {});
         pushSignalsLiveFeed(evt.type, evt.payload || {});
+        // Keep beacon count tile live whenever a beacon event arrives
+        if (evt.type.includes('beacon')) {
+          const be = document.getElementById('sig-beacon-count');
+          if (be) be.textContent = Object.keys(window._liveBeacons || {}).length || '0';
+        }
       }
     } catch {}
   };
@@ -2005,16 +2010,36 @@ async function initSignalsPage() {
 
 async function loadSignalStats() {
   try {
-    const [fr, ar] = await Promise.all([
+    const [fr, ar, sr] = await Promise.all([
       apiFetch('/v1/alerts?status=firing&limit=1'),
       apiFetch('/v1/alerts?status=acked&limit=1'),
+      apiFetch('/v1/signals?limit=200'),
     ]);
-    const firing = await fr?.json();
-    const acked  = await ar?.json();
+    const firing  = await fr?.json();
+    const acked   = await ar?.json();
+    const signals = await sr?.json();
+
     const fe = document.getElementById('sig-firing-count');
     const ae = document.getElementById('sig-acked-count');
+    const be = document.getElementById('sig-beacon-count');
+    const te = document.getElementById('sig-today-count');
+
     if (fe) fe.textContent = firing?.total ?? '—';
     if (ae) ae.textContent = acked?.total  ?? '—';
+
+    // Beacon count from live tracker (same source as SITREP)
+    if (be) be.textContent = Object.keys(window._liveBeacons || {}).length || '0';
+
+    // Today's signal count — filter in JS (NocoDB no datetime filter)
+    if (te && signals?.signals) {
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const todayCount = signals.signals.filter(s => {
+        const t = new Date(s.created_at || s.CreatedAt || 0).getTime();
+        return t >= todayStart.getTime();
+      }).length;
+      te.textContent = todayCount;
+    }
+
     const fc = document.getElementById('sig-stat-firing');
     if (fc) fc.classList.toggle('crit', (firing?.total || 0) > 0);
   } catch {}
@@ -2106,9 +2131,15 @@ function pushSignalsLiveFeed(type, payload) {
   // Beacon: show device_id (same as war room)
   let label;
   if (isBeacon) {
-    let devId = 'unknown';
-    try { devId = payload.meta ? (JSON.parse(payload.meta).device_id || `user-${payload.user_id}`) : (payload.device_id || `user-${payload.user_id}`); } catch {}
+    let devId = `user-${payload.user_id || '?'}`;
+    try {
+      const m = typeof payload.meta === 'string' ? JSON.parse(payload.meta) : (payload.meta || {});
+      devId = m.device_id || payload.device_id || devId;
+    } catch {}
     label = devId;
+    // Update beacon count tile live
+    const be = document.getElementById('sig-beacon-count');
+    if (be) be.textContent = Object.keys(window._liveBeacons || {}).length || '0';
   } else {
     label = payload?.title || payload?.note || payload?.user_name || type;
   }
