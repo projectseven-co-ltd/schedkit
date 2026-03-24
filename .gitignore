@@ -3,3 +3,13 @@ node_modules/
 dist/
 /public/captures/*
 !/public/captures/.gitkeep
+.lore/
+.github/copilot-instructions.md
+AGENTS.md
+CLAUDE.md
+.cursor/rules/memory.md
+.github/prompts/lore.prompt.md
+.windsurfrules
+GEMINI.md
+.clinerules
+CONVENTIONS.md
