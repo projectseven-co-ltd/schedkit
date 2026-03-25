@@ -46,6 +46,8 @@
 - Today signals count fetches /v1/signals and filters by date client-side
 - Beacon label: handles meta as string or object, falls back to user_id
 - Beacon count tile updates live on beacon SSE events _(trust: low 50)_
+- CROSS firmware v4.0+ polls SchedKit GET /v1/alerts?status=firing every 30s. Each alert triggers LED pulse, then PATCHed to acked. No direct NocoDB prayers dependency. _(trust: low 50)_
+- CROSS hardware: ESP32 devices, RGB LED strip (common anode or WS2812), GPIO 16/17/18 for R/G/B. Crosses table in NocoDB: mqbvkiidtv2xl99. OTA via GitHub releases (cross.bin). _(trust: low 50)_
 
 ## Preferences
 
