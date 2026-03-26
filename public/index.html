@@ -1239,6 +1239,7 @@ fetch('/version').then(r=>r.json()).then(d=>{
   function scrambleSlot(el, finalChar, duration) {
     const start = Date.now();
     const interval = setInterval(() => {
+      if (!el.isConnected) { clearInterval(interval); return; }
       const elapsed = Date.now() - start;
       if (elapsed >= duration) {
         clearInterval(interval);
@@ -1254,21 +1255,29 @@ fetch('/version').then(r=>r.json()).then(d=>{
     return interval;
   }
 
+  let delayTimers = [];
+
   function flipTo(word) {
     scrambleTimers.forEach(clearInterval);
     scrambleTimers = [];
+    delayTimers.forEach(clearTimeout);
+    delayTimers = [];
     buildSlots(word);
+    const capturedSlots = slots.slice();
     let charIndex = 0;
     for (let i = 0; i < word.length; i++) {
-      if (slots[i] === null) continue;
+      if (capturedSlots[i] === null) continue;
       const delay = charIndex * 60;
       const duration = 300 + charIndex * 40;
       const idx = i;
-      const ci = charIndex;
-      setTimeout(() => {
-        const t = scrambleSlot(slots[idx], word[idx], duration);
+      const el = capturedSlots[idx];
+      const ch = word[idx];
+      const dt = setTimeout(() => {
+        if (!el || !el.isConnected) return;
+        const t = scrambleSlot(el, ch, duration);
         scrambleTimers.push(t);
       }, delay);
+      delayTimers.push(dt);
       charIndex++;
     }
   }
