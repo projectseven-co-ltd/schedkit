@@ -1190,6 +1190,7 @@ fetch('/version').then(r=>r.json()).then(d=>{
     btn.addEventListener('pointercancel',()=>{clearTimeout(_t);_t=null;});
     btn.addEventListener('contextmenu',e=>e.preventDefault());
   }
+})();
 </script>
 
 
@@ -1589,6 +1590,16 @@ function showEntForm() {
   document.getElementById("ent-options").style.display = "none";
   document.getElementById("ent-form").style.display = "flex";
   requestAnimationFrame(() => document.getElementById("ent-name").focus());
+}
+
+function openSchedKitDemo() {
+  const overlay = document.createElement("div");
+  overlay.id = "schedKitDemoOverlay";
+  overlay.style.cssText = "position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;";
+  overlay.innerHTML = '<div style="position:relative;width:100%;max-width:860px;height:85vh;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6);background:#111114;border:1px solid #2e2e3a;"><button onclick="document.getElementById(\'schedKitDemoOverlay\').remove()" style="position:absolute;top:14px;right:14px;z-index:1;background:rgba(0,0,0,0.6);border:none;color:#e8e8ea;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#x2715;</button><iframe src="https://schedkit.net/book/schedkit/leadership/enterprise-intro" style="width:100%;height:100%;border:none;display:block;" title="Book a Demo" loading="lazy"></iframe></div>';
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+  document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { overlay.remove(); document.removeEventListener("keydown", esc); } });
+  document.body.appendChild(overlay);
 }
 
 function openEntBooking() {
