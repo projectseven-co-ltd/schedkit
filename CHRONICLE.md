@@ -13,7 +13,7 @@
 
 ## Facts
 
-- SchedKit is an API-FirstResponder platform. Tagline: Signal anything. Coordinate everything. Physical or digital. _(trust: low 50)_
+- SchedKit is an API-First Responder platform. Tagline: Signal anything. Coordinate everything. Physical or digital. _(trust: low 50)_
 - Stripe integration pending — Checkout + webhook to flip user plan on payment. _(trust: low 50)_
 - Hardware layer: ESP32 devices with LED strip and relay GPIO, polling SchedKit alerts API directly. _(trust: low 50)_
 - feat: Alerts API (/v1/alerts) + Signals dashboard page
@@ -46,10 +46,9 @@
 - Today signals count fetches /v1/signals and filters by date client-side
 - Beacon label: handles meta as string or object, falls back to user_id
 - Beacon count tile updates live on beacon SSE events _(trust: low 50)_
-- CROSS firmware v4.0+ polls SchedKit GET /v1/alerts?status=firing every 30s. Each alert triggers LED pulse, then PATCHed to acked. No direct NocoDB prayers dependency. _(trust: low 50)_
+- CROSS firmware v4.0+ polls SchedKit GET /v1/alerts?status=firing every 30s. Each alert triggers LED pulse, then PATCHed to acked. No direct NocoDB queries dependency. _(trust: low 50)_
 - CROSS hardware: ESP32 devices, RGB LED strip (common anode or WS2812), GPIO 16/17/18 for R/G/B. Crosses table in NocoDB: mqbvkiidtv2xl99. OTA via GitHub releases (cross.bin). _(trust: low 50)_
 - chore: add crosses table ID, lore spells for CROSS hardware _(trust: low 50)_
-- fix: lights IIFE missing closing })(); + add openSchedKitDemo function _(trust: low 50)_
 - fix: lights IIFE missing closing })(); + add openSchedKitDemo function _(trust: low 50)_
 - fix: flip board race condition - cancel delay timers on flipTo, guard isConnected in scrambleSlot _(trust: low 50)_
 

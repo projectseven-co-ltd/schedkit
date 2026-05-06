@@ -33,8 +33,16 @@ export function broadcastAlert(userId, event) {
   const clients = alertClients.get(String(userId));
   if (!clients) return;
   const data = 'data: ' + JSON.stringify(event) + '\n\n';
+  const failedClients = [];
   for (const reply of clients) {
-    try { reply.raw.write(data); } catch { clients.delete(reply); }
+    try {
+      reply.raw.write(data);
+    } catch {
+      failedClients.push(reply);
+    }
+  }
+  for (const failed of failedClients) {
+    clients.delete(failed);
   }
 }
 
@@ -42,8 +50,16 @@ export function broadcastAlert(userId, event) {
 export function broadcastAlertAll(event) {
   const data = 'data: ' + JSON.stringify(event) + '\n\n';
   for (const clients of alertClients.values()) {
+    const failedClients = [];
     for (const reply of clients) {
-      try { reply.raw.write(data); } catch { clients.delete(reply); }
+      try {
+        reply.raw.write(data);
+      } catch {
+        failedClients.push(reply);
+      }
+    }
+    for (const failed of failedClients) {
+      clients.delete(failed);
     }
   }
 }
@@ -73,7 +89,14 @@ async function tryNtfy(userId, title, body, severity) {
       },
       body: (body || '').slice(0, 300),
     });
-  } catch {}
+  } catch (err) {
+    console.error('Failed to send ntfy notification', {
+      userId,
+      severity,
+      title,
+      error: err instanceof Error ? { message: err.message, stack: err.stack } : err,
+    });
+  }
 }
 
 // Optionally auto-create a ticket from an alert
@@ -206,7 +229,17 @@ export default async function alertsRoutes(fastify) {
 
     // Auto-create ticket for critical alerts
     if (severity === 'critical') {
-      maybeCreateTicket(alert, req.user); // fire-and-forget, ticket_id linked async
+      (async () => {
+        try {
+          await maybeCreateTicket(alert, req.user); // ticket_id linked async
+        } catch (err) {
+          console.error('Failed to create ticket for critical alert', {
+            alertId: alert.Id,
+            userId: req.user.Id,
+            error: err && err.stack ? err.stack : err,
+          });
+        }
+      })();
     }
 
     // SSE broadcast
@@ -287,7 +320,7 @@ export default async function alertsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const row = await db.get(tables.alerts, req.params.id);
-    if (!row || row.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!row || row.user_id !== req.user.Id) return reply.code(404).send({ error: 'Not found' });
     return row;
   });
 

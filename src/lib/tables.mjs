@@ -1,4 +1,4 @@
-// src/lib/tables.js — Table ID cache (populated at startup)
+// src/lib/tables.mjs — Table ID cache (populated at startup)
 
 export const tables = {};
 
