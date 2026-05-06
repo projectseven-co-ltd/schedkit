@@ -260,7 +260,7 @@ body::after {
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 3px;
-  background: var(--red);
+  background: var(--urgent);
   border-radius: 6px 0 0 6px;
 }
 .bc-title {
@@ -2069,7 +2069,7 @@ body::after {
 
   // ---- Init ----
   renderList();
-    connectSSE();
+  connectSSE();
   connectSignalSSE();
   // Default to map view — init on next tick so DOM has laid out
   mapInitialized = true;
