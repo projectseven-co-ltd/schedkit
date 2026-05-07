@@ -231,12 +231,12 @@ export default async function alertsRoutes(fastify) {
     if (severity === 'critical') {
       (async () => {
         try {
-          await maybeCreateTicket(alert, req.user); // ticket_id linked async
+          await maybeCreateTicket(alert, req.user); // fire-and-forget, ticket_id linked async
         } catch (err) {
           console.error('Failed to create ticket for critical alert', {
             alertId: alert.Id,
             userId: req.user.Id,
-            error: err && err.stack ? err.stack : err,
+            error: err instanceof Error ? { message: err.message, stack: err.stack } : err,
           });
         }
       })();
@@ -345,7 +345,7 @@ export default async function alertsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.alerts, req.params.id);
-    if (!existing || existing.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!existing || existing.user_id !== req.user.Id) return reply.code(404).send({ error: 'Not found' });
 
     const { status } = req.body;
     const updates = { status };
@@ -372,7 +372,7 @@ export default async function alertsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.alerts, req.params.id);
-    if (!existing || existing.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!existing || existing.user_id !== req.user.Id) return reply.code(404).send({ error: 'Not found' });
     await db.delete(tables.alerts, existing.Id);
     return { ok: true };
   });
