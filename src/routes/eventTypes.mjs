@@ -3,6 +3,7 @@ import { tables } from '../lib/tables.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
 import { getLimits, planError } from './planLimits.mjs';
+import { userOwnsRow } from '../lib/ownership.mjs';
 
 async function requireAuth(req, reply) {
   if (req.headers['x-api-key']) return requireApiKey(req, reply);
@@ -78,7 +79,7 @@ export default async function eventTypesRoutes(fastify) {
     },
   }, async (req, reply) => {
     const row = await db.get(tables.event_types, req.params.id);
-    if (!row || row.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(row, req.user)) return reply.code(404).send({ error: 'Not found' });
     return row;
   });
 
@@ -173,7 +174,7 @@ export default async function eventTypesRoutes(fastify) {
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.event_types, req.params.id);
-    if (!existing || existing.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(existing, req.user)) return reply.code(404).send({ error: 'Not found' });
     const updated = await db.update(tables.event_types, req.params.id, req.body);
     return updated;
   });
@@ -190,7 +191,7 @@ export default async function eventTypesRoutes(fastify) {
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.event_types, req.params.id);
-    if (!existing || existing.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(existing, req.user)) return reply.code(404).send({ error: 'Not found' });
     await db.delete(tables.event_types, req.params.id);
     return { deleted: true };
   });

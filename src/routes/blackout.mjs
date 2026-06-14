@@ -1,5 +1,6 @@
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
+import { userOwnsRow } from '../lib/ownership.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
 async function requireAuth(req, reply) {
@@ -78,7 +79,7 @@ export default async function blackoutRoutes(fastify) {
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.blocked_times, req.params.id);
-    if (!existing || existing.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(existing, req.user)) return reply.code(404).send({ error: 'Not found' });
     await db.delete(tables.blocked_times, req.params.id);
     return { deleted: true };
   });

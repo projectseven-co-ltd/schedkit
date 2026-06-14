@@ -9,6 +9,7 @@
 
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
+import { userOwnsRow } from '../lib/ownership.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
 import { nanoid } from 'nanoid';
@@ -346,7 +347,7 @@ export default async function ticketsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const row = await db.get(tables.tickets, req.params.id);
-    if (!row || row.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(row, req.user)) return reply.code(404).send({ error: 'Not found' });
     return {
       ...withSlaStatus(row),
       customer_status_url: row.customer_token
@@ -388,7 +389,7 @@ export default async function ticketsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.tickets, req.params.id);
-    if (!existing || existing.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(existing, req.user)) return reply.code(404).send({ error: 'Not found' });
 
     const { title, description, status, priority, assignee_id, lat, lng, location_name } = req.body;
     const updates = {};
@@ -488,7 +489,7 @@ export default async function ticketsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.tickets, req.params.id);
-    if (!existing || existing.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(existing, req.user)) return reply.code(404).send({ error: 'Not found' });
     if (existing.status === 'closed') return reply.code(400).send({ error: 'Ticket is already closed' });
 
     await db.update(tables.tickets, existing.Id, { status: 'closed' });

@@ -12,6 +12,16 @@
 #
 # Plesk proxy schedkit.net → localhost:3002
 # Images: ghcr.io/projectseven-co-ltd/schedkit-api:${IMAGE_TAG:-latest}
+#
+# Auto-deploy (push to main):
+#   1. Portainer → SchedKit stack → Webhooks → copy stack webhook URL
+#   2. GitHub repo secret: SCHEDKIT_PORTAINER_STACK_WEBHOOK_URL
+#   3. CI POSTs ?IMAGE_TAG=<short-sha> after GHCR publish
+#
+# Plesk Portainer URL is usually one of:
+#   https://projectseven.io/modules/docker/portainer/api/stacks/webhooks/<uuid>
+#   https://projectseven.io/api/stacks/webhooks/<uuid>
+# CI tries both. Use the SchedKit stack webhook — not SignalForge's.
 
 services:
   postgres:
@@ -43,6 +53,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-schedkit}:${POSTGRES_PASSWORD:-change-me-strong}@postgres:5432/${POSTGRES_DB:-schedkit}?sslmode=disable}
       BASE_DOMAIN: ${BASE_DOMAIN:-schedkit.net}
       API_SECRET:
+      PLATFORM_ADMIN_EMAILS:
       MJ_APIKEY_PUBLIC:
       MJ_APIKEY_PRIVATE:
       MJ_FROM_EMAIL:

@@ -485,6 +485,9 @@ tr:hover td{background:var(--surface2)}
     <button class="nav-item" data-section="orgs">
       <span class="nav-icon">[▶]</span> Units
     </button>
+    <button class="nav-item" data-section="platform" id="nav-platform" style="display:none">
+      <span class="nav-icon">[⚙]</span> Platform
+    </button>
   </nav>
   <div class="sidebar-footer">
     <div class="user-chip">
@@ -694,6 +697,15 @@ tr:hover td{background:var(--surface2)}
       </div>
       <div id="orgs-list"><div class="loading">loading...</div></div>
       <div id="org-detail" style="display:none;margin-top:24px"></div>
+    </div>
+
+    <!-- PLATFORM ADMIN -->
+    <div class="section" id="section-platform">
+      <div class="page-header">
+        <h2>Platform Admin</h2>
+      </div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px">Manage user plans and account status. Visible only to platform admins (<code>PLATFORM_ADMIN_EMAILS</code>).</p>
+      <div id="platform-users-list"><div class="loading">loading...</div></div>
     </div>
 
     <!-- SIGNALS -->
@@ -1514,6 +1526,8 @@ async function loadUser() {
   const res = await apiFetch('/v1/auth/me');
   if (!res || !res.ok) { window.location.href = '/login'; return; }
   currentUser = await res.json();
+  const navPlatform = document.getElementById('nav-platform');
+  if (navPlatform) navPlatform.style.display = currentUser.is_platform_admin ? '' : 'none';
   document.getElementById('user-name').textContent = currentUser.name;
   document.getElementById('user-email').textContent = currentUser.email;
   document.getElementById('user-avatar').textContent = currentUser.name?.[0]?.toUpperCase() || '?';
@@ -1552,7 +1566,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.add('active');
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById('section-' + section).classList.add('active');
-    const titles = { sitrep:'SITREP', assignments:'Assignments', tickets:'Incidents', signals:'Signals', kit:'Settings', 'event-types':'Event Types', availability:'Availability', blackout:'Blackout Dates', clients:'Client Flags', orgs:'Units', settings:'Account' };
+    const titles = { sitrep:'SITREP', assignments:'Assignments', tickets:'Incidents', signals:'Signals', kit:'Settings', 'event-types':'Event Types', availability:'Availability', blackout:'Blackout Dates', clients:'Client Flags', orgs:'Units', platform:'Platform Admin', settings:'Account' };
     document.getElementById('page-title').textContent = titles[section] || section;
     loadSection(section);
     closeSidebar(); // close on mobile after nav
@@ -1580,6 +1594,7 @@ async function loadSection(name) {
   if (name === 'blackout') await loadBlackout();
   if (name === 'clients') await loadClients();
   if (name === 'orgs') await loadOrgs();
+  if (name === 'platform') await loadPlatformAdmin();
   if (name === 'settings') await loadCalendarStatus();
 }
 
@@ -2764,7 +2779,10 @@ async function saveAvailability() {
       const existing = availData[i];
 
       if (!enabled) {
-        if (existing) await apiFetch(`/v1/availability/${existing.Id}`, { method: 'DELETE' });
+        if (existing) {
+          const res = await apiFetch(`/v1/availability/${existing.Id}`, { method: 'DELETE' });
+          if (!res?.ok) throw new Error('delete failed');
+        }
         continue;
       }
 
@@ -2773,9 +2791,11 @@ async function saveAvailability() {
       const body = { day_of_week: i, start_time: start, end_time: end, timezone: currentUser?.timezone || 'UTC' };
 
       if (existing) {
-        await apiFetch(`/v1/availability/${existing.Id}`, { method: 'PATCH', body: JSON.stringify(body) });
+        const res = await apiFetch(`/v1/availability/${existing.Id}`, { method: 'PATCH', body: JSON.stringify(body) });
+        if (!res?.ok) throw new Error('patch failed');
       } else {
-        await apiFetch('/v1/availability', { method: 'POST', body: JSON.stringify(body) });
+        const res = await apiFetch('/v1/availability', { method: 'POST', body: JSON.stringify(body) });
+        if (!res?.ok) throw new Error('create failed');
       }
     }
     toast('Availability saved!', 'ok');
@@ -2783,6 +2803,47 @@ async function saveAvailability() {
   } catch { toast('Save failed', 'err'); }
 
   btn.disabled = false; btn.textContent = 'Save Changes';
+}
+
+// ── Platform admin ────────────────────────────────
+async function loadPlatformAdmin() {
+  const el = document.getElementById('platform-users-list');
+  const res = await apiFetch('/v1/admin/users');
+  if (!res?.ok) {
+    el.innerHTML = '<div style="color:var(--muted)">Unable to load users.</div>';
+    return;
+  }
+  const { users } = await res.json();
+  if (!users?.length) {
+    el.innerHTML = '<div style="color:var(--muted)">No users yet.</div>';
+    return;
+  }
+  el.innerHTML = `<table class="data-table" style="width:100%"><thead><tr><th>Email</th><th>Name</th><th>Plan</th><th>Active</th><th></th></tr></thead><tbody>${
+    users.map(u => `<tr>
+      <td>${esc(u.email)}</td>
+      <td>${esc(u.name || '—')}</td>
+      <td><select id="platform-plan-${u.Id}" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px">
+        ${['free','starter','agency','enterprise'].map(p => `<option value="${p}" ${u.plan===p?'selected':''}>${p}</option>`).join('')}
+      </select></td>
+      <td><input type="checkbox" id="platform-active-${u.Id}" ${u.active !== false ? 'checked' : ''}></td>
+      <td><button class="btn btn-primary" style="font-size:11px;padding:5px 10px" onclick="savePlatformUser(${u.Id})">Save</button></td>
+    </tr>`).join('')
+  }</tbody></table>`;
+}
+
+async function savePlatformUser(id) {
+  const plan = document.getElementById(`platform-plan-${id}`)?.value;
+  const active = document.getElementById(`platform-active-${id}`)?.checked;
+  const res = await apiFetch(`/v1/admin/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ plan, active }),
+  });
+  if (res?.ok) {
+    toast('User updated', 'ok');
+    if (String(id) === String(currentUser?.Id)) await loadUser();
+  } else {
+    toast('Update failed', 'err');
+  }
 }
 
 // ── Blackout ──────────────────────────────────────

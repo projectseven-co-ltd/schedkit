@@ -14,6 +14,7 @@ function sanitizeRedirect(url) {
   return null;
 }
 import { requireSession } from '../middleware/session.mjs';
+import { isPlatformAdmin } from '../lib/platformAdmin.mjs';
 
 const BASE_DOMAIN = process.env.BASE_DOMAIN || 'schedkit.net';
 
@@ -217,6 +218,7 @@ export default async function authRoutes(fastify) {
             enterprise: { type: 'boolean' },
             ntfy_topic: { type: 'string' },
             plan: { type: 'string' },
+            is_platform_admin: { type: 'boolean' },
           },
         },
       },
@@ -224,7 +226,13 @@ export default async function authRoutes(fastify) {
     preHandler: requireSession
   }, async (req) => {
     const { Id, name, email, slug, timezone, api_key, enterprise, ntfy_topic, plan } = req.user;
-    return { Id, name, email, slug, timezone, api_key, enterprise: !!enterprise, ntfy_topic: ntfy_topic || "", plan: plan || "free" };
+    return {
+      Id, name, email, slug, timezone, api_key,
+      enterprise: !!enterprise,
+      ntfy_topic: ntfy_topic || '',
+      plan: plan || 'free',
+      is_platform_admin: isPlatformAdmin(email),
+    };
   });
 
   // PATCH /v1/auth/me — update profile

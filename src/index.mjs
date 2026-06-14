@@ -38,6 +38,7 @@ import settingsRoutes from './routes/settings.mjs';
 import uploadsRoutes from './routes/uploads.mjs';
 import billingRoutes from './routes/billing.mjs';
 import alertsRoutes from './routes/alerts.mjs';
+import adminRoutes from './routes/admin.mjs';
 
 const fastify = Fastify({ logger: true, bodyLimit: 10 * 1024 * 1024 }); // 10MB for image captures
 
@@ -161,6 +162,7 @@ fastify.addContentTypeParser('image/png', { parseAs: 'buffer' }, (_req, body, do
 await fastify.register(uploadsRoutes, { prefix: '/v1' });
 await fastify.register(billingRoutes, { prefix: '/v1' });
 await fastify.register(alertsRoutes, { prefix: '/v1' });
+await fastify.register(adminRoutes, { prefix: '/v1' });
 
 // Page routes (no prefix)
 fastify.get('/login', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } }, schema: { hide: true } }, async (req, reply) => {

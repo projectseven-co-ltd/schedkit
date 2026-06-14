@@ -86,3 +86,21 @@ curl "/v1/slots/jane/30min?date=2026-03-10&timezone=America/Chicago"
 curl -X POST /v1/book/jane/30min \
   -d '{"start_time":"2026-03-10T14:00:00Z","attendee_name":"Bob","attendee_email":"bob@example.com"}'
 ```
+
+## Portainer auto-deploy (production)
+
+Same pattern as [SignalForge hub](https://github.com/projectseven-co-ltd/p7-scanner): push to `main` builds `ghcr.io/projectseven-co-ltd/schedkit-api:<short-sha>`, then CI triggers your Portainer stack webhook with `IMAGE_TAG=<short-sha>`.
+
+1. In [Portainer on Plesk](https://projectseven.io/modules/docker/portainer/) → **SchedKit stack** → **Webhooks** → copy the stack webhook URL.
+2. GitHub → `projectseven-co-ltd/schedkit` → **Settings → Secrets → Actions** → add:
+   - `SCHEDKIT_PORTAINER_STACK_WEBHOOK_URL` = your webhook URL (either format works; CI tries both):
+     - `https://projectseven.io/modules/docker/portainer/api/stacks/webhooks/<uuid>`
+     - `https://projectseven.io/api/stacks/webhooks/<uuid>`
+3. Use a **SchedKit-specific** webhook — do not reuse `PORTAINER_STACK_WEBHOOK_URL` from SignalForge (different stack).
+4. Stack compose file: `docker-compose.plesk.yml`. Enable pull/redeploy on webhook if Portainer asks.
+
+Manual redeploy with a pinned tag:
+
+```bash
+IMAGE_TAG=abc1234 docker compose -f docker-compose.plesk.yml --env-file .env.production up -d
+```

@@ -63,6 +63,37 @@ export default async function usersRoutes(fastify) {
     return { users: result.list || [] };
   });
 
+  // Update user (admin secret — curl/scripts)
+  fastify.patch('/users/:id', {
+    preHandler: requireSecret,
+    schema: {
+      tags: ['Users'],
+      summary: 'Update a user (admin)',
+      security: [{ adminSecret: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' } } },
+      body: {
+        type: 'object',
+        properties: {
+          plan: { type: 'string', enum: ['free', 'starter', 'agency', 'enterprise'] },
+          active: { type: 'boolean' },
+          name: { type: 'string' },
+          slug: { type: 'string' },
+          timezone: { type: 'string' },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const existing = await db.get(tables.users, req.params.id);
+    if (!existing) return reply.code(404).send({ error: 'User not found' });
+    const updates = {};
+    for (const key of ['plan', 'active', 'name', 'slug', 'timezone']) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+    if (!Object.keys(updates).length) return reply.code(400).send({ error: 'No updates' });
+    const updated = await db.update(tables.users, existing.Id, updates);
+    return updated;
+  });
+
   // Get user profile (public)
   fastify.get('/u/:slug', {
     schema: {

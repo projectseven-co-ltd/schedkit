@@ -1,5 +1,6 @@
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
+import { userOwnsRow } from '../lib/ownership.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
 import { getSlots } from '../lib/availability.mjs';
@@ -127,7 +128,7 @@ export default async function availabilityRoutes(fastify) {
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.availability, req.params.id);
-    if (!existing || existing.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(existing, req.user)) return reply.code(404).send({ error: 'Not found' });
     return await db.update(tables.availability, req.params.id, req.body);
   });
 
@@ -143,7 +144,7 @@ export default async function availabilityRoutes(fastify) {
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.availability, req.params.id);
-    if (!existing || existing.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(existing, req.user)) return reply.code(404).send({ error: 'Not found' });
     await db.delete(tables.availability, req.params.id);
     return { deleted: true };
   });

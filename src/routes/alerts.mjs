@@ -16,6 +16,7 @@
 
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
+import { userOwnsRow } from '../lib/ownership.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
 
@@ -320,7 +321,7 @@ export default async function alertsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const row = await db.get(tables.alerts, req.params.id);
-    if (!row || row.user_id !== req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(row, req.user)) return reply.code(404).send({ error: 'Not found' });
     return row;
   });
 
@@ -345,7 +346,7 @@ export default async function alertsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.alerts, req.params.id);
-    if (!existing || existing.user_id !== req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(existing, req.user)) return reply.code(404).send({ error: 'Not found' });
 
     const { status } = req.body;
     const updates = { status };
@@ -372,7 +373,7 @@ export default async function alertsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const existing = await db.get(tables.alerts, req.params.id);
-    if (!existing || existing.user_id !== req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(existing, req.user)) return reply.code(404).send({ error: 'Not found' });
     await db.delete(tables.alerts, existing.Id);
     return { ok: true };
   });

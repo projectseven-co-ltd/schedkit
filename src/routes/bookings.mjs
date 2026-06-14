@@ -4,6 +4,7 @@ import { isSlotBusy, createCalendarEvent, deleteCalendarEvent } from '../lib/goo
 import { notifyNewBooking, notifyBookingCancelled } from '../lib/notify.mjs';
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
+import { userOwnsRow } from '../lib/ownership.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
 async function requireAuth(req, reply) {
@@ -89,7 +90,7 @@ export default async function bookingsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const row = await db.get(tables.bookings, req.params.id);
-    if (!row || row.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(row, req.user)) return reply.code(404).send({ error: 'Not found' });
     return row;
   });
 
@@ -114,7 +115,7 @@ export default async function bookingsRoutes(fastify) {
     },
   }, async (req, reply) => {
     const booking = await db.get(tables.bookings, req.params.id);
-    if (!booking || booking.user_id != req.user.Id) return reply.code(404).send({ error: 'Not found' });
+    if (!userOwnsRow(booking, req.user)) return reply.code(404).send({ error: 'Not found' });
     if (booking.status === 'cancelled') return reply.code(400).send({ error: 'Cannot reschedule a cancelled booking' });
 
     const et = await db.get(tables.event_types, booking.event_type_id);
