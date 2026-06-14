@@ -136,14 +136,43 @@ curl -X POST https://schedkit.net/v1/work-orders/42/incidents \
   -d '{"ticket_id":"15"}'
 ```
 
+## Photo markup
+
+Annotate inspection photos with arrows/lines from the dashboard Photos tab. Markup is stored as normalized vector data on the attachment:
+
+```bash
+curl -X PATCH https://schedkit.net/v1/work-orders/42/attachments/7 \
+  -H "x-api-key: $SCHEDKIT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"annotations":[{"type":"arrow","x1":0.2,"y1":0.3,"x2":0.8,"y2":0.6,"color":"#ff3333"}]}'
+```
+
+## En route (customer portal)
+
+Assignees tap **En route** on mobile (starts beacon with `meta.work_order_id`). The customer portal polls `/work-orders/status/:token/live.json` and shows a live **Technician en route** card when the assignee beacon is active.
+
+```bash
+curl -X POST https://schedkit.net/v1/work-orders/42/en-route \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```
+
+## Radio / dispatch ack
+
+Record that dispatch or the field tech acknowledged the assignment:
+
+```bash
+curl -X POST https://schedkit.net/v1/work-orders/42/ack \
+  -H "x-api-key: $SCHEDKIT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"role":"assignee"}'
+```
+
+Roles: `assignee` (field tech) or `dispatch` (dispatcher/admin). Timestamps: `assignee_ack_at`, `dispatch_ack_at`.
+
 ## Environment
 
 No new required env vars. Optional:
 
 - `PUBLIC_BASE_URL` — base URL for portal links and PDF footers (default `https://schedkit.net`)
 
-Run migration after deploy:
-
-```bash
-npm run migrate
-```
+Schema migrations apply automatically on API startup when `DATABASE_URL` is set.

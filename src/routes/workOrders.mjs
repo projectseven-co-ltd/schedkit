@@ -83,13 +83,30 @@ async function enrichWorkOrder(wo, user = null) {
     time_entries: timeEntries.list || [],
     checklist: checklist.list || [],
     line_items: lineItems.list || [],
-    attachments: attachments.list || [],
+    attachments: mapAttachments(attachments.list),
     signatures: signatures.list || [],
   });
 }
 
 function calcDurationMinutes(start, end) {
   return Math.max(0, Math.round((new Date(end) - new Date(start)) / 60000));
+}
+
+function parseAnnotations(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function mapAttachments(list) {
+  return (list || []).map(a => ({
+    ...a,
+    annotations: parseAnnotations(a.annotations),
+  }));
 }
 
 export default async function workOrdersRoutes(fastify) {
@@ -396,6 +413,62 @@ export default async function workOrdersRoutes(fastify) {
     });
     if (result.error) return reply.code(result.code).send({ error: result.error });
     return enrichWorkOrder(result.wo, req.user);
+  });
+
+  fastify.post('/work-orders/:id/en-route', {
+    preHandler: requireAuth,
+    schema: {
+      tags: ['Work Orders'],
+      summary: 'Mark technician en route (shows on customer portal when beacon active)',
+      security: [{ apiKey: [] }],
+    },
+  }, async (req, reply) => {
+    const wo = await getOwnedWorkOrder(req.params.id, req.user);
+    if (!wo) return reply.code(404).send({ error: 'Work order not found' });
+    const isAssignee = wo.assignee_id && String(wo.assignee_id) === String(req.user.Id);
+    if (!isAssignee && !(await canManageWorkOrder(req.user, wo))) {
+      return reply.code(403).send({ error: 'Only the assignee or dispatch can mark en route' });
+    }
+    const now = new Date().toISOString();
+    const patch = { en_route_at: now, updated_at: now };
+    if (wo.status === 'scheduled' || wo.status === 'draft') patch.status = 'in_progress';
+    const updated = await db.update(tables.work_orders, rowId(wo), patch);
+    return enrichWorkOrder(updated, req.user);
+  });
+
+  fastify.post('/work-orders/:id/ack', {
+    preHandler: requireAuth,
+    schema: {
+      tags: ['Work Orders'],
+      summary: 'Radio/dispatch ack — assignee or dispatcher confirms receipt',
+      security: [{ apiKey: [] }],
+      body: {
+        type: 'object',
+        required: ['role'],
+        properties: {
+          role: { type: 'string', enum: ['assignee', 'dispatch'] },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const wo = await getOwnedWorkOrder(req.params.id, req.user);
+    if (!wo) return reply.code(404).send({ error: 'Work order not found' });
+    const now = new Date().toISOString();
+    const patch = { updated_at: now };
+    if (req.body.role === 'assignee') {
+      const isAssignee = wo.assignee_id && String(wo.assignee_id) === String(req.user.Id);
+      if (!isAssignee && !(await canManageWorkOrder(req.user, wo))) {
+        return reply.code(403).send({ error: 'Only the assignee can ack as field tech' });
+      }
+      patch.assignee_ack_at = now;
+    } else {
+      if (!(await canManageWorkOrder(req.user, wo))) {
+        return reply.code(403).send({ error: 'Only dispatch can ack assignment' });
+      }
+      patch.dispatch_ack_at = now;
+    }
+    const updated = await db.update(tables.work_orders, rowId(wo), patch);
+    return enrichWorkOrder(updated, req.user);
   });
 
   // Incident links
@@ -827,7 +900,55 @@ export default async function workOrdersRoutes(fastify) {
       category,
       uploaded_by: String(req.user.Id),
     });
-    return reply.code(201).send(att);
+    return reply.code(201).send({ ...att, annotations: [] });
+  });
+
+  fastify.patch('/work-orders/:id/attachments/:attId', {
+    preHandler: requireAuth,
+    schema: {
+      tags: ['Work Orders'],
+      summary: 'Update attachment caption or photo markup',
+      security: [{ apiKey: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          caption: { type: 'string' },
+          category: { type: 'string', enum: ATTACHMENT_CATEGORIES },
+          annotations: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                type: { type: 'string', enum: ['arrow', 'line'] },
+                x1: { type: 'number' },
+                y1: { type: 'number' },
+                x2: { type: 'number' },
+                y2: { type: 'number' },
+                color: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const wo = await getOwnedWorkOrder(req.params.id, req.user);
+    if (!wo) return reply.code(404).send({ error: 'Work order not found' });
+    const att = await db.get(tables.work_order_attachments, req.params.attId);
+    if (!att || String(att.work_order_id) !== String(rowId(wo))) {
+      return reply.code(404).send({ error: 'Attachment not found' });
+    }
+    const patch = {};
+    if (req.body.caption !== undefined) patch.caption = req.body.caption;
+    if (req.body.category !== undefined) {
+      patch.category = ATTACHMENT_CATEGORIES.includes(req.body.category) ? req.body.category : att.category;
+    }
+    if (req.body.annotations !== undefined) {
+      patch.annotations = JSON.stringify(req.body.annotations || []);
+    }
+    if (!Object.keys(patch).length) return reply.code(400).send({ error: 'No changes' });
+    const updated = await db.update(tables.work_order_attachments, rowId(att), patch);
+    return { ...updated, annotations: parseAnnotations(updated.annotations) };
   });
 
   fastify.delete('/work-orders/:id/attachments/:attId', {

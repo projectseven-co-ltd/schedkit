@@ -3,6 +3,7 @@
 import { createHash } from 'crypto';
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
+import { getActiveBeaconForUser, getActiveBeaconForWorkOrder } from '../lib/activeBeacons.mjs';
 import { generateWorkOrderPdf } from '../lib/workOrderPdf.mjs';
 
 function escHtml(s) {
@@ -54,10 +55,21 @@ async function loadPublicData(wo) {
   };
 }
 
-function buildPortalPage(wo, data, token) {
+function buildPortalPage(wo, data, token, live = null) {
   const statusLabel = STATUS_LABELS[wo.status] || wo.status;
   const canSign = ['completed', 'signed_off'].includes(wo.status) && !data.customer_signed;
   const canPdf = ['completed', 'signed_off', 'closed'].includes(wo.status);
+  const enRoute = live?.en_route;
+  const enRouteCard = enRoute?.active ? `
+<div class="card" id="en-route-card">
+  <h2 style="font-size:16px;margin-bottom:8px;color:var(--ok)">Technician en route</h2>
+  <p class="muted">Your technician is on the way.${enRoute.accuracy ? ` GPS accuracy ~${Math.round(enRoute.accuracy)}m.` : ''}</p>
+  ${enRoute.lat != null && enRoute.lng != null ? `<p class="muted" style="margin-top:8px;font-family:monospace;font-size:12px">Last update: ${escHtml(new Date(enRoute.updated_at || Date.now()).toLocaleTimeString())}</p>` : ''}
+</div>` : (wo.en_route_at && !['completed','signed_off','closed'].includes(wo.status) ? `
+<div class="card">
+  <h2 style="font-size:16px;margin-bottom:8px;color:var(--ok)">Technician en route</h2>
+  <p class="muted">Dispatched at ${escHtml(new Date(wo.en_route_at).toLocaleString())}. Live GPS will appear when their beacon is active.</p>
+</div>` : '');
   const photos = data.attachments.map(a => `
     <figure class="photo">
       <img src="${escHtml(a.url.startsWith('http') ? a.url : a.url)}" alt="${escHtml(a.caption || 'Photo')}" loading="lazy">
@@ -109,6 +121,7 @@ input[type=text] { width: 100%; padding: 10px; border-radius: 4px; border: 1px s
   ${wo.site_address ? `<p class="muted">${escHtml(wo.site_address)}</p>` : ''}
   ${wo.description ? `<p class="muted" style="margin-top:12px">${escHtml(wo.description)}</p>` : ''}
 </div>
+${enRouteCard}
 <div class="card">
   <h2 style="font-size:16px;margin-bottom:8px">Checklist</h2>
   <div class="progress"><div class="progress-bar"></div></div>
@@ -131,6 +144,17 @@ ${canSign ? `<div class="card" id="sign-section">
 ${data.customer_signed ? `<div class="card"><p class="muted" style="color:var(--ok)">✓ Customer signature on file. Thank you!</p></div>` : ''}
 <script>
 const token = ${JSON.stringify(token)};
+const hasEnRouteFlag = ${JSON.stringify(!!wo.en_route_at)};
+setInterval(async () => {
+  try {
+    const res = await fetch('/work-orders/status/' + token + '/live.json');
+    if (!res.ok) return;
+    const data = await res.json();
+    const card = document.getElementById('en-route-card');
+    if (data.en_route?.active && !card) location.reload();
+    if (!data.en_route?.active && card && !hasEnRouteFlag) card.remove();
+  } catch {}
+}, 30000);
 const canvas = document.getElementById('sig-canvas');
 let drawing = false, ctx = canvas?.getContext('2d');
 if (ctx) { ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.lineCap = 'round'; }
@@ -171,7 +195,43 @@ async function submitSig() {
 </html>`;
 }
 
+function buildLiveStatus(wo) {
+  const woId = String(wo.Id ?? wo.id);
+  let enRoute = null;
+  if (wo.assignee_id) {
+    const beacon = getActiveBeaconForWorkOrder(woId)
+      || getActiveBeaconForUser(wo.assignee_id);
+    if (beacon && beacon.lat != null && beacon.lng != null) {
+      enRoute = {
+        active: true,
+        lat: beacon.lat,
+        lng: beacon.lng,
+        accuracy: beacon.accuracy ?? null,
+        updated_at: new Date(beacon.lastSeen).toISOString(),
+      };
+    }
+  }
+  return {
+    status: wo.status,
+    en_route_at: wo.en_route_at || null,
+    en_route: enRoute,
+    assignee_ack_at: wo.assignee_ack_at || null,
+    dispatch_ack_at: wo.dispatch_ack_at || null,
+  };
+}
+
 export default async function workOrderStatusRoutes(fastify) {
+  fastify.get('/work-orders/status/:token/live.json', {
+    schema: {
+      tags: ['Work Orders'],
+      summary: 'Customer portal live status (en route beacon)',
+    },
+  }, async (req, reply) => {
+    const wo = await loadWorkOrderByToken(req.params.token);
+    if (!wo) return reply.code(404).send({ error: 'Not found' });
+    return buildLiveStatus(wo);
+  });
+
   fastify.get('/work-orders/status/:token', {
     schema: {
       tags: ['Work Orders'],
@@ -182,7 +242,8 @@ export default async function workOrderStatusRoutes(fastify) {
     const wo = await loadWorkOrderByToken(req.params.token);
     if (!wo) return reply.code(404).type('text/html').send('<h1>Not found</h1>');
     const data = await loadPublicData(wo);
-    return reply.type('text/html').send(buildPortalPage(wo, data, req.params.token));
+    const live = buildLiveStatus(wo);
+    return reply.type('text/html').send(buildPortalPage(wo, data, req.params.token, live));
   });
 
   fastify.post('/work-orders/status/:token/sign', {

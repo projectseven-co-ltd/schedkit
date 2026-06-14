@@ -1189,6 +1189,15 @@ tr:hover td{background:var(--surface2)}
       </div>
       <div class="form-row" id="wo-detail-assignee-row" style="display:none"><label>Assignee</label><select id="wo-detail-assignee"></select></div>
       <div class="form-row" id="wo-detail-assignee-readonly" style="display:none"><label>Assignee</label><div id="wo-detail-assignee-label" style="font-size:13px;color:var(--muted)">—</div></div>
+      <div id="wo-ack-panel" style="margin:12px 0;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">Dispatch / radio ack</div>
+        <div id="wo-ack-status" style="color:var(--muted);margin-bottom:8px">—</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost" style="font-size:12px" type="button" onclick="woAck('dispatch')">Dispatch ack</button>
+          <button class="btn btn-ghost" style="font-size:12px" type="button" onclick="woAck('assignee')">Field ack</button>
+          <button class="btn btn-primary" style="font-size:12px" type="button" onclick="woEnRoute()">Mark en route</button>
+        </div>
+      </div>
       <div class="form-row"><label>Site address</label><input type="text" id="wo-detail-site"></div>
       <div class="form-row"><label>Description</label><textarea id="wo-detail-description"></textarea></div>
       <div class="modal-actions"><button class="btn btn-primary" onclick="updateWorkOrder()">Save</button></div>
@@ -1243,6 +1252,25 @@ tr:hover td{background:var(--surface2)}
   </div>
 </div>
 <input type="file" id="wo-photo-input" accept="image/*" style="display:none">
+
+<!-- WORK ORDER PHOTO MARKUP -->
+<div class="modal-overlay" id="wo-markup-modal" style="display:none">
+  <div class="modal" style="max-width:920px;max-height:92vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="margin:0;font-size:16px">Photo markup</h3>
+      <button class="btn btn-ghost" style="font-size:12px" type="button" onclick="closeWoMarkup()">Close</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Click and drag to draw red arrows. Saves as overlay metadata on the photo.</p>
+    <div style="position:relative;max-width:100%;overflow:auto;border:1px solid var(--border);border-radius:8px;background:#111">
+      <canvas id="wo-markup-canvas" style="max-width:100%;display:block;touch-action:none;cursor:crosshair"></canvas>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="font-size:12px" type="button" onclick="woMarkupUndo()">Undo last</button>
+      <button class="btn btn-ghost" style="font-size:12px" type="button" onclick="woMarkupClear()">Clear all</button>
+      <button class="btn btn-primary" style="font-size:12px" type="button" onclick="saveWoMarkup()">Save markup</button>
+    </div>
+  </div>
+</div>
 
 <!-- EVENT TYPE MODAL -->
 <div class="modal-overlay" id="et-modal">
@@ -5681,6 +5709,11 @@ function populateWoDetailFields(wo) {
     assigneeReadonly.style.display = '';
     document.getElementById('wo-detail-assignee-label').textContent = wo.assignee_name || 'Unassigned';
   }
+  const ackParts = [];
+  if (wo.dispatch_ack_at) ackParts.push(`Dispatch ack ${new Date(wo.dispatch_ack_at).toLocaleString()}`);
+  if (wo.assignee_ack_at) ackParts.push(`Field ack ${new Date(wo.assignee_ack_at).toLocaleString()}`);
+  if (wo.en_route_at) ackParts.push(`En route ${new Date(wo.en_route_at).toLocaleString()}`);
+  document.getElementById('wo-ack-status').textContent = ackParts.length ? ackParts.join(' · ') : 'No acks yet';
 }
 
 async function populateWoAssigneeSelect(wo) {
@@ -5879,7 +5912,147 @@ async function woClockOut() { if (!activeWorkOrder?.Id) return; const r = await 
 function renderWoPhotos(atts) {
   const grid = document.getElementById('wo-photos-grid');
   if (!atts.length) { grid.innerHTML = '<p style="color:var(--muted);font-size:13px">No photos yet.</p>'; return; }
-  grid.innerHTML = atts.map(a => `<div><img src="${esc(a.url)}" style="width:100%;border-radius:6px;border:1px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:4px">${esc(a.category)} ${esc(a.caption||'')}</div></div>`).join('');
+  grid.innerHTML = atts.map(a => {
+    const ann = Array.isArray(a.annotations) ? a.annotations : [];
+    const badge = ann.length ? ` · <span style="color:var(--accent)">${ann.length} markup</span>` : '';
+    return `<div style="cursor:pointer" onclick="openWoPhotoMarkupById(${a.Id})" title="Click to annotate">
+      <img src="${esc(a.url)}" style="width:100%;border-radius:6px;border:1px solid var(--border)">
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${esc(a.category)} ${esc(a.caption||'')}${badge}</div>
+    </div>`;
+  }).join('');
+}
+
+let woMarkupAttId = null;
+let woMarkupAnnotations = [];
+let woMarkupDrag = null;
+
+function parseWoAnnotations(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try { return JSON.parse(raw); } catch { return []; }
+}
+
+function drawWoMarkupCanvas(img, canvas, annotations) {
+  const ctx = canvas.getContext('2d');
+  const maxW = Math.min(860, img.naturalWidth || img.width);
+  const scale = maxW / (img.naturalWidth || img.width);
+  canvas.width = maxW;
+  canvas.height = Math.round((img.naturalHeight || img.height) * scale);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  for (const ann of annotations) drawWoMarkupShape(ctx, ann, canvas.width, canvas.height);
+}
+
+function drawWoMarkupShape(ctx, ann, w, h) {
+  const x1 = ann.x1 * w, y1 = ann.y1 * h, x2 = ann.x2 * w, y2 = ann.y2 * h;
+  ctx.strokeStyle = ann.color || '#ff3333';
+  ctx.fillStyle = ann.color || '#ff3333';
+  ctx.lineWidth = 3;
+  if (ann.type === 'line') {
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); return;
+  }
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const head = 14;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - head * Math.cos(angle - 0.4), y2 - head * Math.sin(angle - 0.4));
+  ctx.lineTo(x2 - head * Math.cos(angle + 0.4), y2 - head * Math.sin(angle + 0.4));
+  ctx.closePath(); ctx.fill();
+}
+
+function openWoPhotoMarkupById(attId) {
+  const att = (activeWorkOrder?.attachments || []).find(a => String(a.Id) === String(attId));
+  if (!att) return;
+  woMarkupAttId = att.Id;
+  woMarkupAnnotations = parseWoAnnotations(att.annotations);
+  const modal = document.getElementById('wo-markup-modal');
+  const canvas = document.getElementById('wo-markup-canvas');
+  modal.style.display = 'flex';
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    drawWoMarkupCanvas(img, canvas, woMarkupAnnotations);
+    if (canvas._woMarkupInit) return;
+    canvas._woMarkupInit = true;
+    canvas.onmousedown = e => {
+      const r = canvas.getBoundingClientRect();
+      woMarkupDrag = { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) };
+    };
+    canvas.onmouseup = e => {
+      if (!woMarkupDrag) return;
+      const r = canvas.getBoundingClientRect();
+      const x2 = (e.clientX - r.left) * (canvas.width / r.width);
+      const y2 = (e.clientY - r.top) * (canvas.height / r.height);
+      if (Math.hypot(x2 - woMarkupDrag.x, y2 - woMarkupDrag.y) < 8) { woMarkupDrag = null; return; }
+      woMarkupAnnotations.push({
+        type: 'arrow',
+        x1: woMarkupDrag.x / canvas.width,
+        y1: woMarkupDrag.y / canvas.height,
+        x2: x2 / canvas.width,
+        y2: y2 / canvas.height,
+        color: '#ff3333',
+      });
+      woMarkupDrag = null;
+      drawWoMarkupCanvas(img, canvas, woMarkupAnnotations);
+    };
+    canvas.onmouseleave = () => { woMarkupDrag = null; };
+  };
+  img.src = att.url.startsWith('http') ? att.url : att.url;
+}
+
+function closeWoMarkup() {
+  document.getElementById('wo-markup-modal').style.display = 'none';
+  woMarkupAttId = null;
+  woMarkupAnnotations = [];
+}
+
+function woMarkupUndo() {
+  if (!woMarkupAnnotations.length) return;
+  woMarkupAnnotations.pop();
+  const att = (activeWorkOrder?.attachments || []).find(a => String(a.Id) === String(woMarkupAttId));
+  if (!att) return;
+  const canvas = document.getElementById('wo-markup-canvas');
+  const img = new Image();
+  img.onload = () => drawWoMarkupCanvas(img, canvas, woMarkupAnnotations);
+  img.src = att.url.startsWith('http') ? att.url : att.url;
+}
+
+function woMarkupClear() {
+  woMarkupAnnotations = [];
+  const att = (activeWorkOrder?.attachments || []).find(a => String(a.Id) === String(woMarkupAttId));
+  if (!att) return;
+  const canvas = document.getElementById('wo-markup-canvas');
+  const img = new Image();
+  img.onload = () => drawWoMarkupCanvas(img, canvas, woMarkupAnnotations);
+  img.src = att.url.startsWith('http') ? att.url : att.url;
+}
+
+async function saveWoMarkup() {
+  if (!activeWorkOrder?.Id || !woMarkupAttId) return;
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/attachments/${woMarkupAttId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ annotations: woMarkupAnnotations }),
+  });
+  if (!r?.ok) return toast('Save markup failed', 'err');
+  closeWoMarkup();
+  await refreshActiveWorkOrder();
+  toast('Markup saved', 'ok');
+}
+
+async function woAck(role) {
+  if (!activeWorkOrder?.Id) return;
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/ack`, { method: 'POST', body: JSON.stringify({ role }) });
+  if (!r?.ok) return toast('Ack failed', 'err');
+  await refreshActiveWorkOrder();
+  toast(role === 'dispatch' ? 'Dispatch ack recorded' : 'Field ack recorded', 'ok');
+}
+
+async function woEnRoute() {
+  if (!activeWorkOrder?.Id) return;
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/en-route`, { method: 'POST', body: '{}' });
+  if (!r?.ok) return toast('En route failed', 'err');
+  await refreshActiveWorkOrder();
+  toast('Marked en route — customer portal will update when beacon is active', 'ok');
 }
 
 function renderWoChecklist(items) {
