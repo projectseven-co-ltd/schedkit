@@ -12,7 +12,14 @@ import { readFileSync } from 'fs';
 import { execSync } from 'child_process';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_VERSION = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8')).version;
-const GIT_SHA = (() => { try { return readFileSync(join(__dirname, '../.git-sha'), 'utf8').trim(); } catch { try { return execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim(); } catch { return 'unknown'; } } })();
+const GIT_SHA = (() => {
+  try { return readFileSync(join(__dirname, '../.git-sha'), 'utf8').trim(); }
+  catch {
+    if (process.env.NODE_ENV === 'production') return process.env.GIT_SHA || 'unknown';
+    try { return execSync('git rev-parse --short HEAD', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); }
+    catch { return 'unknown'; }
+  }
+})();
 import { initDb, db } from './lib/db.mjs';
 import { tables } from './lib/tables.mjs';
 import eventTypesRoutes from './routes/eventTypes.mjs';
@@ -41,6 +48,19 @@ import alertsRoutes from './routes/alerts.mjs';
 import adminRoutes from './routes/admin.mjs';
 
 const fastify = Fastify({ logger: true, bodyLimit: 10 * 1024 * 1024 }); // 10MB for image captures
+
+const MAINTENANCE_MODE = process.env.MAINTENANCE_MODE === 'true';
+const maintenanceHtml = MAINTENANCE_MODE
+  ? readFileSync(join(__dirname, '../public/maintenance.html'), 'utf8')
+  : null;
+
+if (MAINTENANCE_MODE) {
+  fastify.addHook('onRequest', async (req, reply) => {
+    const path = req.url.split('?')[0];
+    if (path === '/health' || path === '/version') return;
+    return reply.code(503).header('Retry-After', '120').type('text/html').send(maintenanceHtml);
+  });
+}
 
 await fastify.register(cors, { origin: true });
 await fastify.register(formbody);
@@ -74,7 +94,7 @@ await fastify.register(swagger, {
   openapi: {
     info: {
       title: 'SchedKit API',
-      description: `**SchedKit** is an API-first white-label scheduling platform.\n\nAll endpoints require authentication via **\`x-api-key\`** (user API key) or **\`x-admin-secret\`** (admin) unless tagged **Public**.\n\n### Quick start\n1. Get your API key from the dashboard → Settings\n2. Pass it as \`x-api-key: YOUR_KEY\` on every request\n3. Create an assignment type, set your standby windows, share your manifest link\n\n### Tags\n- **Assignment Types** — Define assignable manifest types (duration, buffer, confirmation requirements)\n- **Availability** — Set weekly recurring availability windows\n- **Assignments** — View, reschedule, cancel, confirm/decline assignments (API: `/v1/bookings`)\n- **Auth** — Magic link login, session management\n- **Public** — Unauthenticated endpoints (availability slots, manifest page data)`,
+      description: `**SchedKit** is an API-first white-label scheduling platform.\n\nAll endpoints require authentication via **\`x-api-key\`** (user API key) or **\`x-admin-secret\`** (admin) unless tagged **Public**.\n\n### Quick start\n1. Get your API key from the dashboard → Settings\n2. Pass it as \`x-api-key: YOUR_KEY\` on every request\n3. Create an assignment type, set your standby windows, share your manifest link\n\n### Tags\n- **Assignment Types** — Define assignable manifest types (duration, buffer, confirmation requirements)\n- **Availability** — Set weekly recurring availability windows\n- **Assignments** — View, reschedule, cancel, confirm/decline assignments (API: \`/v1/bookings\`)\n- **Auth** — Magic link login, session management\n- **Public** — Unauthenticated endpoints (availability slots, manifest page data)`,
       version: '1.0.0',
     },
     tags: [

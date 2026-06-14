@@ -18,6 +18,7 @@ COPY public ./public
 COPY migrations ./migrations
 COPY docker/entrypoint.sh /usr/local/bin/schedkit-entrypoint.sh
 RUN chmod +x /usr/local/bin/schedkit-entrypoint.sh \
+  && printf '%s\n' "$GIT_SHA" > /app/.git-sha \
   && mkdir -p public/captures \
   && chown -R app:app /app
 USER app

@@ -69,6 +69,7 @@ services:
       STRIPE_PRICE_AGENCY:
       NTFY_TOPIC:
       NTFY_DEFAULT_TOPIC:
+      # MAINTENANCE_MODE: "true"
     volumes:
       - captures_data:/app/public/captures
     depends_on:
