@@ -577,10 +577,13 @@ tr:hover td{background:var(--surface2)}
             <div class="sitrep-feed-empty">Loading assignments...</div>
           </div>
         </div>
-        <div class="sitrep-panel live">
+        <div class="sitrep-panel live" id="sitrep-activity-panel">
           <div class="sitrep-panel-head">
             <h3>Activity Feed</h3>
-            <span style="font-size:11px;font-family:var(--font-mono);color:var(--accent);animation:pulse-accent 2s infinite" id="sitrep-feed-live">● LIVE</span>
+            <div style="display:flex;align-items:center;gap:10px">
+              <button type="button" class="btn btn-ghost" id="sitrep-live-toggle" onclick="toggleSitrepLiveFeed()" style="font-size:10px;padding:4px 10px;font-family:var(--font-mono);letter-spacing:.06em">Live on</button>
+              <span style="font-size:11px;font-family:var(--font-mono);color:var(--accent);animation:pulse-accent 2s infinite" id="sitrep-feed-live">● LIVE</span>
+            </div>
           </div>
           <div class="sitrep-panel-body" id="sitrep-activity-feed">
             <div class="sitrep-feed-empty">Waiting for activity...</div>
@@ -1423,7 +1426,8 @@ async function init() {
   connectTicketStream();
   connectSignalStream();
   // Refresh SITREP tiles every 60s
-  setInterval(() => { if (document.getElementById('section-sitrep')?.style.display !== 'none') loadSitrep(); }, 60000);
+  setInterval(() => { if (document.getElementById('section-sitrep')?.classList.contains('active')) loadSitrep(); }, 60000);
+  updateSitrepLiveUI();
 }
 
 
@@ -1616,23 +1620,88 @@ async function loadSection(name) {
 
 // ── SITREP ───────────────────────────────────────────
 let _etCache = {}; // event type id → name cache
-const sitrepFeed = [];
+let sitrepBaseline = [];
+let sitrepLiveFeed = [];
 const SITREP_MAX_FEED = 40;
 
-function sitrepPushFeed(kind, text, ts) {
-  sitrepFeed.unshift({ kind, text, ts: ts || new Date().toISOString() });
-  if (sitrepFeed.length > SITREP_MAX_FEED) sitrepFeed.length = SITREP_MAX_FEED;
+function sitrepLiveFeedEnabled() {
+  return localStorage.getItem('schedkit_sitrep_live') === '1';
+}
+
+function setSitrepLiveFeedEnabled(on) {
+  localStorage.setItem('schedkit_sitrep_live', on ? '1' : '0');
+  updateSitrepLiveUI();
+  renderSitrepFeed();
+}
+
+function toggleSitrepLiveFeed() {
+  setSitrepLiveFeedEnabled(!sitrepLiveFeedEnabled());
+}
+
+function updateSitrepLiveUI() {
+  const on = sitrepLiveFeedEnabled();
+  const liveEl = document.getElementById('sitrep-feed-live');
+  const statusEl = document.getElementById('sitrep-status-text');
+  const dot = document.querySelector('#section-sitrep .sitrep-status-bar .sitrep-status-dot');
+  const panel = document.getElementById('sitrep-activity-panel');
+  const toggle = document.getElementById('sitrep-live-toggle');
+  if (liveEl) {
+    liveEl.textContent = on ? '● LIVE' : '○ SNAPSHOT';
+    liveEl.style.color = on ? 'var(--accent)' : 'var(--muted)';
+    liveEl.style.animation = on ? 'pulse-accent 2s infinite' : 'none';
+  }
+  if (toggle) toggle.textContent = on ? 'Live on' : 'Live off';
+  if (statusEl) {
+    statusEl.textContent = on
+      ? 'SYSTEM NOMINAL · LIVE FEED ACTIVE'
+      : 'SYSTEM NOMINAL · SNAPSHOT MODE';
+  }
+  if (dot) {
+    dot.style.animation = on ? 'pulse-accent 2s infinite' : 'none';
+    dot.style.background = on ? 'var(--accent)' : 'var(--muted)';
+  }
+  if (panel) panel.classList.toggle('live', on);
+}
+
+function sitrepItemId(item) {
+  return item.id || `${item.kind}|${item.text}|${item.ts}`;
+}
+
+function getSitrepFeedMerged() {
+  const map = new Map();
+  sitrepBaseline.forEach(item => map.set(sitrepItemId(item), item));
+  if (sitrepLiveFeedEnabled()) {
+    sitrepLiveFeed.forEach(item => map.set(sitrepItemId(item), item));
+  }
+  return [...map.values()]
+    .sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0))
+    .slice(0, SITREP_MAX_FEED);
+}
+
+function sitrepPushFeed(kind, text, ts, id) {
+  if (!sitrepLiveFeedEnabled()) return;
+  const item = {
+    id: id || `live:${kind}:${ts || Date.now()}`,
+    kind,
+    text,
+    ts: ts || new Date().toISOString(),
+    live: true,
+  };
+  sitrepLiveFeed = sitrepLiveFeed.filter(x => sitrepItemId(x) !== sitrepItemId(item));
+  sitrepLiveFeed.unshift(item);
+  if (sitrepLiveFeed.length > SITREP_MAX_FEED) sitrepLiveFeed.length = SITREP_MAX_FEED;
   renderSitrepFeed();
 }
 
 function renderSitrepFeed() {
   const el = document.getElementById('sitrep-activity-feed');
   if (!el) return;
-  if (!sitrepFeed.length) {
-    el.innerHTML = `<div class="sitrep-feed-empty">Waiting for activity...</div>`;
+  const feed = getSitrepFeedMerged();
+  if (!feed.length) {
+    el.innerHTML = `<div class="sitrep-feed-empty">${sitrepLiveFeedEnabled() ? 'Waiting for activity...' : 'No recent activity'}</div>`;
     return;
   }
-  el.innerHTML = sitrepFeed.map(item => `
+  el.innerHTML = feed.map(item => `
     <div class="sitrep-feed-item ${item.kind}">
       <div style="flex:1;display:flex;align-items:baseline;gap:0">
         <div class="sitrep-feed-time">${esc(fmtRelTime(item.ts))}</div>
@@ -1661,10 +1730,11 @@ function fmtShortTime(iso) {
 
 async function loadSitrep() {
   // Fire requests in parallel
-  const [asgRes, tickRes, etRes] = await Promise.all([
+  const [asgRes, tickRes, etRes, alertRes] = await Promise.all([
     apiFetch('/v1/bookings?limit=100'),
     apiFetch('/v1/tickets?limit=100'),
     apiFetch('/v1/event-types'),
+    apiFetch('/v1/alerts?status=firing&limit=1'),
   ]);
 
   // Build event type name cache
@@ -1676,6 +1746,7 @@ async function loadSitrep() {
   const now = new Date();
   const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
   const todayEnd = new Date(now); todayEnd.setHours(23,59,59,999);
+  const baseline = [];
 
   // Assignments tile
   let assignmentsToday = 0, pendingCount = 0, upcomingList = [];
@@ -1691,15 +1762,15 @@ async function loadSitrep() {
       .sort((a,b) => new Date(a.start_time) - new Date(b.start_time))
       .slice(0, 5);
 
-    // Seed feed with recent confirmed bookings
     bookings
       .filter(b => b.status === 'confirmed')
-      .sort((a,b) => new Date(b.created_at||b.CreatedAt||0) - new Date(a.created_at||a.CreatedAt||0))
-      .slice(0, 5)
-      .forEach(b => sitrepFeed.push({
+      .sort((a,b) => new Date(b.created_at||b.CreatedAt||b.start_time||0) - new Date(a.created_at||a.CreatedAt||a.start_time||0))
+      .slice(0, 8)
+      .forEach(b => baseline.push({
+        id: `booking:${b.Id || b.uid}`,
         kind: 'assignment',
         text: `[✓] Assignment · ${b.attendee_name || 'Attendee'} · ${_etCache[b.event_type_id] || b.event_type_name || 'Event'}`,
-        ts: b.created_at || b.CreatedAt,
+        ts: b.created_at || b.CreatedAt || b.start_time,
       }));
   }
 
@@ -1737,11 +1808,11 @@ async function loadSitrep() {
     breachedCount = tickets.filter(t => (t.status === 'open' || t.status === 'in_progress') && t.sla_status === 'breached').length;
     inProgressCount = tickets.filter(t => t.status === 'in_progress').length;
 
-    // Seed feed with recent tickets
     tickets
       .sort((a,b) => new Date(b.CreatedAt||b.created_at||0) - new Date(a.CreatedAt||a.created_at||0))
-      .slice(0, 5)
-      .forEach(t => sitrepFeed.push({
+      .slice(0, 8)
+      .forEach(t => baseline.push({
+        id: `ticket:${t.Id}`,
         kind: 'incident',
         text: `[■] Incident · ${t.title || 'Untitled'} · ${(t.priority||'normal').toUpperCase()}`,
         ts: t.CreatedAt || t.created_at,
@@ -1756,10 +1827,18 @@ async function loadSitrep() {
   const incTile = document.getElementById('sitrep-tile-incidents');
   if (incTile) incTile.className = `sitrep-stat ${breachedCount > 0 ? 'crit' : openIncidents > 0 ? 'warn' : 'ok'}`;
 
-  // Signals tile — live count
-  // Beacon count — beacons are broadcast-only (not persisted), track via SSE state
+  // Signals tile — firing alerts (not beacon count)
+  let firingAlerts = 0;
+  if (alertRes?.ok) {
+    const alertData = await alertRes.json();
+    firingAlerts = alertData.total ?? alertData.alerts?.length ?? 0;
+  }
+  document.getElementById('sitrep-signals-active').textContent = firingAlerts;
+  const sigTile = document.getElementById('sitrep-tile-signals');
+  if (sigTile) sigTile.className = `sitrep-stat ${firingAlerts > 0 ? 'warn' : ''}`;
+
+  // Beacon count for war room stats only
   let activeBeacons = Object.keys(window._liveBeacons || {}).length;
-  document.getElementById('sitrep-signals-active').textContent = activeBeacons || '—';
   const wrBeacon = document.getElementById('wr-beacon-count');
   if (wrBeacon) wrBeacon.textContent = activeBeacons || '0';
 
@@ -1779,8 +1858,7 @@ async function loadSitrep() {
     slaStatus.style.color = '';
   }
 
-  // Sort and render feed
-  sitrepFeed.sort((a,b) => new Date(b.ts||0) - new Date(a.ts||0));
+  sitrepBaseline = baseline;
   renderSitrepFeed();
 
   // Update status bar
@@ -1792,23 +1870,43 @@ async function loadSitrep() {
 const _origTicketStreamHandler = null;
 function sitrepHandleSSE(type, payload) {
   if (type === 'incident.created') {
-    sitrepPushFeed('incident', `[■] Incident · ${payload.title || 'Untitled'} · ${(payload.priority||'normal').toUpperCase()}`, payload.CreatedAt || payload.created_at);
+    sitrepPushFeed(
+      'incident',
+      `[■] Incident · ${payload.title || 'Untitled'} · ${(payload.priority||'normal').toUpperCase()}`,
+      payload.CreatedAt || payload.created_at,
+      `ticket:${payload.Id}:created`,
+    );
     // Refresh incident tile count live
     const el = document.getElementById('sitrep-incidents-open');
     if (el) el.textContent = parseInt(el.textContent||0,10) + 1;
   }
   if (type === 'incident.updated' || type === 'incident.resolved') {
-    sitrepPushFeed(type === 'incident.resolved' ? 'ok' : 'incident', `${type === 'incident.resolved' ? '[✓] Resolved' : '[~] Updated'} · ${payload.title || 'Untitled'}`, new Date().toISOString());
+    sitrepPushFeed(
+      type === 'incident.resolved' ? 'ok' : 'incident',
+      `${type === 'incident.resolved' ? '[✓] Resolved' : '[~] Updated'} · ${payload.title || 'Untitled'}`,
+      payload.UpdatedAt || payload.updated_at || new Date().toISOString(),
+      `ticket:${payload.Id}:${type}`,
+    );
   }
   if (type === 'incident.breached') {
-    sitrepPushFeed('alert', `[×] SLA breach · ${payload.title || '#' + payload.Id}`, new Date().toISOString());
+    sitrepPushFeed(
+      'alert',
+      `[×] SLA breach · ${payload.title || '#' + payload.Id}`,
+      new Date().toISOString(),
+      `ticket:${payload.Id}:breach`,
+    );
     const slaTile = document.getElementById('sitrep-tile-sla');
     if (slaTile) slaTile.className = 'sitrep-stat crit';
     const slaEl = document.getElementById('sitrep-sla-status');
     if (slaEl) { slaEl.textContent = 'BREACH'; slaEl.style.color = 'var(--red)'; }
   }
   if (type === 'reply.added') {
-    sitrepPushFeed('reply', `[→] Reply · #${payload.ticket_id}`, new Date().toISOString());
+    sitrepPushFeed(
+      'reply',
+      `[→] Reply · #${payload.ticket_id}`,
+      payload.created_at || payload.CreatedAt || new Date().toISOString(),
+      `reply:${payload.reply?.Id || payload.ticket_id}:${payload.created_at || Date.now()}`,
+    );
   }
   if (type === 'signal.beacon') {
     const dev = payload.meta ? (JSON.parse(payload.meta||'{}').device_id || 'unknown') : 'unknown';
@@ -1818,25 +1916,45 @@ function sitrepHandleSSE(type, payload) {
     const cutoff = Date.now() - 120000;
     Object.keys(window._liveBeacons).forEach(k => { if (window._liveBeacons[k] < cutoff) delete window._liveBeacons[k]; });
     const bc = Object.keys(window._liveBeacons).length;
-    const bEl = document.getElementById('sitrep-signals-active'); if (bEl) bEl.textContent = bc;
     const wrB = document.getElementById('wr-beacon-count'); if (wrB) wrB.textContent = bc;
-    sitrepPushFeed('beacon', `[+] Beacon · ${dev}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`, payload.created_at);
+    sitrepPushFeed(
+      'beacon',
+      `[+] Beacon · ${dev}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`,
+      payload.created_at,
+      `beacon:${dev}:${payload.created_at || Date.now()}`,
+    );
   }
   if (type === 'signal.beacon_off') {
     const offDev = payload.device_id || (payload.meta ? (JSON.parse(payload.meta||'{}').device_id || null) : null) || `user-${payload.user_id}`;
     if (window._liveBeacons) delete window._liveBeacons[offDev];
     const bc2 = Object.keys(window._liveBeacons||{}).length;
-    const bEl2 = document.getElementById('sitrep-signals-active'); if (bEl2) bEl2.textContent = bc2 || '—';
     const wrB2 = document.getElementById('wr-beacon-count'); if (wrB2) wrB2.textContent = bc2;
-    sitrepPushFeed('beacon', `[-] Offline · ${offDev}`, new Date().toISOString());
+    sitrepPushFeed(
+      'beacon',
+      `[-] Offline · ${offDev}`,
+      new Date().toISOString(),
+      `beacon-off:${offDev}:${Date.now()}`,
+    );
   }
   if (type === 'signal.capture') {
     const dev = payload.meta ? (JSON.parse(payload.meta||'{}').device_id || 'unknown') : 'unknown';
-    sitrepPushFeed('capture', `[▲] Capture · ${dev}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`, payload.created_at);
+    sitrepPushFeed(
+      'capture',
+      `[▲] Capture · ${dev}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`,
+      payload.created_at,
+      `capture:${dev}:${payload.created_at || Date.now()}`,
+    );
   }
   if (type === 'signal.alert') {
     const dev2 = payload.device_id || (payload.meta ? (JSON.parse(payload.meta||'{}').device_id || null) : null) || `user-${payload.user_id}`;
-    sitrepPushFeed('alert', `[!] Alert · ${dev2}${payload.note ? ` · ${payload.note}` : ''}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`, payload.created_at);
+    sitrepPushFeed(
+      'alert',
+      `[!] Alert · ${dev2}${payload.note ? ` · ${payload.note}` : ''}${payload.lat ? ` · ${Number(payload.lat).toFixed(4)}, ${Number(payload.lng).toFixed(4)}` : ''}`,
+      payload.created_at,
+      `alert:${dev2}:${payload.created_at || Date.now()}`,
+    );
+    const sigEl = document.getElementById('sitrep-signals-active');
+    if (sigEl) sigEl.textContent = String(parseInt(sigEl.textContent || '0', 10) + 1);
   }
 }
 
