@@ -317,11 +317,12 @@ export default async function bookingsRoutes(fastify) {
     const cancelUrl = `https://${process.env.BASE_DOMAIN || 'schedkit.net'}/v1/cancel/${cancel_token}`;
     const rescheduleUrl = `https://${process.env.BASE_DOMAIN || 'schedkit.net'}/v1/reschedule/${reschedule_token}`;
 
-    // Check client flag
+    // Check client flag (normalized email)
     let flag = null;
     try {
+      const attendeeEmail = String(attendee_email || '').trim().toLowerCase();
       const flagResult = await db.find(tables.client_flags,
-        `(flagged_by,eq,${user.Id})~and(email,eq,${attendee_email})`);
+        `(flagged_by,eq,${user.Id})~and(email,eq,${attendeeEmail})`);
       flag = flagResult.list?.[0] || null;
     } catch(e) { /* non-fatal */ }
 

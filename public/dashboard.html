@@ -155,6 +155,18 @@ tr:hover td{background:var(--surface2)}
 .badge-ok{background:rgba(74,222,128,.1);color:var(--green)}
 .badge-warning{background:rgba(251,191,36,.12);color:#fbbf24}
 .badge-breached{background:rgba(255,95,95,.12);color:var(--red)}
+.client-flag-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.client-flag-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10px;font-family:var(--font-mono);letter-spacing:.04em;border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.client-flag-badge.caution{background:rgba(245,166,35,.12);color:#f5a623;border-color:rgba(245,166,35,.25)}
+.client-flag-badge.high{background:rgba(255,95,95,.12);color:var(--red);border-color:rgba(255,95,95,.25)}
+.client-flag-badge.blocked{background:rgba(255,23,68,.12);color:#ff1744;border-color:rgba(255,23,68,.25)}
+.client-flag-badge.trust{background:rgba(74,222,128,.12);color:#4ade80;border-color:rgba(74,222,128,.25)}
+.client-flag-badge.ok{background:rgba(74,222,128,.08);color:#86efac;border-color:rgba(74,222,128,.18)}
+.assignments-table tr.row-flag-blocked{box-shadow:inset 3px 0 0 #ff1744}
+.assignments-table tr.row-flag-high{box-shadow:inset 3px 0 0 var(--red)}
+.assignments-table tr.row-flag-caution{box-shadow:inset 3px 0 0 #f5a623}
+.assignments-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.assignments-toolbar select,.assignments-toolbar input{font-size:12px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text)}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s;text-decoration:none}
@@ -596,10 +608,21 @@ tr:hover td{background:var(--surface2)}
     <div class="section" id="section-assignments">
       <div class="page-header" style="margin-bottom:16px">
         <h2>Assignments</h2>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="loadAssignments()" style="font-size:12px;padding:6px 14px">Refresh</button>
           <button class="btn btn-ghost" id="toggle-cancelled-btn" onclick="toggleCancelled()" style="font-size:12px;padding:6px 14px">Show Cancelled</button>
           <button class="btn btn-primary" onclick="openCreateAssignmentModal()">+ New Assignment</button>
         </div>
+      </div>
+      <div class="assignments-toolbar">
+        <select id="assignments-filter-status" onchange="renderAssignmentsTable(window._allAssignments || [])">
+          <option value="active">Active (hide cancelled)</option>
+          <option value="all">All statuses</option>
+          <option value="pending">Pending only</option>
+          <option value="confirmed">Confirmed only</option>
+          <option value="cancelled">Cancelled only</option>
+        </select>
+        <input type="search" id="assignments-filter-search" placeholder="Search name or email…" oninput="renderAssignmentsTable(window._allAssignments || [])" style="min-width:200px;flex:1">
       </div>
       <div class="stats">
         <div class="stat"><div class="stat-label">upcoming</div><div class="stat-value" id="stat-upcoming">—</div></div>
@@ -1214,6 +1237,7 @@ tr:hover td{background:var(--surface2)}
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('flag-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveFlag()">Save Flag</button>
+      <button class="btn btn-ghost" id="flag-remove-btn" style="display:none;color:var(--red)" onclick="removeFlagFromModal()">Remove Flag</button>
     </div>
   </div>
 </div>
@@ -2037,9 +2061,18 @@ async function switchKitTab(tab) {
 
 // ── Assignments ──────────────────────────────────────
 async function loadAssignments() {
-  const res = await apiFetch('/v1/bookings?limit=100');
+  const [res, etRes] = await Promise.all([
+    apiFetch('/v1/bookings?limit=100'),
+    apiFetch('/v1/event-types'),
+  ]);
   if (!res?.ok) return;
   const { bookings, total } = await res.json();
+
+  if (etRes?.ok) {
+    const etData = await etRes.json();
+    _etCache = {};
+    (etData.event_types || []).forEach(et => { _etCache[String(et.Id)] = et.title; });
+  }
 
   const now = new Date();
   const upcoming = bookings.filter(b => b.status === 'confirmed' && new Date(b.start_time) > now);
@@ -2056,23 +2089,62 @@ async function loadAssignments() {
   window._allAssignments = bookings;
   window._showCancelled = window._showCancelled || false;
 
-  // Load flags for badge display
+  // Load flags for badge display (keyed by normalized email)
   const flagRes = await apiFetch('/v1/clients');
   window._clientFlags = {};
   if (flagRes?.ok) {
     const { flags } = await flagRes.json();
-    flags.forEach(f => { window._clientFlags[f.email] = f; });
+    flags.forEach(f => {
+      const key = normalizeClientEmail(f.email);
+      if (key) window._clientFlags[key] = { ...f, email: key };
+    });
   }
 
   renderAssignmentsTable(bookings);
 }
 
+function normalizeClientEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function lookupClientFlag(email) {
+  return window._clientFlags?.[normalizeClientEmail(email)] || null;
+}
+
+function clientFlagBadgesHtml(email) {
+  const f = lookupClientFlag(email);
+  if (!f) return '';
+  const badges = [];
+  if (f.risk_level && f.risk_level !== 'ok') {
+    const labels = { caution: '[!] Caution', high: '[×] High Risk', blocked: '[■] Blocked' };
+    badges.push(`<button type="button" class="client-flag-badge ${esc(f.risk_level)}" title="${esc(f.notes || '')}" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>${labels[f.risk_level] || esc(f.risk_level)}</button>`);
+  } else if (f.risk_level === 'ok' && (f.notes || '').trim()) {
+    badges.push(`<button type="button" class="client-flag-badge ok" title="${esc(f.notes)}" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>[✓] Cleared</button>`);
+  }
+  if (f.discount_flag) {
+    const dl = { vet: '[★] Vet/Responder', realtor: '[◆] Realtor', partner: '[▶] Partner' };
+    badges.push(`<button type="button" class="client-flag-badge trust" title="Trust tier" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>${dl[f.discount_flag] || esc(f.discount_flag)}</button>`);
+  }
+  if (!badges.length) return '';
+  return `<div class="client-flag-badges">${badges.join('')}</div>`;
+}
+
+function assignmentRowClass(email) {
+  const f = lookupClientFlag(email);
+  if (!f?.risk_level || f.risk_level === 'ok') return '';
+  return `row-flag-${f.risk_level}`;
+}
+
 function toggleCancelled() {
   window._showCancelled = !window._showCancelled;
   const btn = document.getElementById('toggle-cancelled-btn');
-  btn.textContent = window._showCancelled ? 'Hide Cancelled' : 'Show Cancelled';
-  btn.style.color = window._showCancelled ? 'var(--accent)' : '';
-  btn.style.borderColor = window._showCancelled ? 'var(--accent)' : '';
+  if (btn) {
+    btn.textContent = window._showCancelled ? 'Hide Cancelled' : 'Show Cancelled';
+    btn.style.color = window._showCancelled ? 'var(--accent)' : '';
+    btn.style.borderColor = window._showCancelled ? 'var(--accent)' : '';
+  }
+  const sel = document.getElementById('assignments-filter-status');
+  if (sel) sel.value = window._showCancelled ? 'all' : 'active';
   renderAssignmentsTable(window._allAssignments);
 }
 
@@ -2082,10 +2154,22 @@ function renderAssignmentsTable(bookings) {
     return;
   }
 
-  const visible = window._showCancelled ? bookings : bookings.filter(b => b.status !== 'cancelled');
+  const statusFilter = document.getElementById('assignments-filter-status')?.value || (window._showCancelled ? 'all' : 'active');
+  const search = (document.getElementById('assignments-filter-search')?.value || '').trim().toLowerCase();
+
+  let visible = bookings;
+  if (statusFilter === 'active') visible = bookings.filter(b => b.status !== 'cancelled');
+  else if (statusFilter !== 'all') visible = bookings.filter(b => b.status === statusFilter);
+  if (search) {
+    visible = visible.filter(b =>
+      (b.attendee_name || '').toLowerCase().includes(search)
+      || (b.attendee_email || '').toLowerCase().includes(search)
+      || (_etCache[b.event_type_id] || '').toLowerCase().includes(search)
+    );
+  }
 
   if (!visible.length) {
-    document.getElementById('bookings-table').innerHTML = `<div class="empty"><div class="empty-icon">[✓]</div><p>No active assignments. <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;display:inline" onclick="toggleCancelled()">Show cancelled</button></p></div>`;
+    document.getElementById('bookings-table').innerHTML = `<div class="empty"><div class="empty-icon">[✓]</div><p>No assignments match this filter.</p></div>`;
     return;
   }
 
@@ -2096,25 +2180,34 @@ function renderAssignmentsTable(bookings) {
     const canReschedule = b.status === 'confirmed' || b.status === 'pending';
     const canCancel = b.status === 'confirmed' || b.status === 'pending';
     const isPending = b.status === 'pending';
+    const flag = lookupClientFlag(b.attendee_email);
+    const etName = esc(_etCache[b.event_type_id] || '—');
+    const bJson = JSON.stringify(b).replace(/'/g,"&#39;");
+    const flagJson = JSON.stringify(flag || { email: normalizeClientEmail(b.attendee_email) }).replace(/'/g,"&#39;");
     const actions = [
-      isPending ? `<button class="btn btn-primary" style="font-size:12px;padding:6px 12px;background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3)" onclick='confirmBooking(${JSON.stringify(b.confirm_token||'').replace(/'/g,"&#39;")}, ${JSON.stringify(b).replace(/'/g,"&#39;")})'>✓ Confirm</button>` : '',
-      isPending ? `<button class="btn" style="font-size:12px;padding:6px 12px;background:rgba(255,95,95,.08);color:var(--red);border:1px solid rgba(255,95,95,.2)" onclick='declineBooking(${JSON.stringify(b.confirm_token||'').replace(/'/g,"&#39;")}, ${JSON.stringify(b).replace(/'/g,"&#39;")})'>✕ Decline</button>` : '',
-      canReschedule ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openRescheduleModal(${JSON.stringify(b).replace(/'/g,"&#39;")})'>Reschedule</button>` : '',
-      canCancel ? `<button class="btn" style="font-size:12px;padding:6px 12px;background:rgba(255,95,95,.08);color:var(--red);border:1px solid rgba(255,95,95,.2)" onclick='openCancelAssignmentModal(${JSON.stringify(b).replace(/'/g,"&#39;")})'>Cancel</button>` : '',
-      `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openFlagModal(${JSON.stringify(window._clientFlags?.[b.attendee_email]||{email:b.attendee_email}).replace(/'/g,"&#39;")})'>${window._clientFlags?.[b.attendee_email] ? '[×] Edit Flag' : '[+] Flag'}</button>`,
+      isPending ? `<button class="btn btn-primary" style="font-size:12px;padding:6px 12px;background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3)" onclick='confirmBooking(${JSON.stringify(b.confirm_token||'').replace(/'/g,"&#39;")}, ${bJson})'>✓ Confirm</button>` : '',
+      isPending ? `<button class="btn" style="font-size:12px;padding:6px 12px;background:rgba(255,95,95,.08);color:var(--red);border:1px solid rgba(255,95,95,.2)" onclick='declineBooking(${JSON.stringify(b.confirm_token||'').replace(/'/g,"&#39;")}, ${bJson})'>✕ Decline</button>` : '',
+      canReschedule ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openRescheduleModal(${bJson})'>Reschedule</button>` : '',
+      canCancel ? `<button class="btn" style="font-size:12px;padding:6px 12px;background:rgba(255,95,95,.08);color:var(--red);border:1px solid rgba(255,95,95,.2)" onclick='openCancelAssignmentModal(${bJson})'>Cancel</button>` : '',
+      `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='copyText(${JSON.stringify(b.attendee_email)})' title="Copy email">Copy</button>`,
+      `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openFlagModal(${flagJson})'>${flag ? 'Flag ▾' : '+ Flag'}</button>`,
     ].filter(Boolean).join(' ');
-    return `<tr>
-      <td data-label="Attendee"><strong>${esc(b.attendee_name)}</strong><br><span style="color:var(--muted);font-size:12px">${esc(b.attendee_email)}</span>${(() => { const f = window._clientFlags?.[b.attendee_email]; let badges = ''; if (f && f.risk_level && f.risk_level !== 'ok') { const c = {caution:'#f5a623',high:'var(--red)',blocked:'#ff1744'}[f.risk_level]||'#f5a623'; const l = {caution:'[!] Caution',high:'[×] High Risk',blocked:'[■] Blocked'}[f.risk_level]||f.risk_level; badges += `<br><span style="font-size:11px;font-family:var(--font-mono);color:${c};cursor:pointer" title="${esc(f.notes||'')}" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>${l}</span>`; } if (f && f.discount_flag) { const dl = {vet:'[★] Vet/Responder',realtor:'[◆] Realtor',partner:'[▶] Partner'}[f.discount_flag]||f.discount_flag; badges += `<br><span style="font-size:11px;font-family:var(--font-mono);color:#4ade80;cursor:pointer" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>${dl}</span>`; } return badges; })()}</td>
+    return `<tr class="${assignmentRowClass(b.attendee_email)}">
+      <td data-label="Attendee">
+        <strong>${esc(b.attendee_name)}</strong>
+        <div style="color:var(--muted);font-size:12px;margin-top:2px"><a href="mailto:${esc(b.attendee_email)}" style="color:var(--muted);text-decoration:none">${esc(b.attendee_email)}</a></div>
+        ${clientFlagBadgesHtml(b.attendee_email)}
+      </td>
+      <td data-label="Type" style="font-size:12px;color:var(--accent);font-family:var(--font-mono)">${etName}</td>
       <td data-label="Date &amp; Time">${dateStr}<br><span style="color:var(--muted);font-size:12px">${timeStr}</span></td>
       <td data-label="Status"><span class="badge badge-${b.status}">${b.status}</span></td>
-      <td data-label="Timezone" style="color:var(--muted);font-size:12px">${esc(b.attendee_timezone || '')}</td>
       <td data-label="Notes" style="color:var(--muted);font-size:12px;max-width:200px">${b.notes ? `<span title="${esc(b.notes)}">${esc(b.notes.slice(0,60))}${b.notes.length>60?'…':''}</span>` : ''}${b.custom_responses ? (() => { try { const r=JSON.parse(b.custom_responses); return Object.entries(r).map(([k,v])=>`<br><em style="color:var(--muted)">${esc(k)}:</em> ${esc(String(v))}`).join(''); } catch {return '';} })() : ''}</td>
-      <td data-label="" style="white-space:nowrap">${actions}</td>
+      <td data-label="Actions" style="white-space:nowrap">${actions}</td>
     </tr>`;
   }).join('');
 
-  document.getElementById('bookings-table').innerHTML = `<table class="bookings-table">
-    <thead><tr><th>Attendee</th><th>Date & Time</th><th>Status</th><th>Timezone</th><th></th></tr></thead>
+  document.getElementById('bookings-table').innerHTML = `<table class="bookings-table assignments-table">
+    <thead><tr><th>Attendee</th><th>Type</th><th>Date & Time</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
@@ -3116,68 +3209,100 @@ async function loadClients() {
   const res = await apiFetch('/v1/clients');
   if (!res?.ok) return;
   const { flags } = await res.json();
+  window._clientFlags = {};
+  flags.forEach(f => {
+    const key = normalizeClientEmail(f.email);
+    if (key) window._clientFlags[key] = { ...f, email: key };
+  });
   const el = document.getElementById('clients-table');
   if (!flags.length) {
     el.innerHTML = `<div class="empty"><div class="empty-icon">[+]</div><p>No flagged clients yet.</p></div>`;
     return;
   }
-  const riskColors = { caution: '#f5a623', high: 'var(--red)', blocked: '#ff1744', ok: '#4ade80' };
-  const riskLabels = { caution: '[!] Caution', high: '[×] High Risk', blocked: '[■] Blocked', ok: '[✓] Cleared' };
-  const discountLabels = { vet: '[★] Vet/Responder', realtor: '[◆] Realtor', partner: '[▶] Partner' };
-  const rows = flags.map(f => `<tr>
-    <td style="font-family:var(--font-mono);font-size:13px">${esc(f.email)}</td>
-    <td><span style="font-size:12px;font-weight:600;color:${riskColors[f.risk_level]||'#f5a623'}">${riskLabels[f.risk_level]||f.risk_level}</span>${f.discount_flag ? `<br><span style="font-size:11px;color:#4ade80">${discountLabels[f.discount_flag]||f.discount_flag}</span>` : ''}</td>
+  const rows = flags.map(f => {
+    const nf = { ...f, email: normalizeClientEmail(f.email) };
+    const badgeHtml = clientFlagBadgesHtml(nf.email) || '<span style="color:var(--muted);font-size:12px">—</span>';
+    return `<tr>
+    <td style="font-family:var(--font-mono);font-size:13px">${esc(nf.email)}</td>
+    <td>${badgeHtml}</td>
     <td style="font-size:13px;color:var(--muted);max-width:260px">${esc(f.notes||'')}</td>
-    <td style="font-size:12px;color:var(--muted)">${new Date(f.CreatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</td>
+    <td style="font-size:12px;color:var(--muted)">${f.created_at ? new Date(f.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</td>
     <td style="white-space:nowrap">
-      <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick='openFlagModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>Edit</button>
-      <button class="btn" style="font-size:12px;padding:5px 10px;background:rgba(255,95,95,.08);color:var(--red);border:1px solid rgba(255,95,95,.2)" onclick="removeFlag('${esc(f.email)}')">Remove</button>
+      <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick='openFlagModal(${JSON.stringify(nf).replace(/'/g,"&#39;")})'>Edit</button>
+      <button class="btn" style="font-size:12px;padding:5px 10px;background:rgba(255,95,95,.08);color:var(--red);border:1px solid rgba(255,95,95,.2)" onclick="removeFlag('${esc(nf.email).replace(/'/g, "\\'")}')">Remove</button>
     </td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
   el.innerHTML = `<table>
-    <thead><tr><th>Email</th><th>Risk / Tier</th><th>Notes</th><th>Flagged</th><th></th></tr></thead>
+    <thead><tr><th>Email</th><th>Flags</th><th>Notes</th><th>Updated</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
 
 function openFlagModal(flag) {
-  const isEdit = flag && flag.Id;
+  const normalized = normalizeClientEmail(flag?.email || '');
+  const existing = normalized ? lookupClientFlag(normalized) : null;
+  const record = existing || flag || {};
+  const isEdit = !!(existing?.Id || record?.Id);
   document.getElementById('flag-modal-title').textContent = isEdit ? 'Edit Client Flag' : 'Flag a Client';
-  document.getElementById('flag-existing-id').value = flag?.Id || '';
-  document.getElementById('flag-email').value = flag?.email || '';
+  document.getElementById('flag-existing-id').value = record?.Id || '';
+  document.getElementById('flag-email').value = normalizeClientEmail(record?.email || flag?.email || '');
   document.getElementById('flag-email').readOnly = isEdit;
-  document.getElementById('flag-risk').value = flag?.risk_level || 'ok';
-  document.getElementById('flag-discount').value = flag?.discount_flag || '';
-  document.getElementById('flag-notes').value = flag?.notes || '';
+  document.getElementById('flag-risk').value = record?.risk_level || 'caution';
+  document.getElementById('flag-discount').value = record?.discount_flag || '';
+  document.getElementById('flag-notes').value = record?.notes || '';
+  document.getElementById('flag-remove-btn').style.display = isEdit ? '' : 'none';
   openModal('flag-modal');
 }
 
 async function saveFlag() {
-  const email = document.getElementById('flag-email').value.trim();
+  const email = normalizeClientEmail(document.getElementById('flag-email').value);
   const risk_level = document.getElementById('flag-risk').value;
   const discount_flag = document.getElementById('flag-discount').value;
   const notes = document.getElementById('flag-notes').value.trim();
   if (!email) return toast('Email required', 'err');
 
-  const res = await apiFetch(`/v1/clients/${encodeURIComponent(email)}/flag`, {
+  const res = await apiFetch('/v1/clients/flag', {
     method: 'POST',
-    body: JSON.stringify({ risk_level, discount_flag, notes }),
+    body: JSON.stringify({ email, risk_level, discount_flag, notes }),
   });
   if (res?.ok) {
     closeModal('flag-modal');
     toast('Client flag saved', 'ok');
     await loadClients();
-    await loadAssignments(); // refresh badges
-  } else {
-    toast('Failed to save flag', 'err');
+    await loadAssignments();
+    return;
   }
+  let msg = 'Failed to save flag';
+  try {
+    const body = await res?.json();
+    if (body?.error) msg = body.error;
+  } catch {}
+  toast(msg, 'err');
 }
 
-async function removeFlag(email) {
-  if (!confirm(`Remove flag for ${email}?`)) return;
-  const res = await apiFetch(`/v1/clients/${encodeURIComponent(email)}/flag`, { method: 'DELETE' });
-  if (res?.ok) { toast('Flag removed', 'ok'); await loadClients(); await loadAssignments(); }
-  else toast('Failed to remove flag', 'err');
+async function removeFlagFromModal() {
+  const email = normalizeClientEmail(document.getElementById('flag-email').value);
+  if (!email) return;
+  await removeFlag(email, { closeModal: true });
+}
+
+async function removeFlag(email, { closeModal: shouldClose = false } = {}) {
+  const normalized = normalizeClientEmail(email);
+  if (!normalized) return;
+  if (!confirm(`Remove flag for ${normalized}?`)) return;
+  const res = await apiFetch('/v1/clients/flag', {
+    method: 'DELETE',
+    body: JSON.stringify({ email: normalized }),
+  });
+  if (res?.ok) {
+    toast('Flag removed', 'ok');
+    if (shouldClose) closeModal('flag-modal');
+    await loadClients();
+    await loadAssignments();
+  } else {
+    toast('Failed to remove flag', 'err');
+  }
 }
 
 // ── Organizations ──────────────────────────────────
