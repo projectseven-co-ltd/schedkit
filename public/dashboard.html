@@ -1522,6 +1522,22 @@ async function apiFetch(path, opts = {}) {
   return res;
 }
 
+// Settings tab clones section HTML into #kit-tab-content — scope queries to the visible panel.
+function getKitRoot() {
+  const kit = document.getElementById('section-kit');
+  if (!kit?.classList.contains('active')) return null;
+  return document.getElementById('kit-tab-content');
+}
+
+function kitPanelRoot(fallbackSectionId) {
+  return getKitRoot() || document.getElementById(fallbackSectionId);
+}
+
+function panelEl(sectionId, id) {
+  const root = kitPanelRoot(sectionId);
+  return root?.querySelector('#' + id) ?? document.getElementById(id);
+}
+
 async function loadUser() {
   const res = await apiFetch('/v1/auth/me');
   if (!res || !res.ok) { window.location.href = '/login'; return; }
@@ -1860,6 +1876,7 @@ async function loadKitTab(tab) {
       const tz = kitContent.querySelector('#settings-timezone');
       if (tz) tz.value = currentUser.timezone || 'UTC';
     }
+    if (tab === 'availability') await loadAvailability();
   }
 }
 
@@ -2737,11 +2754,18 @@ async function loadAvailability() {
   if (!res?.ok) return;
   const { availability } = await res.json();
 
-  // Build map: day_of_week → rule
   availData = {};
   for (const a of availability) availData[a.day_of_week] = a;
 
-  const grid = document.getElementById('avail-grid');
+  renderAvailabilityPanel(kitPanelRoot('section-availability'));
+  const kitRoot = getKitRoot();
+  if (kitRoot) renderAvailabilityPanel(kitRoot);
+}
+
+function renderAvailabilityPanel(root) {
+  if (!root) return;
+  const grid = root.querySelector('#avail-grid');
+  if (!grid) return;
   grid.innerHTML = DAYS.map((day, i) => {
     const rule = availData[i];
     const enabled = !!rule;
@@ -2752,57 +2776,67 @@ async function loadAvailability() {
         <span class="slider"></span>
       </label>
       <div class="avail-times" id="avail-times-${i}" style="${enabled ? '' : 'opacity:.3;pointer-events:none'}">
-        <input type="time" id="avail-start-${i}" value="${rule?.start_time || '09:00'}" ${enabled ? '' : 'disabled'}>
+        <input type="time" id="avail-start-${i}" value="${rule?.start_time?.slice(0, 5) || '09:00'}" ${enabled ? '' : 'disabled'}>
         <span>to</span>
-        <input type="time" id="avail-end-${i}" value="${rule?.end_time || '17:00'}" ${enabled ? '' : 'disabled'}>
+        <input type="time" id="avail-end-${i}" value="${rule?.end_time?.slice(0, 5) || '17:00'}" ${enabled ? '' : 'disabled'}>
       </div>
     </div>`;
   }).join('');
 }
 
 function toggleAvailDay(i) {
-  const enabled = document.getElementById(`avail-enabled-${i}`).checked;
-  const times = document.getElementById(`avail-times-${i}`);
+  const enabled = panelEl('section-availability', `avail-enabled-${i}`)?.checked;
+  const times = panelEl('section-availability', `avail-times-${i}`);
+  if (!times) return;
   times.style.opacity = enabled ? '1' : '.3';
   times.style.pointerEvents = enabled ? '' : 'none';
-  document.getElementById(`avail-start-${i}`).disabled = !enabled;
-  document.getElementById(`avail-end-${i}`).disabled = !enabled;
+  panelEl('section-availability', `avail-start-${i}`).disabled = !enabled;
+  panelEl('section-availability', `avail-end-${i}`).disabled = !enabled;
 }
 
 async function saveAvailability() {
-  const btn = document.getElementById('save-avail-btn');
+  const btn = panelEl('section-availability', 'save-avail-btn');
+  if (!btn) return;
   btn.disabled = true; btn.textContent = 'Saving...';
 
   try {
     for (let i = 0; i < 7; i++) {
-      const enabled = document.getElementById(`avail-enabled-${i}`).checked;
+      const enabled = panelEl('section-availability', `avail-enabled-${i}`)?.checked;
       const existing = availData[i];
 
       if (!enabled) {
-        if (existing) {
+        if (existing?.Id) {
           const res = await apiFetch(`/v1/availability/${existing.Id}`, { method: 'DELETE' });
-          if (!res?.ok) throw new Error('delete failed');
+          if (!res?.ok) throw new Error(await readApiError(res, 'delete failed'));
         }
         continue;
       }
 
-      const start = document.getElementById(`avail-start-${i}`).value;
-      const end = document.getElementById(`avail-end-${i}`).value;
+      const start = panelEl('section-availability', `avail-start-${i}`)?.value;
+      const end = panelEl('section-availability', `avail-end-${i}`)?.value;
+      if (!start || !end) throw new Error('missing times');
       const body = { day_of_week: i, start_time: start, end_time: end, timezone: currentUser?.timezone || 'UTC' };
 
-      if (existing) {
-        const res = await apiFetch(`/v1/availability/${existing.Id}`, { method: 'PATCH', body: JSON.stringify(body) });
-        if (!res?.ok) throw new Error('patch failed');
-      } else {
-        const res = await apiFetch('/v1/availability', { method: 'POST', body: JSON.stringify(body) });
-        if (!res?.ok) throw new Error('create failed');
-      }
+      const res = await apiFetch('/v1/availability', { method: 'PUT', body: JSON.stringify(body) });
+      if (!res?.ok) throw new Error(await readApiError(res, 'save failed'));
     }
     toast('Availability saved!', 'ok');
     await loadAvailability();
-  } catch { toast('Save failed', 'err'); }
+  } catch (e) {
+    toast(e.message || 'Save failed', 'err');
+  }
 
   btn.disabled = false; btn.textContent = 'Save Changes';
+}
+
+async function readApiError(res, fallback) {
+  if (!res) return fallback;
+  try {
+    const body = await res.json();
+    return body.error || body.message || fallback;
+  } catch {
+    return `${fallback} (${res.status})`;
+  }
 }
 
 // ── Platform admin ────────────────────────────────
