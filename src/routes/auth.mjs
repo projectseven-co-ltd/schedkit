@@ -93,7 +93,7 @@ export default async function authRoutes(fastify) {
     config: { rateLimit: { max: 20, timeWindow: '15 minutes' } },
     schema: {
       tags: ['Auth'],
-      summary: 'Email + password login (mobile)',
+      summary: 'Email + password login',
       body: {
         type: 'object',
         required: ['email', 'password'],
@@ -118,7 +118,10 @@ export default async function authRoutes(fastify) {
     const valid = await verifyPassword(password, user.password_hash);
     if (!valid) return reply.code(401).send({ error: 'invalid_credentials' });
 
-    return sendMobileAuth(reply, user);
+    if (wantsMobileAuth(req)) return sendMobileAuth(reply, user);
+
+    const next = sanitizeRedirect(req.body?.next);
+    return issueWebSession(reply, user, { next });
   });
 
   fastify.post('/auth/set-password', {
@@ -353,13 +356,14 @@ export default async function authRoutes(fastify) {
     },
     preHandler: requireSession
   }, async (req) => {
-    const { Id, name, email, slug, timezone, api_key, enterprise, ntfy_topic, plan } = req.user;
+    const { Id, name, email, slug, timezone, api_key, enterprise, ntfy_topic, plan, password_hash } = req.user;
     return {
       Id, name, email, slug, timezone, api_key,
       enterprise: !!enterprise,
       ntfy_topic: ntfy_topic || '',
       plan: plan || 'free',
       is_platform_admin: isPlatformAdmin(email),
+      has_password: !!password_hash,
     };
   });
 
@@ -418,19 +422,27 @@ function generateLoginCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+function resolveLoginDestination(user, next) {
+  const defaultDest = (!user?.name) ? '/onboarding' : '/dashboard';
+  if (next && next.startsWith('/dashboard') && !next.includes('//') && !next.includes(':')) {
+    const qs = next.includes('?') ? next.slice(next.indexOf('?')) : '';
+    return '/dashboard' + qs;
+  }
+  return defaultDest;
+}
+
+async function issueWebSession(reply, user, { next } = {}) {
+  const { sessionToken } = await createSessionForUser(user);
+  const destination = resolveLoginDestination(user, next);
+  reply.header('Set-Cookie', `sk_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}; Secure`);
+  return reply.send({ ok: true, destination });
+}
+
 async function consumeLoginAndCreateSession(reply, link, user, { redirect, next }) {
   await db.update(tables.magic_links, link.Id, { used: true });
 
   const { sessionToken } = await createSessionForUser(user);
-
-  // Build destination from scratch — never pass user input directly to redirect
-  const defaultDest = (!user?.name) ? '/onboarding' : '/dashboard';
-  // Only honour ?next if it starts with /dashboard (upgrade flow), reconstruct safely
-  let destination = defaultDest;
-  if (next && next.startsWith('/dashboard') && !next.includes('//') && !next.includes(':')) {
-    const qs = next.includes('?') ? next.slice(next.indexOf('?')) : '';
-    destination = '/dashboard' + qs;
-  }
+  const destination = resolveLoginDestination(user, next);
   reply.header('Set-Cookie', `sk_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}; Secure`);
 
   if (redirect) return reply.redirect(destination);

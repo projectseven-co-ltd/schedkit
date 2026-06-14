@@ -891,6 +891,20 @@ tr:hover td{background:var(--surface2)}
           <button class="btn btn-primary" onclick="saveSettings()" style="margin-top:8px">Save Settings</button>
         </div>
 
+        <div class="table-wrap" style="padding:28px;margin-top:20px">
+          <h3 style="margin:0 0 6px;font-size:15px" id="settings-password-heading">Password</h3>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.6" id="settings-password-copy">Set a password to sign in on the web and in the SchedKit mobile app without waiting for email codes.</p>
+          <div class="form-row">
+            <label for="settings-password">New password</label>
+            <input type="password" id="settings-password" placeholder="At least 8 characters" autocomplete="new-password">
+          </div>
+          <div class="form-row">
+            <label for="settings-password-confirm">Confirm password</label>
+            <input type="password" id="settings-password-confirm" placeholder="Repeat password" autocomplete="new-password">
+          </div>
+          <button class="btn btn-primary" onclick="savePassword()" style="margin-top:8px">Save Password</button>
+        </div>
+
         <div class="table-wrap" style="padding:28px;margin-top:20px" id="cal-connect-card">
           <h3 style="margin:0 0 6px;font-size:15px">Calendar Sync</h3>
           <p style="color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.6">Connect your Google Calendar to block busy times and automatically add assignments as events.</p>
@@ -1574,6 +1588,14 @@ async function loadUser() {
   document.getElementById('settings-timezone').value = currentUser.timezone || 'UTC';
   document.getElementById('settings-booking-url').textContent = `https://schedkit.net/book/${currentUser.slug}`;
   document.getElementById('settings-api-key').dataset.key = currentUser.api_key;
+  const pwdHeading = document.getElementById('settings-password-heading');
+  const pwdCopy = document.getElementById('settings-password-copy');
+  if (pwdHeading) pwdHeading.textContent = currentUser.has_password ? 'Change password' : 'Set password';
+  if (pwdCopy) {
+    pwdCopy.textContent = currentUser.has_password
+      ? 'Update the password you use to sign in on the web and in the SchedKit mobile app.'
+      : 'Set a password to sign in on the web and in the SchedKit mobile app without waiting for email codes.';
+  }
   document.getElementById('ntfy-topic').value = currentUser.ntfy_topic || '';
   renderPlanTiers();
 }
@@ -1990,6 +2012,12 @@ async function loadKitTab(tab) {
       if (el('ntfy-topic')) el('ntfy-topic').value = currentUser.ntfy_topic || '';
       if (el('settings-booking-url')) el('settings-booking-url').textContent = `https://schedkit.net/book/${currentUser.slug}`;
       if (el('settings-api-key')) el('settings-api-key').dataset.key = currentUser.api_key;
+      if (el('settings-password-heading')) el('settings-password-heading').textContent = currentUser.has_password ? 'Change password' : 'Set password';
+      if (el('settings-password-copy')) {
+        el('settings-password-copy').textContent = currentUser.has_password
+          ? 'Update the password you use to sign in on the web and in the SchedKit mobile app.'
+          : 'Set a password to sign in on the web and in the SchedKit mobile app without waiting for email codes.';
+      }
       populateTimezones();
       const tz = kitContent.querySelector('#settings-timezone');
       if (tz) tz.value = currentUser.timezone || 'UTC';
@@ -3633,6 +3661,24 @@ async function saveSettings() {
   const res = await apiFetch('/v1/auth/me', { method: 'PATCH', body: JSON.stringify(body) });
   if (res?.ok) { toast('Settings saved!', 'ok'); await loadUser(); }
   else toast('Save failed', 'err');
+}
+
+async function savePassword() {
+  const password = panelEl('section-settings', 'settings-password')?.value || '';
+  const confirm = panelEl('section-settings', 'settings-password-confirm')?.value || '';
+  if (password.length < 8) { toast('Password must be at least 8 characters', 'err'); return; }
+  if (password !== confirm) { toast('Passwords do not match', 'err'); return; }
+  const res = await apiFetch('/v1/auth/set-password', { method: 'POST', body: JSON.stringify({ password }) });
+  if (res?.ok) {
+    toast('Password saved', 'ok');
+    const pwd = panelEl('section-settings', 'settings-password');
+    const pwdConfirm = panelEl('section-settings', 'settings-password-confirm');
+    if (pwd) pwd.value = '';
+    if (pwdConfirm) pwdConfirm.value = '';
+    await loadUser();
+  } else {
+    toast('Could not save password', 'err');
+  }
 }
 
 function revealApiKey() {

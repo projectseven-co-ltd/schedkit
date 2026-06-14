@@ -26,6 +26,7 @@
   h1{font-size:22px;font-weight:700;margin-bottom:8px}
   p{color:var(--muted);font-size:14px;margin-bottom:32px;line-height:1.6}
   label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  .form-row{margin-bottom:16px}
   input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:8px;font-family:var(--font-sans);font-size:14px;transition:border-color .15s}
   input:focus{outline:none;border-color:var(--accent)}
   button{width:100%;background:var(--accent);color:var(--on-accent);border:none;padding:13px;border-radius:8px;font-family:var(--font-sans);font-size:15px;font-weight:700;cursor:pointer;margin-top:16px;transition:opacity .15s}
@@ -37,6 +38,11 @@
   .dashboard-link{text-align:center;margin-top:20px;font-size:13px;color:var(--muted)}
   .dashboard-link a{color:var(--accent);text-decoration:none}
   .dashboard-link a:hover{text-decoration:underline}
+  .divider{display:flex;align-items:center;gap:12px;margin:24px 0 20px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+  .mode-link{background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;margin-top:12px;width:100%;padding:0}
+  .mode-link:hover{text-decoration:underline}
+  .hidden{display:none!important}
 </style>
 </head>
 <body>
@@ -44,10 +50,19 @@
   <div class="logo" style="display:flex;align-items:center;gap:10px;"><svg width="32" height="32" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#0a0a0a"/><line x1="128" y1="96" x2="208" y2="416" stroke="#ffc700" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#ffc700" stroke-width="72" stroke-linecap="round"/></svg> sched<span>kit</span></div>
   <h1 id="loginHeading">Sign in</h1>
   <p id="introCopy">Enter your email and we'll send you a magic link. On iPhone, you can also enter the 6-digit code from the email directly in the app.</p>
-  <form id="form">
+  <div class="form-row" style="margin-bottom:0">
     <label for="email">Email address</label>
     <input type="email" id="email" placeholder="you@example.com" required autofocus autocomplete="email">
+  </div>
+  <form id="passwordForm" class="hidden">
+    <label for="password">Password</label>
+    <input type="password" id="password" placeholder="Your password" autocomplete="current-password">
+    <button type="submit" id="passwordBtn">Sign in →</button>
+    <button type="button" class="mode-link" id="showMagicLink">Use magic link instead</button>
+  </form>
+  <form id="form">
     <button type="submit" id="btn">Send magic link →</button>
+    <button type="button" class="mode-link hidden" id="showPassword">Sign in with password instead</button>
   </form>
   <form id="codeForm" style="display:none">
     <label for="code">6-digit code</label>
@@ -85,10 +100,81 @@ if (_isUpgrade) {
   document.getElementById('dash-link').style.display = 'block';
 })();
 const form = document.getElementById('form');
+const passwordForm = document.getElementById('passwordForm');
 const codeForm = document.getElementById('codeForm');
 const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
 const codeInput = document.getElementById('code');
 const introCopy = document.getElementById('introCopy');
+const showPasswordBtn = document.getElementById('showPassword');
+const showMagicLinkBtn = document.getElementById('showMagicLink');
+let passwordLoginEnabled = false;
+
+function setLoginMode(mode) {
+  const usePassword = mode === 'password';
+  passwordForm.classList.toggle('hidden', !usePassword);
+  form.classList.toggle('hidden', usePassword);
+  codeForm.style.display = 'none';
+  document.getElementById('ok').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+  if (usePassword) {
+    introCopy.textContent = 'Sign in with the email and password for your SchedKit account.';
+    passwordInput.focus();
+  } else if (!_isUpgrade) {
+    introCopy.textContent = 'Enter your email and we\'ll send you a magic link. On iPhone, you can also enter the 6-digit code from the email directly in the app.';
+    emailInput.focus();
+  }
+}
+
+showPasswordBtn.addEventListener('click', () => setLoginMode('password'));
+showMagicLinkBtn.addEventListener('click', () => setLoginMode('magic'));
+
+(async () => {
+  try {
+    const res = await fetch('/v1/auth/capabilities');
+    if (res.ok) {
+      const caps = await res.json();
+      passwordLoginEnabled = !!caps.passwordLoginEnabled;
+      if (passwordLoginEnabled && !_isUpgrade) {
+        showPasswordBtn.classList.remove('hidden');
+      }
+    }
+  } catch {}
+})();
+
+passwordForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('passwordBtn');
+  const ok = document.getElementById('ok');
+  const err = document.getElementById('err');
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+  if (!email || !password) {
+    err.textContent = 'Enter your email and password.';
+    err.style.display = 'block';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  ok.style.display = err.style.display = 'none';
+  try {
+    const res = await fetch('/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password, next: _nextUrl !== '/dashboard' ? _nextUrl : undefined }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      if (data.error === 'invalid_credentials') throw new Error('invalid');
+      throw new Error(data.error || 'login_failed');
+    }
+    window.location.replace(safeRedirect(data.destination || _nextUrl));
+  } catch {
+    err.textContent = 'Invalid email or password. Use a magic link if you have not set a password yet.';
+    err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Sign in →';
+  }
+});
 
 form.addEventListener('submit', async e => {
   e.preventDefault();
