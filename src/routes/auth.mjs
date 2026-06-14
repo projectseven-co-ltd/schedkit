@@ -15,10 +15,132 @@ function sanitizeRedirect(url) {
 }
 import { requireSession } from '../middleware/session.mjs';
 import { isPlatformAdmin } from '../lib/platformAdmin.mjs';
+import { hashPassword, verifyPassword } from '../lib/password.mjs';
 
 const BASE_DOMAIN = process.env.BASE_DOMAIN || 'schedkit.net';
+const PASSWORD_LOGIN_ENABLED = process.env.AUTH_PASSWORD_LOGIN_ENABLED !== 'false';
+
+function wantsMobileAuth(req) {
+  return req.body?.client === 'mobile'
+    || req.headers['x-client'] === 'mobile'
+    || String(req.headers.accept || '').includes('application/json');
+}
+
+function toMobileUser(user) {
+  return {
+    Id: user.Id,
+    id: user.Id,
+    name: user.name || '',
+    email: user.email,
+    slug: user.slug || '',
+    plan: user.plan || 'free',
+    timezone: user.timezone || 'UTC',
+    api_key: user.api_key,
+  };
+}
+
+async function ensureUserApiKey(user) {
+  if (user?.api_key) return user;
+  const api_key = `p7s_${nanoid(32)}`;
+  return db.update(tables.users, user.Id, { api_key });
+}
+
+async function createSessionForUser(user) {
+  const freshUser = await ensureUserApiKey(user);
+  const sessionToken = nanoid(48);
+  const sessionExpiry = addDays(new Date(), 30).toISOString();
+  await db.create(tables.sessions, {
+    token: sessionToken,
+    user_id: String(freshUser.Id),
+    expires_at: sessionExpiry,
+    created_at: new Date().toISOString(),
+  });
+  return { sessionToken, user: freshUser };
+}
+
+async function sendMobileAuth(reply, user, { destination = '/dashboard' } = {}) {
+  const { sessionToken, user: freshUser } = await createSessionForUser(user);
+  return reply.send({
+    ok: true,
+    sessionToken,
+    user: toMobileUser(freshUser),
+    destination,
+  });
+}
 
 export default async function authRoutes(fastify) {
+
+  fastify.get('/auth/capabilities', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Auth capabilities for clients',
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            passwordLoginEnabled: { type: 'boolean' },
+            magicLinkEnabled: { type: 'boolean' },
+          },
+        },
+      },
+    },
+  }, async () => ({
+    passwordLoginEnabled: PASSWORD_LOGIN_ENABLED,
+    magicLinkEnabled: true,
+  }));
+
+  fastify.post('/auth/login', {
+    config: { rateLimit: { max: 20, timeWindow: '15 minutes' } },
+    schema: {
+      tags: ['Auth'],
+      summary: 'Email + password login (mobile)',
+      body: {
+        type: 'object',
+        required: ['email', 'password'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+          password: { type: 'string' },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    if (!PASSWORD_LOGIN_ENABLED) {
+      return reply.code(403).send({ error: 'password_login_disabled' });
+    }
+    const email = String(req.body?.email || '').toLowerCase().trim();
+    const password = String(req.body?.password || '');
+    if (!email || !password) return reply.code(400).send({ error: 'invalid_credentials' });
+
+    const userResult = await db.find(tables.users, `(email,eq,${email})`);
+    const user = userResult.list?.[0];
+    if (!user?.password_hash) return reply.code(401).send({ error: 'invalid_credentials' });
+
+    const valid = await verifyPassword(password, user.password_hash);
+    if (!valid) return reply.code(401).send({ error: 'invalid_credentials' });
+
+    return sendMobileAuth(reply, user);
+  });
+
+  fastify.post('/auth/set-password', {
+    preHandler: requireSession,
+    schema: {
+      tags: ['Auth'],
+      summary: 'Set or update account password',
+      body: {
+        type: 'object',
+        required: ['password'],
+        properties: {
+          password: { type: 'string', minLength: 8 },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const password = String(req.body?.password || '');
+    if (password.length < 8) return reply.code(400).send({ error: 'password_too_short' });
+    const password_hash = await hashPassword(password);
+    await db.update(tables.users, req.user.Id, { password_hash });
+    return reply.send({ ok: true });
+  });
 
   // POST /v1/auth/magic — request magic link + code
   fastify.post('/auth/magic', {
@@ -136,6 +258,12 @@ export default async function authRoutes(fastify) {
     });
 
     if (!match) return reply.code(400).send({ ok: false, error: 'invalid_code' });
+
+    if (wantsMobileAuth(req)) {
+      const destination = (!user?.name) ? '/onboarding' : '/dashboard';
+      await db.update(tables.magic_links, match.Id, { used: true });
+      return sendMobileAuth(reply, user, { destination });
+    }
 
     await consumeLoginAndCreateSession(reply, match, user, { redirect: false, next });
   });
@@ -293,14 +421,7 @@ function generateLoginCode() {
 async function consumeLoginAndCreateSession(reply, link, user, { redirect, next }) {
   await db.update(tables.magic_links, link.Id, { used: true });
 
-  const sessionToken = nanoid(48);
-  const sessionExpiry = addDays(new Date(), 30).toISOString();
-  await db.create(tables.sessions, {
-    token: sessionToken,
-    user_id: String(link.user_id),
-    expires_at: sessionExpiry,
-    created_at: new Date().toISOString(),
-  });
+  const { sessionToken } = await createSessionForUser(user);
 
   // Build destination from scratch — never pass user input directly to redirect
   const defaultDest = (!user?.name) ? '/onboarding' : '/dashboard';
