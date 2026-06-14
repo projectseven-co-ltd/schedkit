@@ -13,7 +13,7 @@ import { execSync } from 'child_process';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_VERSION = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8')).version;
 const GIT_SHA = (() => { try { return readFileSync(join(__dirname, '../.git-sha'), 'utf8').trim(); } catch { try { return execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim(); } catch { return 'unknown'; } } })();
-import { initDb } from './lib/db.mjs';
+import { initDb, db } from './lib/db.mjs';
 import { tables } from './lib/tables.mjs';
 import eventTypesRoutes from './routes/eventTypes.mjs';
 import availabilityRoutes from './routes/availability.mjs';
@@ -230,8 +230,6 @@ fastify.post('/v1/request-access', {
   const { name, email, company, message, plan = 'free' } = req.body || {};
   if (!name || !email) return reply.code(400).send({ error: 'Name and email required' });
   try {
-    // 1. Save to NocoDB leads table
-    const { db } = await import('./lib/db.mjs');
     await db.create(tables.leads, {
       name, email,
       company: company || '',
@@ -256,7 +254,6 @@ fastify.post('/v1/request-access', {
     }).catch(e => fastify.log.warn('ntfy alert failed: ' + e.message));
 
     const { sendAccessRequest, sendWelcome } = await import('./lib/mailer.mjs');
-    const { tables } = await import('./lib/tables.mjs');
 
     if (plan === 'free') {
       // Free tier: create/update user account with plan=free
