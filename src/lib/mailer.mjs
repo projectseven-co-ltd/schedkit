@@ -122,7 +122,7 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
   const flagLabels = {
     caution: '[!] CAUTION',
     high: '[!] HIGH RISK — Get payment before the appointment',
-    blocked: '[⊘] BLOCKED CLIENT — Consider refusing this booking',
+    blocked: '[⊘] BLOCKED CLIENT — Consider refusing this assignment',
   };
   const flagBanner = flag && flag.risk_level !== 'ok' ? `
     <table width="100%" cellpadding="0" cellspacing="0" style="background:${flagColors[flag.risk_level]}22;border:1px solid ${flagColors[flag.risk_level]};border-radius:8px;margin-bottom:20px;">
@@ -134,7 +134,7 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
 
   // Attendee email
   const attendeeHtml = emailWrap(`
-    ${statusLine('✓ BOOKING CONFIRMED', '#4ade80')}
+    ${statusLine('✓ ASSIGNMENT CONFIRMED', '#4ade80')}
     ${heading(event_title)}
     ${subheading(`with ${host_name}`)}
     ${detailTable([
@@ -145,7 +145,7 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
     <table cellpadding="0" cellspacing="0">
       <tr>
         <td style="padding-right:10px;">${ghostBtn(reschedule_url || '#', 'Reschedule')}</td>
-        <td>${ghostBtn(cancel_url, 'Cancel booking')}</td>
+        <td>${ghostBtn(cancel_url, 'Cancel assignment')}</td>
       </tr>
     </table>
   `);
@@ -153,9 +153,9 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
   // Host email
   const hostHtml = emailWrap(`
     ${flagBanner}
-    ${statusLine('NEW BOOKING', '#ffc700')}
+    ${statusLine('NEW ASSIGNMENT', '#ffc700')}
     ${heading(event_title)}
-    ${subheading(`Booked by ${attendee_name}`)}
+    ${subheading(`Requested by ${attendee_name}`)}
     ${detailTable([
       ['Attendee', `${attendee_name} &lt;${attendee_email}&gt;`],
       ['Date & time', `<span style="font-family:monospace;color:#ffc700;">${startLocal}</span>`],
@@ -176,7 +176,7 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
         Messages: [{
           From: { Email: FROM_EMAIL, Name: FROM_NAME },
           To: [{ Email: host_email, Name: host_name }],
-          Subject: `${flag && flag.risk_level !== 'ok' ? `[!] [${flag.risk_level.toUpperCase()}] ` : ''}New booking: ${attendee_name} — ${event_title}`,
+          Subject: `${flag && flag.risk_level !== 'ok' ? `[!] [${flag.risk_level.toUpperCase()}] ` : ''}New assignment: ${attendee_name} — ${event_title}`,
           HTMLPart: hostHtml,
         }],
       });
@@ -213,7 +213,7 @@ export async function sendWelcome({ name, email }) {
         From: { Email: FROM_EMAIL, Name: FROM_NAME },
         To: [{ Email: email, Name: name }],
         Subject: 'Welcome to SchedKit',
-        HTMLPart: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body bgcolor="#0a0a0b" style="margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Arial,sans-serif;color:#e8e8ea;"><table width="100%" cellpadding="0" cellspacing="0" bgcolor="#0a0a0b" style="background:#0a0a0b;padding:40px 0;"><tr><td align="center"><table width="560" cellpadding="0" cellspacing="0" style="background:#111114;border:1px solid #1e1e24;border-radius:10px;overflow:hidden;"><tr><td style="padding:16px 28px;background:#0a0a0b;border-bottom:1px solid #1e1e24;"><span style="color:#ffc700;font-family:monospace;font-size:18px;font-weight:bold;">SCHEDKIT</span></td></tr><tr><td style="padding:32px 28px;"><p style="margin:0 0 16px;font-size:18px;font-weight:600;color:#e8e8ea;">Welcome, ${name}.</p><p style="margin:0 0 24px;font-size:14px;color:#aaa;line-height:1.6;">Your account is ready. Head to your dashboard to set up your first event type and start taking bookings.</p><a href="https://schedkit.net/dashboard" style="display:inline-block;background:#ffc700;color:#0a0a0b;text-decoration:none;padding:12px 24px;border-radius:6px;font-family:monospace;font-size:13px;font-weight:700;letter-spacing:0.05em;">OPEN DASHBOARD →</a></td></tr><tr><td style="padding:16px 28px;border-top:1px solid #1e1e24;font-size:12px;color:#5a5a6e;">SchedKit · <a href="https://schedkit.net/docs" style="color:#5a5a6e;">docs</a> · reply to this email anytime</td></tr></table></td></tr></table></body></html>`,
+        HTMLPart: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body bgcolor="#0a0a0b" style="margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Arial,sans-serif;color:#e8e8ea;"><table width="100%" cellpadding="0" cellspacing="0" bgcolor="#0a0a0b" style="background:#0a0a0b;padding:40px 0;"><tr><td align="center"><table width="560" cellpadding="0" cellspacing="0" style="background:#111114;border:1px solid #1e1e24;border-radius:10px;overflow:hidden;"><tr><td style="padding:16px 28px;background:#0a0a0b;border-bottom:1px solid #1e1e24;"><span style="color:#ffc700;font-family:monospace;font-size:18px;font-weight:bold;">SCHEDKIT</span></td></tr><tr><td style="padding:32px 28px;"><p style="margin:0 0 16px;font-size:18px;font-weight:600;color:#e8e8ea;">Welcome, ${name}.</p><p style="margin:0 0 24px;font-size:14px;color:#aaa;line-height:1.6;">Your account is ready. Head to your dashboard to set up your first assignment type and start accepting assignments.</p><a href="https://schedkit.net/dashboard" style="display:inline-block;background:#ffc700;color:#0a0a0b;text-decoration:none;padding:12px 24px;border-radius:6px;font-family:monospace;font-size:13px;font-weight:700;letter-spacing:0.05em;">OPEN DASHBOARD →</a></td></tr><tr><td style="padding:16px 28px;border-top:1px solid #1e1e24;font-size:12px;color:#5a5a6e;">SchedKit · <a href="https://schedkit.net/docs" style="color:#5a5a6e;">docs</a> · reply to this email anytime</td></tr></table></td></tr></table></body></html>`,
       }],
     });
   } catch(e) { console.error('Welcome email error:', e.message); throw e; }
@@ -281,7 +281,7 @@ export async function sendRescheduleNotification({ attendee_name, attendee_email
     <table cellpadding="0" cellspacing="0">
       <tr>
         <td style="padding-right:10px;">${ghostBtn(reschedule_url || '#', 'Reschedule again')}</td>
-        <td>${ghostBtn(cancel_url, 'Cancel booking')}</td>
+        <td>${ghostBtn(cancel_url, 'Cancel assignment')}</td>
       </tr>
     </table>
   `);
@@ -305,7 +305,7 @@ export async function sendCancellationEmail({ attendee_name, attendee_email, hos
       ['Cancelled time', `<span style="font-family:monospace;color:#5a5a6e;text-decoration:line-through;">${startLocal}</span>`],
       ['Timezone', timezone],
     ])}
-    ${note(`If you'd like to rebook, please reach out to ${host_name} directly.`)}
+    ${note(`If you'd like to request a new assignment, please reach out to ${host_name} directly.`)}
   `);
 
   try {
@@ -320,19 +320,19 @@ export async function sendBookingPending({ attendee_name, attendee_email, host_n
 
   const html = emailWrap(`
     ${statusLine('⏳ AWAITING CONFIRMATION', '#ffc700')}
-    ${heading('Your booking request was received')}
-    ${subheading(`${host_name} will review and confirm your booking shortly.`)}
+    ${heading('Your assignment request was received')}
+    ${subheading(`${host_name} will review and confirm your assignment shortly.`)}
     ${detailTable([
       ['Event', event_title],
       ['With', host_name],
       ['Requested time', `<span style="font-family:monospace;">${startLocal}</span>`],
       ['Timezone', timezone],
     ])}
-    ${note("You'll receive a confirmation email once your booking is accepted. No action needed right now.")}
+    ${note("You'll receive a confirmation email once your assignment is accepted. No action needed right now.")}
   `);
 
   try {
-    await send(attendee_email, attendee_name, `Booking request received: ${event_title} with ${host_name}`, html);
+    await send(attendee_email, attendee_name, `Assignment request received: ${event_title} with ${host_name}`, html);
   } catch(e) { console.error('Pending email error:', e.message); }
 }
 
@@ -342,9 +342,9 @@ export async function sendHostConfirmationRequest({ host_name, host_email, atten
   const noteRow = notes ? [['Notes', notes]] : [];
 
   const html = emailWrap(`
-    ${statusLine('NEW BOOKING REQUEST', '#ffc700')}
-    ${heading('New booking request')}
-    ${subheading(`${attendee_name} wants to book time with you.`)}
+    ${statusLine('NEW ASSIGNMENT REQUEST', '#ffc700')}
+    ${heading('New assignment request')}
+    ${subheading(`${attendee_name} wants to request an assignment with you.`)}
     ${detailTable([
       ['Name', attendee_name],
       ['Email', `<a href="mailto:${attendee_email}" style="color:#e8e8ea;text-decoration:none;">${attendee_email}</a>`],
@@ -355,7 +355,7 @@ export async function sendHostConfirmationRequest({ host_name, host_email, atten
     ])}
     <table cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
       <tr>
-        <td style="padding-right:12px;">${primaryBtn(confirm_url, '✓ Confirm booking')}</td>
+        <td style="padding-right:12px;">${primaryBtn(confirm_url, '✓ Confirm assignment')}</td>
         <td>${ghostBtn(decline_url, '✕ Decline')}</td>
       </tr>
     </table>
@@ -368,7 +368,7 @@ export async function sendHostConfirmationRequest({ host_name, host_email, atten
       Messages: [{
         From: { Email: FROM_EMAIL, Name: FROM_NAME },
         To: [{ Email: host_email, Name: host_name }],
-        Subject: `New booking request: ${attendee_name} — ${event_title}`,
+        Subject: `New assignment request: ${attendee_name} — ${event_title}`,
         HTMLPart: html,
       }],
     });
@@ -381,8 +381,8 @@ export async function sendBookingConfirmedByHost({ attendee_name, attendee_email
 
   const html = emailWrap(`
     ${statusLine('✓ CONFIRMED', '#4ade80')}
-    ${heading('Your booking is confirmed')}
-    ${subheading(`${host_name} has accepted your booking request.`)}
+    ${heading('Your assignment is confirmed')}
+    ${subheading(`${host_name} has accepted your assignment request.`)}
     ${detailTable([
       ['Event', event_title],
       ['With', host_name],
@@ -392,7 +392,7 @@ export async function sendBookingConfirmedByHost({ attendee_name, attendee_email
     <table cellpadding="0" cellspacing="0">
       <tr>
         <td style="padding-right:10px;">${ghostBtn(reschedule_url || '#', 'Reschedule')}</td>
-        <td>${ghostBtn(cancel_url, 'Cancel booking')}</td>
+        <td>${ghostBtn(cancel_url, 'Cancel assignment')}</td>
       </tr>
     </table>
   `);
@@ -467,18 +467,18 @@ export async function sendBookingDeclined({ attendee_name, attendee_email, host_
 
   const html = emailWrap(`
     ${statusLine('✕ DECLINED', '#ff5f5f')}
-    ${heading('Booking request declined')}
-    ${subheading(`${host_name} was unable to accept your booking request.`)}
+    ${heading('Assignment request declined')}
+    ${subheading(`${host_name} was unable to accept your assignment request.`)}
     ${detailTable([
       ['Event', event_title],
       ['With', host_name],
       ['Requested time', `<span style="font-family:monospace;color:#5a5a6e;text-decoration:line-through;">${startLocal}</span>`],
       ['Timezone', timezone],
     ])}
-    ${note("If you'd like to try a different time, visit the booking page to make a new request.")}
+    ${note("If you'd like to try a different time, visit the manifest page to make a new request.")}
   `);
 
   try {
-    await send(attendee_email, attendee_name, `Booking declined: ${event_title} with ${host_name}`, html);
+    await send(attendee_email, attendee_name, `Assignment declined: ${event_title} with ${host_name}`, html);
   } catch(e) { console.error('Declined email error:', e.message); }
 }

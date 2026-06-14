@@ -140,7 +140,7 @@ export default async function bookingsRoutes(fastify) {
         attendee_email: booking.attendee_email,
         host_name: userResult?.name || 'your host',
         event_title: et?.title || 'Meeting',
-        appointment_label: et?.appointment_label || 'meeting',
+        appointment_label: et?.appointment_label || 'assignment',
         old_time: oldStart,
         new_time: newStart.toISOString(),
         timezone: booking.attendee_timezone || 'UTC',
@@ -152,29 +152,28 @@ export default async function bookingsRoutes(fastify) {
     return { ok: true, start_time: newStart.toISOString(), end_time: newEnd.toISOString(), override: !!req.body.override };
   });
 
-  // PUBLIC: Create booking
-  // POST /book/:username/:event_slug
-  fastify.post('/book/:username/:event_slug', {
-    schema: {
-      tags: ['Public'],
-      summary: 'Create a booking',
-      description: 'Submit a booking for an individual host\'s event type. Returns booking confirmation including `cancel_url` and `reschedule_url`. If the event type has `requires_confirmation: true`, status will be `pending` until the host confirms.',
-      params: { type: 'object', properties: { username: { type: 'string' }, event_slug: { type: 'string' } } },
-      body: {
-        type: 'object', required: ['start_time', 'attendee_name', 'attendee_email'],
-        properties: {
-          start_time: { type: 'string', description: 'ISO 8601 datetime from the `/v1/slots` response' },
-          attendee_name: { type: 'string' },
-          attendee_email: { type: 'string', format: 'email' },
-          attendee_timezone: { type: 'string', default: 'UTC' },
-          notes: { type: 'string' },
-          custom_responses: { type: 'object', description: 'Answers to custom fields defined on the event type' },
-        },
-        examples: [{ start_time: '2026-03-20T15:00:00.000Z', attendee_name: 'Taylor Brooks', attendee_email: 'taylor@example.com', attendee_timezone: 'America/Chicago', notes: 'Need site intake.', custom_responses: { site: 'Alpha' } }],
+  // PUBLIC: Create assignment
+  // POST /v1/assign/:username/:event_slug (legacy /v1/book/ alias)
+  const publicCreateBookingSchema = {
+    tags: ['Public'],
+    summary: 'Create an assignment',
+    description: 'Submit an assignment request for an individual host\'s assignment type. Returns confirmation including `cancel_url` and `reschedule_url`. If `requires_confirmation: true`, status will be `pending` until the host confirms.',
+    params: { type: 'object', properties: { username: { type: 'string' }, event_slug: { type: 'string' } } },
+    body: {
+      type: 'object', required: ['start_time', 'attendee_name', 'attendee_email'],
+      properties: {
+        start_time: { type: 'string', description: 'ISO 8601 datetime from the `/v1/slots` response' },
+        attendee_name: { type: 'string' },
+        attendee_email: { type: 'string', format: 'email' },
+        attendee_timezone: { type: 'string', default: 'UTC' },
+        notes: { type: 'string' },
+        custom_responses: { type: 'object', description: 'Answers to custom fields defined on the assignment type' },
       },
-      response: { 201: { type: 'object', additionalProperties: true, example: bookingExample } },
+      examples: [{ start_time: '2026-03-20T15:00:00.000Z', attendee_name: 'Taylor Brooks', attendee_email: 'taylor@example.com', attendee_timezone: 'America/Chicago', notes: 'Need site intake.', custom_responses: { site: 'Alpha' } }],
     },
-  }, async (req, reply) => {
+    response: { 201: { type: 'object', additionalProperties: true, example: bookingExample } },
+  };
+  const publicCreateBooking = async (req, reply) => {
     const { username, event_slug } = req.params;
     const { start_time, attendee_name, attendee_email, attendee_timezone = 'UTC', notes, custom_responses } = req.body;
 
@@ -190,7 +189,7 @@ export default async function bookingsRoutes(fastify) {
       tables.event_types,
       `(user_id,eq,${user.Id})~and(slug,eq,${event_slug})~and(active,eq,true)`
     );
-    if (!etResult.list?.length) return reply.code(404).send({ error: 'Event type not found' });
+    if (!etResult.list?.length) return reply.code(404).send({ error: 'Assignment type not found' });
     const eventType = etResult.list[0];
 
     // Validate required custom fields
@@ -350,9 +349,11 @@ export default async function bookingsRoutes(fastify) {
       cancel_url: `/cancel/${cancel_token}`,
       reschedule_url: `/reschedule/${reschedule_token}`,
     });
-  });
+  };
+  fastify.post('/assign/:username/:event_slug', { schema: publicCreateBookingSchema }, publicCreateBooking);
+  fastify.post('/book/:username/:event_slug', { schema: { hide: true } }, publicCreateBooking);
 
-  // PUBLIC: Cancel booking (POST — API)
+  // PUBLIC: Cancel assignment (POST — API)
   // API: Cancel booking by token (used by API clients)
   fastify.post('/cancel/:token', {
     schema: {
@@ -380,7 +381,7 @@ export default async function bookingsRoutes(fastify) {
       await sendCancellationEmail({
         attendee_name: booking.attendee_name, attendee_email: booking.attendee_email,
         host_name: user?.name || 'your host', event_title: et?.title || 'Meeting',
-        appointment_label: et?.appointment_label || 'meeting',
+        appointment_label: et?.appointment_label || 'assignment',
         start_time: booking.start_time, timezone: booking.attendee_timezone || 'UTC',
       });
     } catch(e) { fastify.log.error('Cancel email failed:', e.message); }
@@ -428,7 +429,7 @@ export default async function bookingsRoutes(fastify) {
       await sendCancellationEmail({
         attendee_name: booking.attendee_name, attendee_email: booking.attendee_email,
         host_name: user?.name || 'your host', event_title: et?.title || 'Meeting',
-        appointment_label: et?.appointment_label || 'meeting',
+        appointment_label: et?.appointment_label || 'assignment',
         start_time: booking.start_time, timezone: booking.attendee_timezone || 'UTC',
       });
     } catch(e) { fastify.log.error('Cancel email (confirm) failed:', e.message); }
@@ -683,7 +684,7 @@ function confirmCancelPage(booking, et) {
 }
 
 function resultPage(icon, message, booking) {
-  const detail = booking ? `<div class="uid">Booking ID: ${booking.uid}</div>` : '';
+  const detail = booking ? `<div class="uid">Assignment ID: ${booking.uid}</div>` : '';
   return shell(message, `
     <div class="icon">${icon}</div>
     <h2>${message}</h2>
@@ -696,14 +697,14 @@ function reschedulePage(booking, user, et, token) {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
     hour: '2-digit', minute: '2-digit', timeZone: booking.attendee_timezone || 'UTC',
   });
-  return shell('Reschedule Booking', `
+  return shell('Reschedule Assignment', `
     <div class="icon">[↺]</div>
-    <h2>Reschedule your booking</h2>
+    <h2>Reschedule your assignment</h2>
     <p class="sub">Currently scheduled for:</p>
     <div class="time">${startLocal}</div>
     <p class="sub" style="margin-bottom:20px">Pick a new time below. Your old slot will be released.</p>
     <div class="actions">
-      <a href="/book/${user.slug}/${et.slug}?reschedule=${token}&name=${encodeURIComponent(booking.attendee_name)}&email=${encodeURIComponent(booking.attendee_email)}&tz=${encodeURIComponent(booking.attendee_timezone || 'UTC')}">
+      <a href="/assign/${user.slug}/${et.slug}?reschedule=${token}&name=${encodeURIComponent(booking.attendee_name)}&email=${encodeURIComponent(booking.attendee_email)}&tz=${encodeURIComponent(booking.attendee_timezone || 'UTC')}">
         <button class="btn btn-accent" style="width:100%">Pick a new time →</button>
       </a>
       <button class="btn btn-ghost" onclick="history.back()">← Go back</button>

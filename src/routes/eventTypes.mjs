@@ -58,7 +58,7 @@ export default async function eventTypesRoutes(fastify) {
     schema: {
       tags: ['Event Types'],
       summary: 'List event types',
-      description: 'Returns all event types for the authenticated user. Each event type has a public booking URL at `/book/:username/:slug`.',
+      description: 'Returns all event types for the authenticated user. Each event type has a public manifest link at `/assign/:username/:slug`.',
       security: [{ apiKey: [] }],
       response: { 200: { type: 'object', properties: { event_types: { type: 'array', items: eventTypeSchema } }, example: { event_types: [eventTypeExample] } } },
     },
@@ -88,7 +88,7 @@ export default async function eventTypesRoutes(fastify) {
     schema: {
       tags: ['Event Types'],
       summary: 'Create event type',
-      description: 'Create a new bookable event type. The `slug` is used in the public booking URL (`/book/:username/:slug`). Set `requires_confirmation: true` to put new bookings in a **pending** state — you will receive an email with one-click confirm/decline links, and the attendee is notified their request is under review.',
+      description: 'Create a new assignable assignment type. The `slug` is used in the public manifest link (`/assign/:username/:slug`). Set `requires_confirmation: true` to put new bookings in a **pending** state — you will receive an email with one-click confirm/decline links, and the attendee is notified their request is under review.',
       security: [{ apiKey: [] }],
       body: {
         type: 'object',
@@ -97,7 +97,7 @@ export default async function eventTypesRoutes(fastify) {
           title: { type: 'string' },
           slug: { type: 'string' },
           description: { type: 'string' },
-          appointment_label: { type: 'string', default: 'meeting' },
+          appointment_label: { type: 'string', default: 'assignment' },
           duration_minutes: { type: 'integer' },
           buffer_before: { type: 'integer', default: 0 },
           buffer_after: { type: 'integer', default: 0 },
@@ -145,7 +145,7 @@ export default async function eventTypesRoutes(fastify) {
     const row = await db.create(tables.event_types, {
       user_id: String(req.user.Id),
       title, slug, description,
-      appointment_label: appointment_label || 'meeting',
+      appointment_label: appointment_label || 'assignment',
       duration_minutes: Number(duration_minutes),
       buffer_before: Number(buffer_before || 0),
       buffer_after: Number(buffer_after || 0),

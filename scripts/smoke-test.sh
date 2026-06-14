@@ -131,7 +131,7 @@ fi
 
 # ── Public booking page ──────────────────────────
 info "Public pages"
-check "Booking page loads"  "$HOST/book/jason/enterprise-intro"  ""
+check "Booking page loads"  "$HOST/assign/jason/enterprise-intro"  ""
 
 # ── Summary ─────────────────────────────────────
 echo ""

@@ -1,23 +1,22 @@
-// Serves the public booking page UI
-// GET /book/:username/:event_slug
+// Serves the public manifest (assignment request) page UI
+// GET /assign/:username/:event_slug  (legacy /book/ redirects here)
 
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 
 export default async function bookingPageRoutes(fastify) {
-  fastify.get('/book/:username/:event_slug', {
-    schema: {
-      tags: ['Public'],
-      summary: 'Individual booking page',
-      description: 'Returns the HTML booking page for an individual host\'s event type. Open in a browser — not a JSON API endpoint.',
-      params: { type: 'object', properties: { username: { type: 'string' }, event_slug: { type: 'string' } } },
-      response: { 200: { type: 'string', example: '<!DOCTYPE html><html><head><title>Book a Meeting</title></head><body>...</body></html>' } },
-    },
-  }, async (req, reply) => {
+  const pageSchema = {
+    tags: ['Public'],
+    summary: 'Individual manifest page',
+    description: 'Returns the HTML assignment request page for an individual host\'s assignment type. Open in a browser — not a JSON API endpoint.',
+    params: { type: 'object', properties: { username: { type: 'string' }, event_slug: { type: 'string' } } },
+    response: { 200: { type: 'string', example: '<!DOCTYPE html><html><head><title>Request Assignment</title></head><body>...</body></html>' } },
+  };
+
+  const servePage = async (req, reply) => {
     const { username, event_slug } = req.params;
     const { reschedule, name, email, tz, nobranding } = req.query;
 
-    // Only hide branding if requested AND the user is on a paid plan
     let hideBranding = false;
     if (nobranding === '1') {
       try {
@@ -31,6 +30,13 @@ export default async function bookingPageRoutes(fastify) {
 
     const html = buildPage(username, event_slug, { reschedule, name, email, tz, hideBranding });
     reply.type('text/html').send(html);
+  };
+
+  fastify.get('/assign/:username/:event_slug', { schema: pageSchema }, servePage);
+
+  fastify.get('/book/:username/:event_slug', { schema: { hide: true } }, async (req, reply) => {
+    const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return reply.redirect(`/assign/${req.params.username}/${req.params.event_slug}${qs}`);
   });
 }
 
@@ -40,7 +46,7 @@ function buildPage(username, eventSlug, { reschedule, name, email, tz, hideBrand
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Book a Meeting</title>
+<title>Request Assignment — SchedKit Manifest</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -742,17 +748,17 @@ html, body {
         <div class="field-lbl">Notes (optional)</div>
         <textarea id="f-notes" placeholder="Anything to share beforehand..."></textarea>
       </div>
-      <button class="btn-confirm" id="btn-confirm">Confirm Booking</button>
+      <button class="btn-confirm" id="btn-confirm">Confirm Assignment</button>
     </div>
 
     <!-- CONFIRMATION PANE -->
     <div id="confirm-pane" style="display:none" class="confirm-pane">
       <div class="confirm-check" id="confirm-icon">✓</div>
-      <div class="confirm-headline" id="confirm-headline">You're booked!</div>
+      <div class="confirm-headline" id="confirm-headline">Assignment confirmed</div>
       <div class="confirm-sub" id="confirm-sub">Confirmation sent to <strong id="confirm-email"></strong></div>
       <div class="confirm-detail" id="confirm-detail"></div>
       <div class="confirm-uid" id="confirm-uid"></div>
-      <button class="btn-cancel-bkg" id="btn-cancel-bkg" style="display:none">Cancel this booking</button>
+      <button class="btn-cancel-bkg" id="btn-cancel-bkg" style="display:none">Cancel assignment</button>
       <a href="/dashboard" style="display:inline-block;margin-top:20px;background:var(--accent);color:var(--bg);text-decoration:none;padding:12px 28px;border-radius:8px;font-family:var(--font-mono);font-size:13px;font-weight:700;letter-spacing:0.05em;text-align:center;width:100%;box-sizing:border-box;">DONE →</a>
     </div>
 
@@ -780,7 +786,7 @@ html, body {
   <div class="em-sheet">
     <div class="em-header">
       <div>
-        <div class="em-title">Embed this booking page</div>
+        <div class="em-title">Embed manifest page</div>
         <div class="em-sub">Copy any snippet below and add it to your site, app, or platform.</div>
       </div>
       <button class="em-close" id="embedClose">✕</button>
@@ -799,7 +805,7 @@ html, body {
 
       <!-- IFRAME -->
       <div class="em-panel active" data-panel="iframe">
-        <div class="em-panel-desc">Drop this anywhere on a webpage to embed the booking form inline.</div>
+        <div class="em-panel-desc">Drop this anywhere on a webpage to embed the assignment form inline.</div>
         <div class="em-code-wrap">
           <pre class="em-code" id="code-iframe"></pre>
           <button class="em-copy" data-target="code-iframe">Copy</button>
@@ -824,14 +830,14 @@ html, body {
 
       <!-- POPUP -->
       <div class="em-panel" data-panel="popup">
-        <div class="em-panel-desc">Adds a button to your page. Clicking it opens the booking form in a centered modal overlay.</div>
+        <div class="em-panel-desc">Adds a button to your page. Clicking it opens the assignment form in a centered modal overlay.</div>
         <div class="em-code-wrap">
           <pre class="em-code" id="code-popup"></pre>
           <button class="em-copy" data-target="code-popup">Copy</button>
         </div>
         <div class="em-options">
           <label>Button label
-            <input type="text" id="opt-btn-label" class="em-input" value="Book a meeting" placeholder="Book a meeting">
+            <input type="text" id="opt-btn-label" class="em-input" value="Request assignment" placeholder="Request assignment">
           </label>
         </div>
       </div>
@@ -851,7 +857,7 @@ html, body {
             </select>
           </label>
           <label>Label
-            <input type="text" id="opt-widget-label" class="em-input" value="Book now" placeholder="Book now">
+            <input type="text" id="opt-widget-label" class="em-input" value="Request assignment" placeholder="Request assignment">
           </label>
         </div>
       </div>
@@ -915,7 +921,7 @@ html, body {
       const data = await res.json();
       if (data.event_type) {
         eventType = data.event_type;
-        const label = eventType.appointment_label || 'meeting';
+        const label = eventType.appointment_label || 'assignment';
         const locIcon = { video:'[▶]', phone:'[~]', in_person:'[+]', other:'[◆]' }[eventType.location_type] || '[◷]';
         const locLabel = eventType.location || ({ video:'Video call', phone:'Phone call', in_person:'In person' }[eventType.location_type] || 'Meeting');
 
@@ -926,7 +932,7 @@ html, body {
           <div class="meta-row"><span class="meta-icon">[~]</span>\${eventType.duration_minutes} min</div>
           <div class="meta-row"><span class="meta-icon">\${locIcon}</span>\${locLabel}</div>
         \`;
-        document.title = RESCHEDULE_TOKEN ? \`Reschedule: \${eventType.title}\` : \`Book \${label}: \${eventType.title}\`;
+        document.title = RESCHEDULE_TOKEN ? \`Reschedule: \${eventType.title}\` : \`Request \${label}: \${eventType.title}\`;
         document.getElementById('btn-confirm').textContent = RESCHEDULE_TOKEN
           ? 'Confirm Reschedule'
           : \`Confirm \${label.charAt(0).toUpperCase() + label.slice(1)}\`;
@@ -1121,10 +1127,10 @@ html, body {
 
     document.getElementById('form-error').style.display = 'none';
     const btn = document.getElementById('btn-confirm');
-    btn.disabled = true; btn.textContent = RESCHEDULE_TOKEN ? 'Rescheduling...' : 'Booking...';
+    btn.disabled = true; btn.textContent = RESCHEDULE_TOKEN ? 'Rescheduling...' : 'Committing...';
 
     try {
-      const url = RESCHEDULE_TOKEN ? \`/v1/reschedule/\${RESCHEDULE_TOKEN}\` : \`/v1/book/\${USERNAME}/\${EVENT_SLUG}\`;
+      const url = RESCHEDULE_TOKEN ? \`/v1/reschedule/\${RESCHEDULE_TOKEN}\` : \`/v1/assign/\${USERNAME}/\${EVENT_SLUG}\`;
       const body = RESCHEDULE_TOKEN
         ? { start_time: selectedSlot.start, attendee_timezone: timezone }
         : { start_time: selectedSlot.start, attendee_name: nameVal, attendee_email: emailVal,
@@ -1136,7 +1142,7 @@ html, body {
       if (!res.ok) {
         showError(data.error || 'Failed. Please try again.');
         btn.disabled = false;
-        const lbl = eventType?.appointment_label || 'meeting';
+        const lbl = eventType?.appointment_label || 'assignment';
         btn.textContent = RESCHEDULE_TOKEN ? 'Confirm Reschedule' : \`Confirm \${lbl.charAt(0).toUpperCase()+lbl.slice(1)}\`;
         return;
       }
@@ -1151,7 +1157,7 @@ html, body {
         <div class="confirm-row"><div class="confirm-row-icon">[◷]</div><div><div class="confirm-row-lbl">Timezone</div><div class="confirm-row-val">\${timezone}</div></div></div>
         <div class="confirm-row"><div class="confirm-row-icon">[+]</div><div><div class="confirm-row-lbl">With</div><div class="confirm-row-val">\${USERNAME}</div></div></div>
       \`;
-      document.getElementById('confirm-uid').textContent = 'Booking ID: ' + data.uid;
+      document.getElementById('confirm-uid').textContent = 'Assignment ID: ' + data.uid;
 
       if (data.status === 'pending') {
         document.getElementById('confirm-icon').textContent = '⏳';
@@ -1183,16 +1189,16 @@ html, body {
       } catch(_) {}
     } catch(e) {
       showError('Network error. Please try again.');
-      btn.disabled = false; btn.textContent = 'Confirm Booking';
+      btn.disabled = false; btn.textContent = 'Confirm Assignment';
     }
   });
 
   document.getElementById('btn-cancel-bkg').addEventListener('click', async () => {
-    if (!cancelUrl || !confirm('Cancel this booking?')) return;
+    if (!cancelUrl || !confirm('Cancel this assignment?')) return;
     try {
       await fetch(cancelUrl, { method: 'POST' });
       document.getElementById('confirm-pane').innerHTML =
-        '<div style="padding:48px 36px;color:var(--text2);font-family:var(--font-mono);font-size:13px">Booking cancelled.</div>';
+        '<div style="padding:48px 36px;color:var(--text2);font-family:var(--font-mono);font-size:13px">Assignment cancelled.</div>';
     } catch(e) {}
   });
 
@@ -1202,7 +1208,7 @@ html, body {
 
   // ── Embed modal ──
   (function() {
-    const BOOK_URL = \`\${location.origin}/book/\${USERNAME}/\${EVENT_SLUG}\`;
+    const BOOK_URL = \`\${location.origin}/assign/\${USERNAME}/\${EVENT_SLUG}\`;
     const modal = document.getElementById('embedModal');
     const closeBtn = document.getElementById('embedClose');
 
@@ -1238,9 +1244,9 @@ html, body {
     function updateCodes() {
       const h = g('opt-height', '800px');
       const w = g('opt-width', '100%');
-      const btnLabel = g('opt-btn-label', 'Book a meeting');
+      const btnLabel = g('opt-btn-label', 'Request assignment');
       const corner = g('opt-corner', 'bottom-right');
-      const widgetLabel = g('opt-widget-label', 'Book now');
+      const widgetLabel = g('opt-widget-label', 'Request assignment');
       const isRight = corner === 'bottom-right';
 
       // ── Iframe ──
@@ -1251,7 +1257,7 @@ html, body {
   height="\${h}"
   frameborder="0"
   style="border:none;border-radius:12px;display:block;"
-  title="Booking"
+  title="Manifest"
   loading="lazy"
 ></iframe>\`;
 
@@ -1313,7 +1319,7 @@ html, body {
   var frame = document.createElement('iframe');
   frame.style.cssText = 'width:100%;max-width:960px;height:90vh;border:none;'+
     'border-radius:18px;display:block;box-shadow:0 24px 80px rgba(0,0,0,0.5);';
-  frame.title = 'Booking';
+  frame.title = 'Manifest';
 
   var xBtn = document.createElement('button');
   xBtn.innerHTML = '✕';
@@ -1357,10 +1363,10 @@ html, body {
 <SchedKitEmbed user="\${USERNAME}" event="\${EVENT_SLUG}" height={800} />
 
 // Popup (renders a button)
-<SchedKitEmbed user="\${USERNAME}" event="\${EVENT_SLUG}" mode="popup" label="Book a meeting" />
+<SchedKitEmbed user="\${USERNAME}" event="\${EVENT_SLUG}" mode="popup" label="Request assignment" />
 
 // Widget (floating button)
-<SchedKitEmbed user="\${USERNAME}" event="\${EVENT_SLUG}" mode="widget" label="Book now" />\`;
+<SchedKitEmbed user="\${USERNAME}" event="\${EVENT_SLUG}" mode="widget" label="Request assignment" />\`;
     }
 
     // Copy buttons

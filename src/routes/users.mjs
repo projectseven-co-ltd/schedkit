@@ -26,7 +26,7 @@ export default async function usersRoutes(fastify) {
         properties: {
           name: { type: 'string' },
           email: { type: 'string', format: 'email' },
-          slug: { type: 'string', description: 'URL-safe username used in public booking links (`/book/:slug/:event`)' },
+          slug: { type: 'string', description: 'URL-safe username used in public manifest links (`/assign/:slug/:type`)' },
           timezone: { type: 'string', default: 'UTC' },
         },
       },
@@ -99,7 +99,7 @@ export default async function usersRoutes(fastify) {
     schema: {
       tags: ['Users'],
       summary: 'Get a public user profile',
-      description: 'Returns the public profile for a user by slug. Used by the booking page to display the host name and timezone.',
+      description: 'Returns the public profile for a user by slug. Used by the manifest page to display the host name and timezone.',
       params: {
         type: 'object',
         properties: { slug: { type: 'string', description: 'User\'s URL slug' } },

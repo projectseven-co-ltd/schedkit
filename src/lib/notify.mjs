@@ -4,7 +4,7 @@ export async function notifyNewBooking(user, booking, eventType) {
   const ntfyTopic = user.ntfy_topic;
   if (!ntfyTopic) return;
 
-  const title = `New ${eventType.appointment_label || 'booking'}`;
+  const title = `New ${eventType.appointment_label || 'assignment'}`;
   const startLocal = new Date(booking.start_time).toLocaleString('en-US', {
     timeZone: user.timezone || 'UTC',
     weekday: 'short', month: 'short', day: 'numeric',
@@ -19,7 +19,7 @@ export async function notifyBookingCancelled(user, booking, eventType) {
   const ntfyTopic = user.ntfy_topic;
   if (!ntfyTopic) return;
 
-  const title = `${eventType.appointment_label || 'Booking'} cancelled`;
+  const title = `${eventType.appointment_label || 'Assignment'} cancelled`;
   const startLocal = new Date(booking.start_time).toLocaleString('en-US', {
     timeZone: user.timezone || 'UTC',
     weekday: 'short', month: 'short', day: 'numeric',

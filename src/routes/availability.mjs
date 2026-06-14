@@ -200,7 +200,7 @@ export default async function availabilityRoutes(fastify) {
       event_type: {
         title: etResult.list[0].title,
         duration_minutes: etResult.list[0].duration_minutes,
-        appointment_label: etResult.list[0].appointment_label || 'meeting',
+        appointment_label: etResult.list[0].appointment_label || 'assignment',
         location_type: etResult.list[0].location_type || null,
         location: etResult.list[0].location || null,
         custom_fields: etResult.list[0].custom_fields || null,

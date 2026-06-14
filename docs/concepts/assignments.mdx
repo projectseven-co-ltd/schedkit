@@ -11,16 +11,16 @@ The API uses `/v1/bookings` internally; the dashboard calls them **Assignments**
 
 ## Booking pages
 
-Every user gets a public booking page at:
+Every user gets a public manifest page at:
 
 ```
-https://schedkit.net/book/:username/:event_slug
+https://schedkit.net/assign/:username/:event_slug
 ```
 
-Team booking pages:
+Team manifest pages:
 
 ```
-https://schedkit.net/book/:org_slug/:team_slug/:event_slug
+https://schedkit.net/assign/:org_slug/:team_slug/:event_slug
 ```
 
 ## Event types
@@ -42,7 +42,7 @@ When `requires_confirmation: true`, a booking is created with `status: pending`.
 ## Booking via API
 
 ```bash
-curl -X POST https://schedkit.net/v1/book/:username/:event_slug \
+curl -X POST https://schedkit.net/v1/assign/:username/:event_slug \
   -H "Content-Type: application/json" \
   -d '{
     "attendee_name": "Jason Johnson",

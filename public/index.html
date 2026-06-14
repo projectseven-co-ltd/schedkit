@@ -489,12 +489,12 @@
   <p class="hero-sub">Signal anything. Coordinate everything. Physical or digital. Scheduling, ticketing, alerts, and relay control — one API, any device.</p>
   <div class="hero-actions">
     <a href="#request-access" class="btn-primary">Get Started</a>
-    <a href="/book/jrj-pi0z/demo-meeting" class="btn-ghost" target="_blank">See a live demo →</a>
+    <a href="/assign/jrj-pi0z/demo-meeting" class="btn-ghost" target="_blank">See a live demo →</a>
   </div>
   <div class="demo-pill">
     <div class="dot"></div>
     <span>Live demo:</span>
-    <a href="/book/jrj-pi0z/demo-meeting" target="_blank">schedkit.net/book/jrj-pi0z/demo-meeting</a>
+    <a href="/assign/jrj-pi0z/demo-meeting" target="_blank">schedkit.net/assign/jrj-pi0z/demo-meeting</a>
   </div>
 </section>
 
@@ -513,7 +513,7 @@
       <div class="step">
         <div class="step-num">02</div>
         <h3>Configure signals</h3>
-        <p>Define what events you care about — bookings, alerts, sensor triggers, or custom webhooks.</p>
+        <p>Define what events you care about — assignments, alerts, sensor triggers, or custom webhooks.</p>
       </div>
       <div class="step">
         <div class="step-num">03</div>
@@ -534,17 +534,17 @@
   <div class="container">
     <div class="section-label">Features</div>
     <h2>Signal anything. Coordinate everything.</h2>
-    <p class="section-sub">Scheduling, ticketing, alerts, and physical device control — one API, any device, physical or digital.</p>
+    <p class="section-sub">Manifest scheduling, ticketing, alerts, and physical device control — one API, any device, physical or digital.</p>
     <div class="features-grid">
       <div class="feature">
         <div class="feature-icon">[⊘]</div>
         <h3>Zero branding</h3>
-        <p>No "Powered by" anywhere. Booking pages are completely unbranded - or carry your agency's name.</p>
+        <p>No "Powered by" anywhere. Manifest pages are completely unbranded - or carry your agency's name.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">[◉]</div>
         <h3>Custom domains</h3>
-        <p>CNAME your clients' domains to SchedKit. Their booking page lives at <em>their</em> URL.</p>
+        <p>CNAME your clients' domains to SchedKit. Their manifest page lives at <em>their</em> URL.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">[~]</div>
@@ -554,7 +554,7 @@
       <div class="feature">
         <div class="feature-icon">[◷]</div>
         <h3>Timezone-aware</h3>
-        <p>Slots shown in the attendee's local timezone. No confusion, no double-bookings.</p>
+        <p>Slots shown in the attendee's local timezone. No confusion, no double-assignments.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">[↺]</div>
@@ -564,12 +564,12 @@
       <div class="feature">
         <div class="feature-icon">[⇢]</div>
         <h3>Webhooks</h3>
-        <p>Get notified on every booking, cancellation, and reschedule. Connect to anything.</p>
+        <p>Get notified on every assignment, cancellation, and reschedule. Connect to anything.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">[✉]</div>
         <h3>Email confirmations</h3>
-        <p>Transactional emails sent on every booking. Customizable sender name and domain.</p>
+        <p>Transactional emails sent on every assignment. Customizable sender name and domain.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">[⊘]</div>
@@ -579,7 +579,7 @@
       <div class="feature">
         <div class="feature-icon">[×]</div>
         <h3>Schedule override</h3>
-        <p>Reschedule a booking to any date and time - weekends, off-hours, no restrictions. Override mode bypasses availability rules when you need the flexibility.</p>
+        <p>Reschedule an assignment to any date and time - weekends, off-hours, no restrictions. Override mode bypasses availability rules when you need the flexibility.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">[◫]</div>
@@ -589,7 +589,7 @@
       <div class="feature">
         <div class="feature-icon">[≡]</div>
         <h3>Custom intake fields</h3>
-        <p>Add custom fields to your booking form - text, dropdowns, phone, anything. Responses stored with every booking.</p>
+        <p>Add custom fields to your assignment form - text, dropdowns, phone, anything. Responses stored with every assignment.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">[◔]</div>
@@ -599,7 +599,7 @@
       <div class="feature">
         <div class="feature-icon">[■]</div>
         <h3>Built-in dashboard</h3>
-        <p>Manage bookings, event types, availability, and blackout dates from a clean admin UI - no third-party tools needed.</p>
+        <p>Manage assignments, assignment types, standby windows, and blackout dates from a clean admin UI - no third-party tools needed.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">[↺]</div>
@@ -646,7 +646,7 @@
       <div class="code-block">
         <div class="code-header">
           <div class="code-dots"><i></i><i></i><i></i></div>
-          <span>Create a client + event type</span>
+          <span>Create a client + assignment type</span>
         </div>
         <pre><span class="c"># 1. Create a client account</span>
 <span class="k">POST</span> /v1/users
@@ -669,7 +669,7 @@
   <span class="s">"duration_minutes"</span>: <span class="n">30</span>
 }
 
-<span class="c"># → Book at /book/acme/discovery</span></pre>
+<span class="c"># → Request at /assign/acme/discovery</span></pre>
       </div>
     </div>
   </div>
@@ -680,7 +680,7 @@
   <div class="container">
     <div class="section-label">Embed anywhere</div>
     <h2>Embed anywhere.</h2>
-    <p class="section-sub">Drop a booking form or signal interface into any React app, static site, or client portal. Inline, popup, or floating widget. No configuration required.</p>
+    <p class="section-sub">Drop an assignment form or signal interface into any React app, static site, or client portal. Inline, popup, or floating widget. No configuration required.</p>
 
     <!-- Tab switcher -->
     <div id="embedTabs" style="display:flex;gap:8px;margin-bottom:32px;flex-wrap:wrap;">
@@ -714,7 +714,7 @@
   );
 }</pre>
           </div>
-          <p style="margin-top:16px;color:var(--muted);font-size:14px;">Renders the full booking form inline - no overlay, no button. Best for dedicated booking pages.</p>
+          <p style="margin-top:16px;color:var(--muted);font-size:14px;">Renders the full assignment form inline - no overlay, no button. Best for dedicated manifest pages.</p>
         </div>
 
         <!-- Popup -->
@@ -756,7 +756,7 @@
   <span class="n">user</span>=<span class="s">"acme"</span>
   <span class="n">event</span>=<span class="s">"discovery"</span>
   <span class="n">mode</span>=<span class="s">"widget"</span>
-  <span class="n">label</span>=<span class="s">"Book now"</span>
+  <span class="n">label</span>=<span class="s">"Request assignment"</span>
   <span class="n">corner</span>=<span class="s">"bottom-right"</span>
 /&gt;</pre>
           </div>
@@ -772,7 +772,7 @@
             </div>
             <pre><span class="c">&lt;!-- Works on any site, no npm required --&gt;</span>
 &lt;<span class="k">iframe</span>
-  <span class="n">src</span>=<span class="s">"https://schedkit.net/book/acme/discovery"</span>
+  <span class="n">src</span>=<span class="s">"https://schedkit.net/assign/acme/discovery"</span>
   <span class="n">width</span>=<span class="s">"100%"</span>
   <span class="n">height</span>=<span class="s">"750"</span>
   <span class="n">frameborder</span>=<span class="s">"0"</span>
@@ -798,11 +798,11 @@
             </div>
             <div>
               <div style="font-size:17px;font-weight:600;color:var(--text);margin-bottom:8px;">See it in action</div>
-              <div style="font-size:14px;color:var(--muted);line-height:1.6;max-width:260px;">Click the button below - this is a real SchedKit booking page opening as a modal overlay.</div>
+              <div style="font-size:14px;color:var(--muted);line-height:1.6;max-width:260px;">Click the button below - this is a real SchedKit manifest page opening as a modal overlay.</div>
             </div>
             <button id="demoTrigger" onclick="openSchedKitDemo()" style="background:var(--accent);color:var(--bg);border:none;padding:14px 28px;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;font-family:var(--font-sans);transition:opacity 0.15s;display:flex;align-items:center;gap:8px;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              Book a demo meeting
+              Request a demo assignment
             </button>
             <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);">No sign-up required - just close when done</div>
           </div>
@@ -832,7 +832,7 @@
       <div class="usecase">
         <div class="usecase-icon">[◆]</div>
         <h3>SaaS builders</h3>
-        <p>Add booking, ticketing, and alerting to your product via one API. No third-party branding in your UX.</p>
+        <p>Add manifest scheduling, ticketing, and alerting to your product via one API. No third-party branding in your UX.</p>
       </div>
       <div class="usecase">
         <div class="usecase-icon">[+]</div>
@@ -995,7 +995,7 @@ setNvgDemo('dark');
       <div class="plan-desc">Start experimenting. Full API access, no credit card.</div>
       <ul>
         <li>1 user, personal only</li>
-        <li>3 event types</li>
+        <li>3 assignment types</li>
         <li>Booking page</li>
         <li>API access</li>
         <li class="no">White-label</li>
@@ -1013,7 +1013,7 @@ setNvgDemo('dark');
       <div class="plan-desc">For small teams building real coordination workflows.</div>
       <ul>
         <li>1 org, up to 5 members</li>
-        <li>Unlimited event types</li>
+        <li>Unlimited assignment types</li>
         <li>White-label (no SchedKit branding)</li>
         <li>Full API + webhooks</li>
         <li>Team routing (round-robin / random)</li>
@@ -1262,7 +1262,7 @@ fetch('/version').then(r=>r.json()).then(d=>{
       </button>
       <button onclick="openEntBooking()" style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:20px 16px;cursor:pointer;text-align:left;transition:opacity .15s;" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
         <div style="font-size:20px;margin-bottom:8px;">&#x1F4C5;</div>
-        <div style="font-family:monospace;font-size:13px;color:var(--accent);font-weight:600;margin-bottom:4px;">Book a call</div>
+        <div style="font-family:monospace;font-size:13px;color:var(--accent);font-weight:600;margin-bottom:4px;">Request assignment</div>
         <div style="font-size:12px;color:var(--muted);">30 min &#x2014; pick a time now</div>
       </button>
     </div>
@@ -1298,7 +1298,7 @@ fetch('/version').then(r=>r.json()).then(d=>{
 
 <script>
 const planConfig = {
-  free:       { badge: "Free Plan", heading: "Get started free", sub: "No waitlist. No credit card. Your booking page is ready in seconds.", btn: "Get started free →", company: false, successText: "You're in.", successSub: "Check your inbox - welcome note from OlSon on the way." },
+  free:       { badge: "Free Plan", heading: "Get started free", sub: "No waitlist. No credit card. Your manifest page is ready in seconds.", btn: "Get started free →", company: false, successText: "You're in.", successSub: "Check your inbox - welcome note from OlSon on the way." },
   starter:    { badge: "Starter — $29/mo", heading: "Get started on Starter", sub: "Free during beta. We'll reach out to get you set up.", btn: "Request access →", company: true, successText: "Request received.", successSub: "We'll be in touch shortly." },
   agency:     { badge: "Agency - $99/mo", heading: "Request Agency access", sub: "Built for field ops and coordination teams. Tell us what you\'re building.", btn: "Request access →", company: true, successText: "Request received.", successSub: "We'll be in touch shortly." },
 };
@@ -1364,7 +1364,7 @@ function openSchedKitDemo() {
   const overlay = document.createElement("div");
   overlay.id = "schedKitDemoOverlay";
   overlay.style.cssText = "position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;";
-  overlay.innerHTML = '<div style="position:relative;width:100%;max-width:860px;height:85vh;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6);background:var(--surface);border:1px solid #2e2e3a;"><button onclick="document.getElementById(\'schedKitDemoOverlay\').remove()" style="position:absolute;top:14px;right:14px;z-index:1;background:rgba(0,0,0,0.6);border:none;color:var(--text);border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#x2715;</button><iframe src="https://schedkit.net/book/schedkit/leadership/enterprise-intro" style="width:100%;height:100%;border:none;display:block;" title="Book a Demo" loading="lazy"></iframe></div>';
+  overlay.innerHTML = '<div style="position:relative;width:100%;max-width:860px;height:85vh;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6);background:var(--surface);border:1px solid #2e2e3a;"><button onclick="document.getElementById(\'schedKitDemoOverlay\').remove()" style="position:absolute;top:14px;right:14px;z-index:1;background:rgba(0,0,0,0.6);border:none;color:var(--text);border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#x2715;</button><iframe src="https://schedkit.net/assign/schedkit/leadership/enterprise-intro" style="width:100%;height:100%;border:none;display:block;" title="Request Demo Assignment" loading="lazy"></iframe></div>';
   overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
   document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { overlay.remove(); document.removeEventListener("keydown", esc); } });
   document.body.appendChild(overlay);
@@ -1375,7 +1375,7 @@ function openEntBooking() {
   const overlay = document.createElement("div");
   overlay.id = "entBookingOverlay";
   overlay.style.cssText = "position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;";
-  overlay.innerHTML = '<div style="position:relative;width:100%;max-width:860px;height:85vh;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6);background:var(--surface);border:1px solid #2e2e3a;"><button onclick="document.getElementById(\'entBookingOverlay\').remove()" style="position:absolute;top:14px;right:14px;z-index:1;background:rgba(0,0,0,0.6);border:none;color:var(--text);border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#x2715;</button><iframe src="https://schedkit.net/book/schedkit/leadership/enterprise-intro" style="width:100%;height:100%;border:none;display:block;" title="Book Enterprise Intro" loading="lazy"></iframe></div>';
+  overlay.innerHTML = '<div style="position:relative;width:100%;max-width:860px;height:85vh;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6);background:var(--surface);border:1px solid #2e2e3a;"><button onclick="document.getElementById(\'entBookingOverlay\').remove()" style="position:absolute;top:14px;right:14px;z-index:1;background:rgba(0,0,0,0.6);border:none;color:var(--text);border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#x2715;</button><iframe src="https://schedkit.net/assign/schedkit/leadership/enterprise-intro" style="width:100%;height:100%;border:none;display:block;" title="Request Enterprise Intro" loading="lazy"></iframe></div>';
   overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
   document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { overlay.remove(); document.removeEventListener("keydown", esc); } });
   document.body.appendChild(overlay);

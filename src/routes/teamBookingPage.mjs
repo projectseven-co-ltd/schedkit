@@ -1,4 +1,4 @@
-// src/routes/teamBookingPage.mjs — Team booking page + booking creation
+// src/routes/teamBookingPage.mjs — Team manifest page + assignment creation
 
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
@@ -25,55 +25,58 @@ async function memberHasAvailability(userId, startISO, durationMins) {
 
 export default async function teamBookingPageRoutes(fastify) {
 
-  // Public booking page
-  fastify.get('/book/:org_slug/:team_slug/:event_slug', {
-    schema: {
-      tags: ['Public'],
-      summary: 'Team booking page',
-      description: 'Returns the HTML booking page for a team event type. Open in a browser — not a JSON API endpoint.',
-      params: { type: 'object', properties: { org_slug: { type: 'string' }, team_slug: { type: 'string' }, event_slug: { type: 'string' } } },
-      response: { 200: { type: 'string', example: '<!DOCTYPE html><html><head><title>Book a Meeting</title></head><body>...</body></html>' } },
-    },
-  }, async (req, reply) => {
+  // Public team manifest page
+  const teamPageSchema = {
+    tags: ['Public'],
+    summary: 'Team manifest page',
+    description: 'Returns the HTML assignment request page for a team assignment type. Open in a browser — not a JSON API endpoint.',
+    params: { type: 'object', properties: { org_slug: { type: 'string' }, team_slug: { type: 'string' }, event_slug: { type: 'string' } } },
+    response: { 200: { type: 'string', example: '<!DOCTYPE html><html><head><title>Request Assignment</title></head><body>...</body></html>' } },
+  };
+  const serveTeamPage = async (req, reply) => {
     const { org_slug, team_slug, event_slug } = req.params;
     return reply.type('text/html').send(buildTeamPage(org_slug, team_slug, event_slug));
+  };
+  fastify.get('/assign/:org_slug/:team_slug/:event_slug', { schema: teamPageSchema }, serveTeamPage);
+  fastify.get('/book/:org_slug/:team_slug/:event_slug', { schema: { hide: true } }, async (req, reply) => {
+    const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return reply.redirect(`/assign/${req.params.org_slug}/${req.params.team_slug}/${req.params.event_slug}${qs}`);
   });
 
-  // Create team booking
-  fastify.post('/v1/book/:org_slug/:team_slug/:event_slug', {
-    schema: {
-      tags: ['Public'],
-      summary: 'Create a team booking',
-      description: 'Submit a booking for a team event type. A team member is auto-assigned based on the team\'s routing setting (`round_robin` or `random`). Returns booking confirmation including `cancel_url` and `assigned_to`.',
-      params: { type: 'object', properties: { org_slug: { type: 'string' }, team_slug: { type: 'string' }, event_slug: { type: 'string' } } },
-      body: {
-        type: 'object', required: ['start_time', 'attendee_name', 'attendee_email'],
-        properties: {
-          start_time: { type: 'string', description: 'ISO 8601 datetime from the `/v1/slots` response' },
-          attendee_name: { type: 'string' },
-          attendee_email: { type: 'string', format: 'email' },
-          attendee_timezone: { type: 'string', default: 'UTC' },
-          notes: { type: 'string' },
-        },
-        examples: [{ start_time: '2026-03-20T15:00:00.000Z', attendee_name: 'Taylor Brooks', attendee_email: 'taylor@example.com', attendee_timezone: 'America/Chicago', notes: 'Need a field response lead.' }],
+  // Create team assignment
+  const teamCreateSchema = {
+    tags: ['Public'],
+    summary: 'Create a team assignment',
+    description: 'Submit an assignment for a team assignment type. A team member is auto-assigned based on the team\'s routing setting (`round_robin` or `random`). Returns confirmation including `cancel_url` and `assigned_to`.',
+    params: { type: 'object', properties: { org_slug: { type: 'string' }, team_slug: { type: 'string' }, event_slug: { type: 'string' } } },
+    body: {
+      type: 'object', required: ['start_time', 'attendee_name', 'attendee_email'],
+      properties: {
+        start_time: { type: 'string', description: 'ISO 8601 datetime from the `/v1/slots` response' },
+        attendee_name: { type: 'string' },
+        attendee_email: { type: 'string', format: 'email' },
+        attendee_timezone: { type: 'string', default: 'UTC' },
+        notes: { type: 'string' },
       },
-      response: {
-        201: {
-          type: 'object',
-          additionalProperties: true,
-          example: {
-            uid: 'bk_abc123def456',
-            status: 'confirmed',
-            start_time: '2026-03-20T15:00:00.000Z',
-            end_time: '2026-03-20T15:30:00.000Z',
-            assigned_to: 'Alex Response',
-            cancel_url: '/v1/cancel/cancel_tok_123',
-            reschedule_url: '/v1/reschedule/res_tok_123',
-          },
+      examples: [{ start_time: '2026-03-20T15:00:00.000Z', attendee_name: 'Taylor Brooks', attendee_email: 'taylor@example.com', attendee_timezone: 'America/Chicago', notes: 'Need a field response lead.' }],
+    },
+    response: {
+      201: {
+        type: 'object',
+        additionalProperties: true,
+        example: {
+          uid: 'bk_abc123def456',
+          status: 'confirmed',
+          start_time: '2026-03-20T15:00:00.000Z',
+          end_time: '2026-03-20T15:30:00.000Z',
+          assigned_to: 'Alex Response',
+          cancel_url: '/v1/cancel/cancel_tok_123',
+          reschedule_url: '/v1/reschedule/res_tok_123',
         },
       },
     },
-  }, async (req, reply) => {
+  };
+  const createTeamAssignment = async (req, reply) => {
     const { org_slug, team_slug, event_slug } = req.params;
     const { start_time, attendee_name, attendee_email, attendee_timezone = 'UTC', notes } = req.body || {};
 
@@ -90,7 +93,7 @@ export default async function teamBookingPageRoutes(fastify) {
     const team = teamResult.list[0];
 
     const etResult = await db.find(tables.team_event_types, `(team_id,eq,${team.Id})~and(slug,eq,${event_slug})`);
-    if (!etResult.list?.length) return reply.code(404).send({ error: 'Event type not found' });
+    if (!etResult.list?.length) return reply.code(404).send({ error: 'Assignment type not found' });
     const eventType = etResult.list[0];
 
     const tmResult = await db.find(tables.team_members, `(team_id,eq,${team.Id})~and(active,eq,true)`);
@@ -166,7 +169,9 @@ export default async function teamBookingPageRoutes(fastify) {
       cancel_url: `/v1/cancel/${cancel_token}`,
       reschedule_url: `/v1/reschedule/${reschedule_token}`,
     });
-  });
+  };
+  fastify.post('/v1/assign/:org_slug/:team_slug/:event_slug', { schema: teamCreateSchema }, createTeamAssignment);
+  fastify.post('/v1/book/:org_slug/:team_slug/:event_slug', { schema: { hide: true } }, createTeamAssignment);
 }
 
 function buildTeamPage(orgSlug, teamSlug, eventSlug) {
@@ -175,7 +180,7 @@ function buildTeamPage(orgSlug, teamSlug, eventSlug) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Book a Meeting</title>
+<title>Request Assignment — SchedKit Manifest</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -540,17 +545,17 @@ html, body {
         <div class="field-lbl">Notes (optional)</div>
         <textarea id="f-notes" placeholder="Anything to share beforehand..."></textarea>
       </div>
-      <button class="btn-confirm" id="btn-confirm">Confirm Booking</button>
+      <button class="btn-confirm" id="btn-confirm">Confirm Assignment</button>
     </div>
 
     <!-- CONFIRMATION PANE -->
     <div id="confirm-pane" style="display:none" class="confirm-pane">
       <div class="confirm-check" id="confirm-icon">✓</div>
-      <div class="confirm-headline" id="confirm-headline">You&#39;re booked!</div>
+      <div class="confirm-headline" id="confirm-headline">Assignment confirmed</div>
       <div class="confirm-sub" id="confirm-sub">Confirmation sent to <strong id="confirm-email"></strong></div>
       <div class="confirm-detail" id="confirm-detail"></div>
       <div class="confirm-uid" id="confirm-uid"></div>
-      <button class="btn-cancel-bkg" id="btn-cancel-bkg" style="display:none">Cancel this booking</button>
+      <button class="btn-cancel-bkg" id="btn-cancel-bkg" style="display:none">Cancel assignment</button>
       <a href="/dashboard" style="display:inline-block;margin-top:20px;background:var(--accent);color:var(--bg);text-decoration:none;padding:12px 28px;border-radius:8px;font-family:var(--font-mono);font-size:13px;font-weight:700;letter-spacing:0.05em;text-align:center;width:100%;box-sizing:border-box;">DONE →</a>
     </div>
 
@@ -605,9 +610,9 @@ html, body {
         document.getElementById('info-meta').innerHTML = \`
           <div class="meta-row"><span class="meta-icon">[~]</span>\${eventType.duration_minutes} min</div>
           <div class="meta-row"><span class="meta-icon">\${locIcon}</span>\${locLabel}</div>
-          <div class="meta-row"><span class="meta-icon">[▶]</span>Team booking</div>
+          <div class="meta-row"><span class="meta-icon">[▶]</span>Team manifest</div>
         \`;
-        document.title = 'Book: ' + eventType.title;
+        document.title = 'Request: ' + eventType.title;
         if (eventType.description) { const d = document.getElementById('info-desc'); d.textContent = eventType.description; d.style.display = ''; }
       }
     } catch(e) { document.getElementById('info-name').textContent = 'Could not load event'; }
@@ -728,14 +733,14 @@ html, body {
     if (!nameVal || !emailVal) { showError('Name and email are required.'); return; }
     if (!/^[^@]+@[^@]+\\.[^@]+$/.test(emailVal)) { showError('Please enter a valid email.'); return; }
     document.getElementById('form-error').style.display = 'none';
-    const btn = document.getElementById('btn-confirm'); btn.disabled = true; btn.textContent = 'Booking...';
+    const btn = document.getElementById('btn-confirm'); btn.disabled = true; btn.textContent = 'Committing...';
     try {
-      const res = await fetch(\`/v1/book/\${ORG_SLUG}/\${TEAM_SLUG}/\${EVENT_SLUG}\`, {
+      const res = await fetch(\`/v1/assign/\${ORG_SLUG}/\${TEAM_SLUG}/\${EVENT_SLUG}\`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ start_time: selectedSlot.start, attendee_name: nameVal, attendee_email: emailVal, attendee_timezone: timezone, notes }),
       });
       const data = await res.json();
-      if (!res.ok) { showError(data.error || 'Failed. Please try again.'); btn.disabled = false; btn.textContent = 'Confirm Booking'; return; }
+      if (!res.ok) { showError(data.error || 'Failed. Please try again.'); btn.disabled = false; btn.textContent = 'Confirm Assignment'; return; }
 
       const startLocal = new Date(data.start_time).toLocaleString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: timezone });
       document.getElementById('confirm-email').textContent = emailVal;
@@ -743,7 +748,7 @@ html, body {
         '<div class="confirm-row"><div class="confirm-row-icon">[◷]</div><div><div class="confirm-row-lbl">Date &amp; Time</div><div class="confirm-row-val">' + startLocal + '</div></div></div>' +
         '<div class="confirm-row"><div class="confirm-row-icon">[◷]</div><div><div class="confirm-row-lbl">Timezone</div><div class="confirm-row-val">' + timezone + '</div></div></div>' +
         '<div class="confirm-row"><div class="confirm-row-icon">[▶]</div><div><div class="confirm-row-lbl">Team</div><div class="confirm-row-val">' + (data.assigned_to ? 'With ' + data.assigned_to : TEAM_SLUG) + '</div></div></div>';
-      document.getElementById('confirm-uid').textContent = 'Booking ID: ' + data.uid;
+      document.getElementById('confirm-uid').textContent = 'Assignment ID: ' + data.uid;
 
       if (data.status === 'pending') {
         document.getElementById('confirm-icon').textContent = '⏳';
@@ -773,14 +778,14 @@ html, body {
           }
         }, '*');
       } catch(_) {}
-    } catch(e) { showError('Network error. Please try again.'); btn.disabled = false; btn.textContent = 'Confirm Booking'; }
+    } catch(e) { showError('Network error. Please try again.'); btn.disabled = false; btn.textContent = 'Confirm Assignment'; }
   });
 
   document.getElementById('btn-cancel-bkg').addEventListener('click', async () => {
-    if (!cancelUrl || !confirm('Cancel this booking?')) return;
+    if (!cancelUrl || !confirm('Cancel this assignment?')) return;
     try {
       await fetch(cancelUrl, { method: 'POST' });
-      document.getElementById('confirm-pane').innerHTML = '<div style="padding:48px 36px;color:var(--text2);font-family:var(--font-mono);font-size:13px">Booking cancelled.</div>';
+      document.getElementById('confirm-pane').innerHTML = '<div style="padding:48px 36px;color:var(--text2);font-family:var(--font-mono);font-size:13px">Assignment cancelled.</div>';
     } catch(e) {}
   });
 

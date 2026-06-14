@@ -516,7 +516,7 @@ export default async function orgsRoutes(fastify) {
     preHandler: requireSession,
     schema: {
       tags: [TAG], summary: 'Enable or disable a team member', security: SEC,
-      description: 'Toggle a team member\'s `active` status. Inactive members are excluded from booking assignment.',
+      description: 'Toggle a team member\'s `active` status. Inactive members are excluded from assignment routing.',
       params: { type: 'object', properties: { org_slug: { type: 'string' }, team_slug: { type: 'string' }, user_id: { type: 'string' } } },
       body: {
         type: 'object', required: ['active'],
@@ -562,7 +562,7 @@ export default async function orgsRoutes(fastify) {
     preHandler: requireSession,
     schema: {
       tags: [TAG], summary: 'Create a team event type', security: SEC,
-      description: 'Create a bookable event type for a team. The public booking URL is `/book/:org_slug/:team_slug/:slug`. Bookings are auto-assigned to a team member based on the team\'s `routing` setting.',
+      description: 'Create a assignable assignment type for a team. The public manifest link is `/assign/:org_slug/:team_slug/:slug`. Bookings are auto-assigned to a team member based on the team\'s `routing` setting.',
       params: { type: 'object', properties: { org_slug: { type: 'string' }, team_slug: { type: 'string' } } },
       body: {
         type: 'object', required: ['title', 'duration_minutes'],
@@ -575,7 +575,7 @@ export default async function orgsRoutes(fastify) {
           location: { type: 'string' },
           location_type: { type: 'string', enum: ['video', 'phone', 'in_person', 'other'] },
           description: { type: 'string' },
-          appointment_label: { type: 'string', default: 'meeting' },
+          appointment_label: { type: 'string', default: 'assignment' },
           min_notice_minutes: { type: 'integer', description: 'Minimum advance notice required to book' },
           webhook_url: { type: 'string' },
           custom_fields: { type: 'string', description: 'JSON array of custom field definitions' },
@@ -601,7 +601,7 @@ export default async function orgsRoutes(fastify) {
       location: req.body.location || '',
       location_type: req.body.location_type || null,
       description: req.body.description || '',
-      appointment_label: req.body.appointment_label || 'meeting',
+      appointment_label: req.body.appointment_label || 'assignment',
       min_notice_minutes: req.body.min_notice_minutes || 0,
       webhook_url: req.body.webhook_url || '',
       custom_fields: req.body.custom_fields || '[]',
