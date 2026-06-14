@@ -14,7 +14,7 @@ const ALLOWED_COLUMNS = new Set([
   'site_address', 'site_notes', 'scheduled_start', 'scheduled_end', 'started_at', 'completed_at', 'booking_id',
   'work_order_id', 'entry_type', 'ended_at', 'duration_minutes', 'sort_order', 'required', 'completed',
   'completed_at', 'completed_by', 'sku', 'quantity', 'unit', 'unit_cost', 'url', 'filename', 'mime_type',
-  'caption', 'category', 'uploaded_by', 'role', 'signer_name', 'signed_at', 'ip_hash',
+  'caption', 'category', 'uploaded_by',   'role', 'signer_name', 'signed_at', 'ip_hash', 'assignee_id', 'can_manage_work_orders',
 ]);
 
 function col(name) {

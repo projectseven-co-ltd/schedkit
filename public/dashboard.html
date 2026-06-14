@@ -670,6 +670,11 @@ tr:hover td{background:var(--surface2)}
           <option value="normal">Normal</option>
           <option value="low">Low</option>
         </select>
+        <select id="wo-filter-assignee" onchange="renderWorkOrdersTable(window._workOrders || [])">
+          <option value="all">All assignees</option>
+          <option value="me">Assigned to me</option>
+          <option value="unassigned">Unassigned</option>
+        </select>
         <input type="search" id="wo-filter-search" placeholder="Search title or site…" oninput="renderWorkOrdersTable(window._workOrders || [])" style="min-width:200px;flex:1">
         <div class="meta" id="wo-results-meta">—</div>
       </div>
@@ -1182,6 +1187,8 @@ tr:hover td{background:var(--surface2)}
         <div class="form-row"><label>Status</label><select id="wo-detail-status"><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="in_progress">In progress</option><option value="on_hold">On hold</option><option value="completed">Completed</option><option value="signed_off">Signed off</option><option value="closed">Closed</option></select></div>
         <div class="form-row"><label>Priority</label><select id="wo-detail-priority"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>
       </div>
+      <div class="form-row" id="wo-detail-assignee-row" style="display:none"><label>Assignee</label><select id="wo-detail-assignee"></select></div>
+      <div class="form-row" id="wo-detail-assignee-readonly" style="display:none"><label>Assignee</label><div id="wo-detail-assignee-label" style="font-size:13px;color:var(--muted)">—</div></div>
       <div class="form-row"><label>Site address</label><input type="text" id="wo-detail-site"></div>
       <div class="form-row"><label>Description</label><textarea id="wo-detail-description"></textarea></div>
       <div class="modal-actions"><button class="btn btn-primary" onclick="updateWorkOrder()">Save</button></div>
@@ -1216,9 +1223,16 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div id="wo-panel-signatures" class="wo-panel" style="display:none">
       <div id="wo-sigs-list" style="margin-bottom:12px"></div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">Technician</div>
       <div class="form-row"><label>Technician name</label><input type="text" id="wo-tech-signer-name"></div>
       <canvas id="wo-sig-canvas" width="600" height="120" style="width:100%;background:#fff;border-radius:8px;touch-action:none"></canvas>
-      <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-ghost" style="font-size:12px" onclick="woClearSig()">Clear</button><button class="btn btn-primary" style="font-size:12px" onclick="submitWoTechSignature()">Save signature</button></div>
+      <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-ghost" style="font-size:12px" onclick="woClearSig()">Clear</button><button class="btn btn-primary" style="font-size:12px" onclick="submitWoTechSignature()">Save technician signature</button></div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">On-site customer</div>
+        <div class="form-row"><label>Customer name</label><input type="text" id="wo-customer-signer-name"></div>
+        <canvas id="wo-customer-sig-canvas" width="600" height="120" style="width:100%;background:#fff;border-radius:8px;touch-action:none"></canvas>
+        <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-ghost" style="font-size:12px" onclick="woClearCustomerSig()">Clear</button><button class="btn btn-primary" style="font-size:12px" onclick="submitWoCustomerSignature()">Save customer signature</button></div>
+      </div>
     </div>
     <div id="wo-panel-links" class="wo-panel" style="display:none">
       <div class="form-row"><label>Linked assignment ID</label><div style="display:flex;gap:8px"><input type="text" id="wo-link-booking-id" style="flex:1"><button class="btn btn-ghost" style="font-size:12px" onclick="linkWoBooking()">Link</button></div></div>
@@ -3545,7 +3559,7 @@ async function loadOrgDetail(orgSlug) {
             ${isAdmin ? `<button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="openInviteMemberModal('${esc(org.slug)}')">+ Invite Member</button>` : ''}
           </div>
           <table>
-            <thead><tr><th>Email</th><th>Name</th><th>Role</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
+            <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Dispatch</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
             <tbody>
               ${members.map(m => `<tr>
                 <td style="font-size:13px">${esc(m.user?.email || m.user_id)}</td>
@@ -3558,6 +3572,14 @@ async function loadOrgDetail(orgSlug) {
                       <option value="admin" ${m.role==='admin'?'selected':''}>admin</option>
                     </select>
                   ` : `<span class="badge">${m.role}</span>`}
+                </td>
+                <td style="font-size:12px">
+                  ${isAdmin && m.role !== 'owner' ? `
+                    <label style="cursor:pointer;display:flex;align-items:center;gap:6px">
+                      <input type="checkbox" ${m.can_manage_work_orders ? 'checked' : ''} onchange="toggleOrgMemberDispatch('${esc(org.slug)}','${m.user_id}',this.checked)">
+                      <span style="color:var(--muted);font-size:11px">Work orders</span>
+                    </label>
+                  ` : (m.can_manage_work_orders || m.role === 'admin' ? '<span class="badge">dispatch</span>' : '—')}
                 </td>
                 ${isAdmin ? `<td>${m.role !== 'owner' ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--red)" onclick="removeOrgMember('${esc(org.slug)}','${m.user_id}')">Remove</button>` : ''}</td>` : ''}
               </tr>`).join('')}
@@ -3691,6 +3713,15 @@ async function changeOrgMemberRole(orgSlug, userId, role) {
   const res = await apiFetch(`/v1/orgs/${orgSlug}/members/${userId}`, { method: 'PATCH', body: JSON.stringify({ role }) });
   if (!res?.ok) { toast('Failed to update role', 'err'); await loadOrgDetail(orgSlug); return; }
   toast('Role updated', 'ok');
+}
+
+async function toggleOrgMemberDispatch(orgSlug, userId, enabled) {
+  const res = await apiFetch(`/v1/orgs/${orgSlug}/members/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ can_manage_work_orders: !!enabled }),
+  });
+  if (!res?.ok) { toast('Failed to update dispatch access', 'err'); await loadOrgDetail(orgSlug); return; }
+  toast('Dispatch access updated', 'ok');
 }
 
 async function removeOrgMember(orgSlug, userId) {
@@ -5619,11 +5650,51 @@ document.getElementById('billing-modal').addEventListener('click', e => {
 
 // ── Work Orders ───────────────────────────────────────
 let activeWorkOrder = null;
-let woSigDrawing = false;
+let activeWoTab = 'overview';
+const woSigDrawingState = {};
 
 function switchWoTab(tab) {
+  activeWoTab = tab;
   document.querySelectorAll('.wo-tab').forEach(b => b.classList.toggle('active', b.dataset.woTab === tab));
   document.querySelectorAll('.wo-panel').forEach(p => { p.style.display = p.id === 'wo-panel-' + tab ? '' : 'none'; });
+}
+
+function updateWoDetailHeader(wo) {
+  document.getElementById('wo-detail-title').textContent = wo.title || 'Work Order';
+  const assigneePart = wo.assignee_name ? ` · ${wo.assignee_name}` : '';
+  document.getElementById('wo-detail-subtitle').textContent = `${wo.uid || ''} · ${wo.status} · ${wo.checklist_done ?? 0}/${wo.checklist_total ?? 0} checklist${assigneePart}`;
+}
+
+function populateWoDetailFields(wo) {
+  document.getElementById('wo-detail-status').value = wo.status || 'draft';
+  document.getElementById('wo-detail-priority').value = wo.priority || 'normal';
+  document.getElementById('wo-detail-site').value = wo.site_address || '';
+  document.getElementById('wo-detail-description').value = wo.description || '';
+  document.getElementById('wo-link-booking-id').value = wo.booking_id || '';
+  const assigneeRow = document.getElementById('wo-detail-assignee-row');
+  const assigneeReadonly = document.getElementById('wo-detail-assignee-readonly');
+  if (wo.can_manage) {
+    assigneeRow.style.display = '';
+    assigneeReadonly.style.display = 'none';
+  } else {
+    assigneeRow.style.display = 'none';
+    assigneeReadonly.style.display = '';
+    document.getElementById('wo-detail-assignee-label').textContent = wo.assignee_name || 'Unassigned';
+  }
+}
+
+async function populateWoAssigneeSelect(wo) {
+  const sel = document.getElementById('wo-detail-assignee');
+  if (!sel || !wo.can_manage) return;
+  const params = new URLSearchParams();
+  if (wo.org_id) params.set('org_id', wo.org_id);
+  if (wo.Id) params.set('work_order_id', String(wo.Id));
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  const res = await apiFetch(`/v1/work-orders/assignees${qs}`);
+  const { assignees = [] } = res?.ok ? await res.json() : { assignees: [] };
+  sel.innerHTML = '<option value="">Unassigned</option>' + assignees.map(a =>
+    `<option value="${esc(String(a.id))}" ${String(wo.assignee_id) === String(a.id) ? 'selected' : ''}>${esc(a.name || a.email)}</option>`
+  ).join('');
 }
 
 async function loadWorkOrders() {
@@ -5645,10 +5716,14 @@ async function loadWorkOrders() {
 function renderWorkOrdersTable(list) {
   const statusFilter = document.getElementById('wo-filter-status')?.value || 'all';
   const priorityFilter = document.getElementById('wo-filter-priority')?.value || 'all';
+  const assigneeFilter = document.getElementById('wo-filter-assignee')?.value || 'all';
   const search = (document.getElementById('wo-filter-search')?.value || '').trim().toLowerCase();
   const filtered = (list || []).filter(w =>
     (statusFilter === 'all' || w.status === statusFilter) &&
     (priorityFilter === 'all' || w.priority === priorityFilter) &&
+    (assigneeFilter === 'all' ||
+      (assigneeFilter === 'me' && String(w.assignee_id) === String(currentUser?.Id)) ||
+      (assigneeFilter === 'unassigned' && !w.assignee_id)) &&
     (!search || (w.title||'').toLowerCase().includes(search) || (w.site_address||'').toLowerCase().includes(search))
   );
   document.getElementById('wo-results-meta').textContent = `${filtered.length} shown · ${(list||[]).length} total`;
@@ -5664,7 +5739,7 @@ function renderWorkOrdersTable(list) {
       w.photo_count ? `<span class="badge badge-normal">${w.photo_count} photos</span>` : '',
     ].filter(Boolean).join(' ');
     return `<tr>
-      <td data-label="Work Order"><strong>${esc(w.title)}</strong><div style="font-size:12px;color:var(--muted)">${esc(w.site_address || '')}</div><div class="ticket-meta-row"><span class="badge badge-${w.priority}">${esc(w.priority)}</span><span class="badge badge-${w.status}">${esc(w.status)}</span>${badges}</div></td>
+      <td data-label="Work Order"><strong>${esc(w.title)}</strong><div style="font-size:12px;color:var(--muted)">${esc(w.site_address || '')}</div><div class="ticket-meta-row"><span class="badge badge-${w.priority}">${esc(w.priority)}</span><span class="badge badge-${w.status}">${esc(w.status)}</span>${badges}</div>${w.assignee_name ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">→ ${esc(w.assignee_name)}</div>` : ''}</td>
       <td data-label="UID" style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${esc(w.uid || w.Id)}</td>
       <td data-label="Actions"><button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openWorkOrderDetailById(${w.Id})'>Open</button></td>
     </tr>`;
@@ -5723,10 +5798,11 @@ async function openWorkOrderDetailById(id) {
   openWorkOrderDetail(await res.json());
 }
 
-function initWoSigCanvas() {
-  const canvas = document.getElementById('wo-sig-canvas');
+function initWoSigCanvas(canvasId) {
+  const canvas = document.getElementById(canvasId);
   if (!canvas || canvas._woSigInit) return;
   canvas._woSigInit = true;
+  woSigDrawingState[canvasId] = false;
   const ctx = canvas.getContext('2d');
   ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.lineCap = 'round';
   function pos(e) {
@@ -5734,39 +5810,38 @@ function initWoSigCanvas() {
     const t = e.touches?.[0] || e;
     return { x: (t.clientX - r.left) * (canvas.width / r.width), y: (t.clientY - r.top) * (canvas.height / r.height) };
   }
-  canvas.onmousedown = e => { woSigDrawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
-  canvas.onmousemove = e => { if (!woSigDrawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
-  canvas.onmouseup = () => { woSigDrawing = false; };
-  canvas.onmouseleave = () => { woSigDrawing = false; };
-  canvas.ontouchstart = e => { woSigDrawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
-  canvas.ontouchmove = e => { if (!woSigDrawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
-  canvas.ontouchend = () => { woSigDrawing = false; };
+  canvas.onmousedown = e => { woSigDrawingState[canvasId] = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+  canvas.onmousemove = e => { if (!woSigDrawingState[canvasId]) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+  canvas.onmouseup = () => { woSigDrawingState[canvasId] = false; };
+  canvas.onmouseleave = () => { woSigDrawingState[canvasId] = false; };
+  canvas.ontouchstart = e => { woSigDrawingState[canvasId] = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+  canvas.ontouchmove = e => { if (!woSigDrawingState[canvasId]) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+  canvas.ontouchend = () => { woSigDrawingState[canvasId] = false; };
 }
 
-async function openWorkOrderDetail(wo) {
+async function openWorkOrderDetail(wo, opts = {}) {
+  const { preserveTab = false, preserveModal = false } = opts;
   activeWorkOrder = wo;
-  document.getElementById('wo-detail-title').textContent = wo.title || 'Work Order';
-  document.getElementById('wo-detail-subtitle').textContent = `${wo.uid || ''} · ${wo.status} · ${wo.checklist_done ?? 0}/${wo.checklist_total ?? 0} checklist`;
-  document.getElementById('wo-detail-status').value = wo.status || 'draft';
-  document.getElementById('wo-detail-priority').value = wo.priority || 'normal';
-  document.getElementById('wo-detail-site').value = wo.site_address || '';
-  document.getElementById('wo-detail-description').value = wo.description || '';
-  document.getElementById('wo-link-booking-id').value = wo.booking_id || '';
+  updateWoDetailHeader(wo);
+  populateWoDetailFields(wo);
   renderWoTimelog(wo.time_entries || []);
   renderWoPhotos(wo.attachments || []);
   renderWoChecklist(wo.checklist || []);
   renderWoParts(wo.line_items || [], wo.parts_subtotal);
   renderWoSignatures(wo.signatures || []);
   renderWoLinks(wo);
-  switchWoTab('overview');
-  initWoSigCanvas();
-  openModal('wo-detail-modal');
+  if (!preserveTab) activeWoTab = 'overview';
+  switchWoTab(activeWoTab);
+  initWoSigCanvas('wo-sig-canvas');
+  initWoSigCanvas('wo-customer-sig-canvas');
+  await populateWoAssigneeSelect(wo);
+  if (!preserveModal) openModal('wo-detail-modal');
 }
 
 async function refreshActiveWorkOrder() {
   if (!activeWorkOrder?.Id) return;
   const res = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}`);
-  if (res?.ok) openWorkOrderDetail(await res.json());
+  if (res?.ok) openWorkOrderDetail(await res.json(), { preserveTab: true, preserveModal: true });
 }
 
 async function updateWorkOrder() {
@@ -5777,9 +5852,14 @@ async function updateWorkOrder() {
     site_address: document.getElementById('wo-detail-site').value.trim(),
     description: document.getElementById('wo-detail-description').value.trim(),
   };
+  if (activeWorkOrder.can_manage) {
+    const assigneeEl = document.getElementById('wo-detail-assignee');
+    if (assigneeEl) body.assignee_id = assigneeEl.value || null;
+  }
   const res = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}`, { method: 'PATCH', body: JSON.stringify(body) });
   if (!res?.ok) return toast('Update failed', 'err');
-  activeWorkOrder = await res.json();
+  const wo = await res.json();
+  openWorkOrderDetail(wo, { preserveTab: true, preserveModal: true });
   toast('Saved', 'ok');
   await loadWorkOrders();
 }
@@ -5846,6 +5926,7 @@ function renderWoSignatures(sigs) {
   el.innerHTML = sigs.map(s => `<div style="margin-bottom:8px"><strong>${esc(s.role)}</strong>: ${esc(s.signer_name)} · ${esc(new Date(s.signed_at).toLocaleString())}<br><img src="${esc(s.image_url)}" style="max-width:200px;margin-top:4px;background:#fff;border-radius:4px"></div>`).join('');
 }
 function woClearSig() { const c = document.getElementById('wo-sig-canvas'); c?.getContext('2d')?.clearRect(0, 0, c.width, c.height); }
+function woClearCustomerSig() { const c = document.getElementById('wo-customer-sig-canvas'); c?.getContext('2d')?.clearRect(0, 0, c.width, c.height); }
 async function submitWoTechSignature() {
   if (!activeWorkOrder?.Id) return;
   const name = document.getElementById('wo-tech-signer-name').value.trim();
@@ -5861,6 +5942,24 @@ async function submitWoTechSignature() {
   woClearSig();
   await refreshActiveWorkOrder();
   toast('Signature saved', 'ok');
+}
+
+async function submitWoCustomerSignature() {
+  if (!activeWorkOrder?.Id) return;
+  const name = document.getElementById('wo-customer-signer-name').value.trim();
+  if (!name) return toast('Enter customer name', 'err');
+  const canvas = document.getElementById('wo-customer-sig-canvas');
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+  const uid = activeWorkOrder.uid;
+  const up = await fetch(`/v1/upload/work-order/${uid}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'image/png' }, body: blob });
+  if (!up.ok) return toast('Upload failed', 'err');
+  const { url } = await up.json();
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/signatures`, { method: 'POST', body: JSON.stringify({ role: 'customer', signer_name: name, image_url: url }) });
+  if (!r?.ok) return toast('Signature failed', 'err');
+  woClearCustomerSig();
+  document.getElementById('wo-customer-signer-name').value = '';
+  await refreshActiveWorkOrder();
+  toast('Customer signature saved', 'ok');
 }
 
 function renderWoLinks(wo) {

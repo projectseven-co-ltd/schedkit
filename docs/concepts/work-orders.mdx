@@ -30,6 +30,44 @@ draft → scheduled → in_progress → on_hold → completed → signed_off →
 
 Use `POST /v1/work-orders/:id/start`, `/pause`, and `/complete` for quick transitions.
 
+## Assignment and dispatch
+
+Work orders can be assigned to a field technician via `assignee_id`. Users see work orders they **own**, are **assigned to**, or can access as an org **dispatcher**.
+
+| Access | Who |
+|--------|-----|
+| Owner | User who created the work order |
+| Assignee | User set in `assignee_id` |
+| Dispatcher | Org owner, org admin, or member with `can_manage_work_orders` |
+
+List filters:
+
+```bash
+# Assigned to the authenticated user
+curl -H "x-api-key: $SCHEDKIT_KEY" "https://schedkit.net/v1/work-orders?assignee=me"
+
+# Unassigned queue
+curl -H "x-api-key: $SCHEDKIT_KEY" "https://schedkit.net/v1/work-orders?assignee=unassigned"
+```
+
+Assign or reassign (dispatchers only):
+
+```bash
+curl -X PATCH https://schedkit.net/v1/work-orders/42 \
+  -H "x-api-key: $SCHEDKIT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"assignee_id":"15"}'
+```
+
+Enable dispatch on an org member (org admin):
+
+```bash
+curl -X PATCH https://schedkit.net/v1/orgs/my-unit/members/15 \
+  -H "Cookie: session=..." \
+  -H "Content-Type: application/json" \
+  -d '{"can_manage_work_orders":true}'
+```
+
 ## Customer portal
 
 Every work order gets a `customer_token`. Share the public status URL:
@@ -39,6 +77,17 @@ https://schedkit.net/work-orders/status/:customer_token
 ```
 
 Customers see progress, checklist completion, photo gallery (no internal notes), and can sign off when status is `completed`. PDF download is available after completion.
+
+## Signatures
+
+Technicians capture a signature via the dashboard or mobile app (`role: technician`). Dispatchers can capture an **on-site customer signature** in the dashboard Signatures tab (`role: customer`). The customer portal also accepts remote sign-off.
+
+```bash
+curl -X POST https://schedkit.net/v1/work-orders/42/signatures \
+  -H "x-api-key: $SCHEDKIT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"role":"customer","signer_name":"Jane Doe","image_url":"/captures/wo/wo_abc/sig.png"}'
+```
 
 ## Timelog
 
