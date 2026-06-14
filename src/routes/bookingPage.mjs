@@ -59,15 +59,15 @@ function buildPage(username, eventSlug, { reschedule, name, email, tz, hideBrand
   --surface2: #2a2a32;
   --border: rgba(255,255,255,0.07);
   --border2: rgba(255,255,255,0.12);
-  --accent: #DFFF00;
+  --accent: var(--accent);
   --accent-fg: #0d0d0d;
-  --accent-dim: rgba(223,255,0,0.10);
+  --accent-dim: rgba(255,199,0,0.10);
   --text: #f0f0f2;
   --text2: #8888a0;
   --muted: #4a4a5e;
   --day-avail: #2a2a32;
   --day-avail-hover: #35353f;
-  --error: #ff5f5f;
+  --error: var(--red);
   --font-sans: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'Fira Code', monospace;
   --r: 12px;
@@ -746,14 +746,14 @@ html, body {
       <div class="confirm-detail" id="confirm-detail"></div>
       <div class="confirm-uid" id="confirm-uid"></div>
       <button class="btn-cancel-bkg" id="btn-cancel-bkg" style="display:none">Cancel this booking</button>
-      <a href="/dashboard" style="display:inline-block;margin-top:20px;background:var(--accent);color:#0a0a0b;text-decoration:none;padding:12px 28px;border-radius:8px;font-family:var(--font-mono);font-size:13px;font-weight:700;letter-spacing:0.05em;text-align:center;width:100%;box-sizing:border-box;">DONE →</a>
+      <a href="/dashboard" style="display:inline-block;margin-top:20px;background:var(--accent);color:var(--bg);text-decoration:none;padding:12px 28px;border-radius:8px;font-family:var(--font-mono);font-size:13px;font-weight:700;letter-spacing:0.05em;text-align:center;width:100%;box-sizing:border-box;">DONE →</a>
     </div>
 
     <!-- FOOTER -->
     <div class="card-footer" ${hideBranding ? 'style="display:none"' : ''}>
       <div style="display:flex;align-items:center;gap:16px;">
         <a class="brand-link" href="https://schedkit.net" target="_blank">
-          <svg width="14" height="14" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="#DFFF00"/><line x1="128" y1="96" x2="208" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#0A0A0B" stroke-width="72" stroke-linecap="round"/></svg>
+          <svg width="14" height="14" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="var(--accent)"/><line x1="128" y1="96" x2="208" y2="416" stroke="var(--bg)" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="var(--bg)" stroke-width="72" stroke-linecap="round"/></svg>
           schedkit.net
         </a>
         <button class="embed-btn" id="embedBtn">
@@ -1252,7 +1252,7 @@ html, body {
       document.getElementById('code-popup').textContent =
 \`<!-- SchedKit popup embed -->
 <button id="sk-open-btn" style="
-  background:#DFFF00;color:#0d0d0d;border:none;
+  background:var(--accent);color:#0d0d0d;border:none;
   padding:12px 24px;border-radius:10px;
   font-weight:700;font-size:15px;cursor:pointer;
 ">\${btnLabel}</button>
@@ -1292,7 +1292,7 @@ html, body {
   var btn = document.createElement('button');
   btn.textContent = '\${widgetLabel}';
   btn.style.cssText = 'position:fixed;\${isRight?'right':'left'}:20px;bottom:20px;z-index:99998;'+
-    'background:#DFFF00;color:#0d0d0d;border:none;padding:13px 22px;'+
+    'background:var(--accent);color:#0d0d0d;border:none;padding:13px 22px;'+
     'border-radius:50px;font-weight:700;font-size:14px;cursor:pointer;'+
     'box-shadow:0 4px 20px rgba(0,0,0,0.35);transition:transform .15s;';
   btn.onmouseenter = function(){ this.style.transform='scale(1.05)'; };

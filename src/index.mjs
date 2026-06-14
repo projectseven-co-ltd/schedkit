@@ -13,8 +13,7 @@ import { execSync } from 'child_process';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_VERSION = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8')).version;
 const GIT_SHA = (() => { try { return readFileSync(join(__dirname, '../.git-sha'), 'utf8').trim(); } catch { try { return execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim(); } catch { return 'unknown'; } } })();
-import { ensureSchema } from './lib/schema.mjs';
-import { meta } from './lib/noco.mjs';
+import { initDb } from './lib/db.mjs';
 import { tables } from './lib/tables.mjs';
 import eventTypesRoutes from './routes/eventTypes.mjs';
 import availabilityRoutes from './routes/availability.mjs';
@@ -112,17 +111,17 @@ await fastify.register(swaggerUi, {
   theme: {
     title: '\\\\ SchedKit API',
     css: [{ filename: 'docs.css', content: `
-      body { background: #0a0a0b !important; }
-      .swagger-ui { background: #0a0a0b; color: #e8e8ea; }
-      .swagger-ui .topbar { background: #111114; border-bottom: 1px solid #1e1e24; padding: 10px 0; }
+      body { background: var(--bg) !important; }
+      .swagger-ui { background: var(--bg); color: var(--text); }
+      .swagger-ui .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 0; }
       .swagger-ui .topbar-wrapper { gap: 12px; }
       .swagger-ui .topbar-wrapper img { height: 32px; width: 32px; }
-      .swagger-ui .topbar .download-url-wrapper .download-url-button { background: #DFFF00; color: #0a0a0b; }
-      .swagger-ui .info .title { color: #DFFF00; font-family: monospace; }
-      .swagger-ui .scheme-container { background: #111114; border: 1px solid #1e1e24; }
-      .swagger-ui .opblock-tag { color: #e8e8ea; border-bottom: 1px solid #1e1e24; }
-      .swagger-ui .opblock { background: #111114; border: 1px solid #1e1e24; }
-      .swagger-ui .opblock .opblock-summary { background: #0a0a0b; }
+      .swagger-ui .topbar .download-url-wrapper .download-url-button { background: var(--accent); color: var(--bg); }
+      .swagger-ui .info .title { color: var(--accent); font-family: monospace; }
+      .swagger-ui .scheme-container { background: var(--surface); border: 1px solid var(--border); }
+      .swagger-ui .opblock-tag { color: var(--text); border-bottom: 1px solid var(--border); }
+      .swagger-ui .opblock { background: var(--surface); border: 1px solid var(--border); }
+      .swagger-ui .opblock .opblock-summary { background: var(--bg); }
     `}],
   },
 });
@@ -130,15 +129,7 @@ await fastify.register(swaggerUi, {
 // Static (landing page) — must come after swagger
 await fastify.register(staticFiles, { root: join(__dirname, '../public'), prefix: '/' });
 
-// Ensure NocoDB schema exists
-await ensureSchema();
-
-// Load table ID map
-const tableList = await meta.getTables();
-for (const t of tableList.list) {
-  tables[t.title] = t.id;
-}
-console.log('Tables loaded:', Object.keys(tables));
+await initDb();
 
 // Routes
 await fastify.register(usersRoutes, { prefix: '/v1' });
@@ -240,8 +231,8 @@ fastify.post('/v1/request-access', {
   if (!name || !email) return reply.code(400).send({ error: 'Name and email required' });
   try {
     // 1. Save to NocoDB leads table
-    const { db } = await import('./lib/noco.mjs');
-    await db.create('m7cck1nc79fliq7', {
+    const { db } = await import('./lib/db.mjs');
+    await db.create(tables.leads, {
       name, email,
       company: company || '',
       message: message || '',

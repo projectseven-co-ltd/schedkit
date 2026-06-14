@@ -316,7 +316,7 @@ function renderError(reply, message) {
   .box{text-align:center;padding:40px;max-width:480px}
   h2{color:#ff5f5f;margin-bottom:12px}
   p{color:#5a5a6e;margin-bottom:24px;line-height:1.6}
-  a{color:#DFFF00;text-decoration:none}
+  a{color:#ffc700;text-decoration:none}
 </style></head><body>
 <div class="box">
   <h2>⚠️ ${message}</h2>

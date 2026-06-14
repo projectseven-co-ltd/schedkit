@@ -7,14 +7,15 @@
 <link rel="apple-touch-icon" href="/brand/logo-icon.svg">
 <meta property="og:image" content="https://schedkit.net/brand/logo-icon.svg">
 <meta property="og:site_name" content="SchedKit">
-<meta name="theme-color" content="#0A0A0B">
+<meta name="theme-color" content="#0a0a0a">
 <title>404 — SchedKit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="/theme.css">
 <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  :root{--bg:#0a0a0b;--surface:#111114;--border:#1e1e24;--accent:#DFFF00;--text:#e8e8ea;--muted:#5a5a6e;--font-mono:'Fira Code',monospace}
-  [data-lights="on"]{--bg:#f5f4ef;--surface:#edecea;--border:rgba(0,0,0,0.12);--accent:#4a5500;--text:#141410;--muted:#6a6a5a}
+  :root{--bg:var(--bg);--surface:var(--surface);--border:var(--border);--accent:var(--accent);--text:var(--text);--muted:var(--muted);--font-mono:'Fira Code',monospace}
+  [data-lights="on"]{--bg:#f5f4ef;--surface:#edecea;--border:rgba(0,0,0,0.12);--accent:var(--accent);--text:#141410;--muted:#6a6a5a}
 
   html,body{height:100%}
   body{background:var(--bg);color:var(--text);font-family:var(--font-mono);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 24px}
@@ -28,7 +29,7 @@
   .output .label{color:var(--muted);display:inline-block;width:120px}
   .output .val{color:var(--text)}
   .output .val.hi{color:var(--accent)}
-  .output .err{color:#ff5f5f}
+  .output .err{color:var(--red)}
 
   .divider{border:none;border-top:1px solid var(--border);margin:24px 0}
 

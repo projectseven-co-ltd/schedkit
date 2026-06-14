@@ -17,15 +17,15 @@
   <line x1="900" y1="0" x2="900" y2="630" stroke="#1e1e24" stroke-width="1"/>
 
   <!-- Accent glow -->
-  <ellipse cx="140" cy="130" rx="300" ry="200" fill="#DFFF00" fill-opacity="0.035"/>
+  <ellipse cx="140" cy="130" rx="300" ry="200" fill="#ffc700" fill-opacity="0.035"/>
 
   <!-- Bottom accent bar -->
-  <rect x="0" y="622" width="1200" height="8" fill="#DFFF00"/>
+  <rect x="0" y="622" width="1200" height="8" fill="#ffc700"/>
 
   <!-- Logo icon -->
   <rect x="80" y="195" width="130" height="130" rx="24" fill="#111114" stroke="#1e1e24" stroke-width="1"/>
-  <line x1="110" y1="220" x2="130" y2="300" stroke="#DFFF00" stroke-width="18" stroke-linecap="round"/>
-  <line x1="148" y1="220" x2="168" y2="300" stroke="#DFFF00" stroke-width="18" stroke-linecap="round"/>
+  <line x1="110" y1="220" x2="130" y2="300" stroke="#ffc700" stroke-width="18" stroke-linecap="round"/>
+  <line x1="148" y1="220" x2="168" y2="300" stroke="#ffc700" stroke-width="18" stroke-linecap="round"/>
 
   <!-- Wordmark -->
   <text x="232" y="283" font-family="'Space Grotesk','Helvetica Neue',Arial,sans-serif" font-size="72" font-weight="700" fill="#e8e8ea" letter-spacing="-1">sched</text>
@@ -33,7 +33,7 @@
 
   <!-- Category label -->
   <rect x="80" y="310" width="240" height="32" rx="6" fill="rgba(223,255,0,0.08)" stroke="rgba(223,255,0,0.2)" stroke-width="1"/>
-  <text x="97" y="331" font-family="'Fira Code','Courier New',monospace" font-size="13" font-weight="700" fill="#DFFF00" letter-spacing="2">API-FIRSTRESPONDER</text>
+  <text x="97" y="331" font-family="'Fira Code','Courier New',monospace" font-size="13" font-weight="700" fill="#ffc700" letter-spacing="2">API-FIRSTRESPONDER</text>
 
   <!-- Tagline -->
   <text x="80" y="392" font-family="'Space Grotesk','Helvetica Neue',Arial,sans-serif" font-size="30" font-weight="600" fill="#e8e8ea" letter-spacing="-0.5">Signal anything. Coordinate everything.</text>
@@ -41,7 +41,7 @@
 
   <!-- URL badge -->
   <rect x="80" y="495" width="210" height="40" rx="8" fill="#111114" stroke="#1e1e24" stroke-width="1"/>
-  <text x="98" y="521" font-family="'Fira Code','Courier New',monospace" font-size="16" font-weight="400" fill="#DFFF00">schedkit.net</text>
+  <text x="98" y="521" font-family="'Fira Code','Courier New',monospace" font-size="16" font-weight="400" fill="#ffc700">schedkit.net</text>
 
   <!-- Right side — radar/signal decoration -->
   <!-- Radar rings -->
@@ -55,8 +55,8 @@
   <path d="M1020,315 L1020,135 A180,180 0 0,1 1164,405 Z" fill="rgba(223,255,0,0.05)"/>
   <line x1="1020" y1="315" x2="1020" y2="135" stroke="rgba(223,255,0,0.3)" stroke-width="1.5"/>
   <!-- Blip dot -->
-  <circle cx="1020" cy="315" r="7" fill="#DFFF00" fill-opacity="0.9"/>
-  <circle cx="1020" cy="315" r="14" fill="none" stroke="#DFFF00" stroke-opacity="0.3" stroke-width="1"/>
+  <circle cx="1020" cy="315" r="7" fill="#ffc700" fill-opacity="0.9"/>
+  <circle cx="1020" cy="315" r="14" fill="none" stroke="#ffc700" stroke-opacity="0.3" stroke-width="1"/>
   <!-- Signal lines emanating -->
-  <circle cx="1020" cy="315" r="30" fill="none" stroke="#DFFF00" stroke-opacity="0.12" stroke-width="1"/>
+  <circle cx="1020" cy="315" r="30" fill="none" stroke="#ffc700" stroke-opacity="0.12" stroke-width="1"/>
 </svg>

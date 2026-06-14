@@ -548,12 +548,12 @@ function shell(title, body) {
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   body{background:#0a0a0b;font-family:'Space Grotesk',system-ui,sans-serif;color:#e8e8ea;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
-  .brand{font-family:'Fira Code',monospace;color:#DFFF00;font-size:12px;letter-spacing:0.1em;margin-bottom:32px;opacity:0.7}
+  .brand{font-family:'Fira Code',monospace;color:#ffc700;font-size:12px;letter-spacing:0.1em;margin-bottom:32px;opacity:0.7}
   .card{background:#111114;border:1px solid #1e1e24;border-radius:12px;padding:40px 36px;text-align:center;max-width:440px;width:100%}
   .icon{font-size:44px;margin-bottom:16px}
   h2{font-size:20px;font-weight:600;margin-bottom:8px}
   .sub{color:#5a5a6e;font-size:14px;line-height:1.5;margin-bottom:4px}
-  .uid{font-family:'Fira Code',monospace;color:#DFFF00;font-size:12px;margin-top:12px}
+  .uid{font-family:'Fira Code',monospace;color:#ffc700;font-size:12px;margin-top:12px}
   .time{font-family:'Fira Code',monospace;color:#e8e8ea;font-size:13px;margin:16px 0;background:#0a0a0b;border:1px solid #1e1e24;border-radius:8px;padding:12px 16px}
   .actions{display:flex;flex-direction:column;gap:10px;margin-top:24px}
   .btn{padding:12px 20px;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:opacity 0.15s}
@@ -561,7 +561,7 @@ function shell(title, body) {
   .btn-danger:hover{opacity:0.85}
   .btn-ghost{background:none;border:1px solid #1e1e24;color:#5a5a6e}
   .btn-ghost:hover{border-color:#5a5a6e;color:#e8e8ea}
-  .btn-accent{background:#DFFF00;color:#0a0a0b}
+  .btn-accent{background:#ffc700;color:#0a0a0b}
   .btn-accent:hover{opacity:0.9}
 </style></head>
 <body>

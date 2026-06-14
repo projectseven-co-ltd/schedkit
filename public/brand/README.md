@@ -2,6 +2,8 @@
 
 All assets live in `/public/brand/`. SVG format — scale to any size.
 
+Colors align with the **SignalForge** projectseven palette (amber phosphor on CRT black). Shared tactical display modes: see `signalforge.org/DISPLAY-MODES.md`.
+
 ---
 
 ## Logo Files
@@ -11,7 +13,7 @@ All assets live in `/public/brand/`. SVG format — scale to any size.
 | `logo-icon.svg` | Square icon (512×512) — app icons, avatars, social profiles |
 | `logo-horizontal-dark.svg` | Horizontal lockup on dark backgrounds (800×200) |
 | `logo-horizontal-light.svg` | Horizontal lockup on light backgrounds (800×200) |
-| `logo-mark-accent.svg` | Bare mark, transparent bg, lime bars — overlay on dark |
+| `logo-mark-accent.svg` | Bare mark, transparent bg, amber bars — overlay on dark |
 | `logo-mark-white.svg` | Bare mark, transparent bg, white bars — overlay on photos |
 | `favicon.svg` | 32×32 favicon |
 
@@ -19,16 +21,18 @@ All assets live in `/public/brand/`. SVG format — scale to any size.
 
 ## Colors
 
+Canonical tokens live in [`/public/theme.css`](../theme.css).
+
 | Token | Hex | Use |
 |-------|-----|-----|
-| `--accent` | `#DFFF00` | Primary accent, logo bars |
-| `--bg` | `#0A0A0B` | Page background |
-| `--surface` | `#111114` | Card / elevated surfaces |
-| `--border` | `#1e1e24` | Borders, dividers |
-| `--text` | `#e8e8ea` | Primary text |
-| `--muted` | `#5a5a6e` | Secondary text, "kit" wordmark |
+| `--accent` | `#ffc700` | Primary accent, logo bars (SignalForge amber) |
+| `--bg` | `#0a0a0a` | Page background |
+| `--surface` | `#111111` | Card / elevated surfaces |
+| `--border` | `#1f1f1f` | Borders, dividers |
+| `--text` | `#c9c9c9` | Primary text |
+| `--muted` | `#555555` | Secondary text, "kit" wordmark |
 
-Light mode equivalents: `--accent` → `#4a5500`, `--bg` → `#f5f4ef`, `--text` → `#141410`
+Light mode: `--accent` → `#997700`, `--bg` → `#f5f4ef`, `--text` → `#141410`
 
 ---
 
@@ -41,7 +45,7 @@ Light mode equivalents: `--accent` → `#4a5500`, `--bg` → `#f5f4ef`, `--text`
 
 ## Logo Rules
 
-- Don't recolor the bars to anything other than `#DFFF00` (dark mode) or `#ffffff` (on photo/accent)
+- Accent bars use `#ffc700` on dark backgrounds (or `#ffffff` on photo/accent fields)
 - Don't stretch or distort the icon — it's always square
 - Minimum size: 16px / favicon use
 - Clear space: at least half the icon width on all sides
@@ -50,4 +54,4 @@ Light mode equivalents: `--accent` → `#4a5500`, `--bg` → `#f5f4ef`, `--text`
 
 ## Social / OG Image
 
-Recommended OG image: 1200×630, dark background (`#0A0A0B`), centered horizontal lockup + tagline below.
+Recommended OG image: 1200×630, dark background (`#0a0a0a`), centered horizontal lockup + tagline below.

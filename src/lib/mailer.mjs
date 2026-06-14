@@ -1,10 +1,18 @@
 // src/lib/mailer.mjs
 import Mailjet from 'node-mailjet';
 
-const mj = Mailjet.apiConnect(
-  process.env.MJ_APIKEY_PUBLIC,
-  process.env.MJ_APIKEY_PRIVATE
-);
+let _mj;
+function mailjet() {
+  if (_mj !== undefined) return _mj;
+  const pub = process.env.MJ_APIKEY_PUBLIC;
+  const priv = process.env.MJ_APIKEY_PRIVATE;
+  if (!pub || !priv) {
+    _mj = null;
+    return _mj;
+  }
+  _mj = Mailjet.apiConnect(pub, priv);
+  return _mj;
+}
 
 const FROM_EMAIL = process.env.MJ_FROM_EMAIL || 'noreply@schedkit.net';
 const FROM_NAME  = process.env.MJ_FROM_NAME  || 'SchedKit';
@@ -78,7 +86,7 @@ function note(text) {
 }
 
 function primaryBtn(url, text) {
-  return `<a href="${url}" style="display:inline-block;background:#DFFF00;color:#0a0a0b;padding:13px 28px;border-radius:8px;font-weight:700;font-size:14px;text-decoration:none;">${text}</a>`;
+  return `<a href="${url}" style="display:inline-block;background:#ffc700;color:#0a0a0b;padding:13px 28px;border-radius:8px;font-weight:700;font-size:14px;text-decoration:none;">${text}</a>`;
 }
 
 function ghostBtn(url, text) {
@@ -86,6 +94,8 @@ function ghostBtn(url, text) {
 }
 
 async function send(to_email, to_name, subject, html, text, fromName) {
+  const mj = mailjet();
+  if (!mj) return;
   await mj.post('send', { version: 'v3.1' }).request({
     Messages: [{
       From: { Email: FROM_EMAIL, Name: fromName || FROM_NAME },
@@ -128,7 +138,7 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
     ${heading(event_title)}
     ${subheading(`with ${host_name}`)}
     ${detailTable([
-      ['Date & time', `<span style="font-family:monospace;color:#DFFF00;">${startLocal}</span>`],
+      ['Date & time', `<span style="font-family:monospace;color:#ffc700;">${startLocal}</span>`],
       ['Timezone', timezone],
       ['Attendee', attendee_name],
     ])}
@@ -143,12 +153,12 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
   // Host email
   const hostHtml = emailWrap(`
     ${flagBanner}
-    ${statusLine('NEW BOOKING', '#DFFF00')}
+    ${statusLine('NEW BOOKING', '#ffc700')}
     ${heading(event_title)}
     ${subheading(`Booked by ${attendee_name}`)}
     ${detailTable([
       ['Attendee', `${attendee_name} &lt;${attendee_email}&gt;`],
-      ['Date & time', `<span style="font-family:monospace;color:#DFFF00;">${startLocal}</span>`],
+      ['Date & time', `<span style="font-family:monospace;color:#ffc700;">${startLocal}</span>`],
       ['Timezone', timezone],
     ])}
     ${primaryBtn('https://schedkit.net/dashboard', 'View in Dashboard →')}
@@ -161,7 +171,8 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
 
   if (host_email) {
     try {
-      await mj.post('send', { version: 'v3.1' }).request({
+      const mj = mailjet();
+      if (mj) await mj.post('send', { version: 'v3.1' }).request({
         Messages: [{
           From: { Email: FROM_EMAIL, Name: FROM_NAME },
           To: [{ Email: host_email, Name: host_name }],
@@ -177,6 +188,8 @@ export async function sendBookingConfirmation({ attendee_name, attendee_email, h
 // ── Access request (internal) ─────────────────────────────────────────────────
 export async function sendAccessRequest({ name, email, company, message }) {
   try {
+    const mj = mailjet();
+    if (!mj) return;
     await mj.post('send', { version: 'v3.1' }).request({
       Messages: [{
         From: { Email: FROM_EMAIL, Name: FROM_NAME },
@@ -193,12 +206,14 @@ export async function sendAccessRequest({ name, email, company, message }) {
 
 export async function sendWelcome({ name, email }) {
   try {
+    const mj = mailjet();
+    if (!mj) return;
     await mj.post('send', { version: 'v3.1' }).request({
       Messages: [{
         From: { Email: FROM_EMAIL, Name: FROM_NAME },
         To: [{ Email: email, Name: name }],
         Subject: 'Welcome to SchedKit',
-        HTMLPart: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body bgcolor="#0a0a0b" style="margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Arial,sans-serif;color:#e8e8ea;"><table width="100%" cellpadding="0" cellspacing="0" bgcolor="#0a0a0b" style="background:#0a0a0b;padding:40px 0;"><tr><td align="center"><table width="560" cellpadding="0" cellspacing="0" style="background:#111114;border:1px solid #1e1e24;border-radius:10px;overflow:hidden;"><tr><td style="padding:16px 28px;background:#0a0a0b;border-bottom:1px solid #1e1e24;"><span style="color:#DFFF00;font-family:monospace;font-size:18px;font-weight:bold;">SCHEDKIT</span></td></tr><tr><td style="padding:32px 28px;"><p style="margin:0 0 16px;font-size:18px;font-weight:600;color:#e8e8ea;">Welcome, ${name}.</p><p style="margin:0 0 24px;font-size:14px;color:#aaa;line-height:1.6;">Your account is ready. Head to your dashboard to set up your first event type and start taking bookings.</p><a href="https://schedkit.net/dashboard" style="display:inline-block;background:#DFFF00;color:#0a0a0b;text-decoration:none;padding:12px 24px;border-radius:6px;font-family:monospace;font-size:13px;font-weight:700;letter-spacing:0.05em;">OPEN DASHBOARD →</a></td></tr><tr><td style="padding:16px 28px;border-top:1px solid #1e1e24;font-size:12px;color:#5a5a6e;">SchedKit · <a href="https://schedkit.net/docs" style="color:#5a5a6e;">docs</a> · reply to this email anytime</td></tr></table></td></tr></table></body></html>`,
+        HTMLPart: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body bgcolor="#0a0a0b" style="margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Arial,sans-serif;color:#e8e8ea;"><table width="100%" cellpadding="0" cellspacing="0" bgcolor="#0a0a0b" style="background:#0a0a0b;padding:40px 0;"><tr><td align="center"><table width="560" cellpadding="0" cellspacing="0" style="background:#111114;border:1px solid #1e1e24;border-radius:10px;overflow:hidden;"><tr><td style="padding:16px 28px;background:#0a0a0b;border-bottom:1px solid #1e1e24;"><span style="color:#ffc700;font-family:monospace;font-size:18px;font-weight:bold;">SCHEDKIT</span></td></tr><tr><td style="padding:32px 28px;"><p style="margin:0 0 16px;font-size:18px;font-weight:600;color:#e8e8ea;">Welcome, ${name}.</p><p style="margin:0 0 24px;font-size:14px;color:#aaa;line-height:1.6;">Your account is ready. Head to your dashboard to set up your first event type and start taking bookings.</p><a href="https://schedkit.net/dashboard" style="display:inline-block;background:#ffc700;color:#0a0a0b;text-decoration:none;padding:12px 24px;border-radius:6px;font-family:monospace;font-size:13px;font-weight:700;letter-spacing:0.05em;">OPEN DASHBOARD →</a></td></tr><tr><td style="padding:16px 28px;border-top:1px solid #1e1e24;font-size:12px;color:#5a5a6e;">SchedKit · <a href="https://schedkit.net/docs" style="color:#5a5a6e;">docs</a> · reply to this email anytime</td></tr></table></td></tr></table></body></html>`,
       }],
     });
   } catch(e) { console.error('Welcome email error:', e.message); throw e; }
@@ -206,7 +221,7 @@ export async function sendWelcome({ name, email }) {
 // ── Org invite ────────────────────────────────────────────────────────────────
 export async function sendInvite({ to, inviterName, orgName, link }) {
   const html = emailWrap(`
-    ${statusLine('YOU HAVE BEEN INVITED', '#DFFF00')}
+    ${statusLine('YOU HAVE BEEN INVITED', '#ffc700')}
     ${heading(`Join ${orgName} on SchedKit`)}
     ${subheading(`${inviterName} has invited you to join their organization.`)}
     ${detailTable([
@@ -228,12 +243,12 @@ export async function sendInvite({ to, inviterName, orgName, link }) {
 // ── Magic link (login) ────────────────────────────────────────────────────────
 export async function sendMagicLink({ to, name, link, code }) {
   const html = emailWrap(`
-    ${statusLine('LOGIN LINK', '#DFFF00')}
+    ${statusLine('LOGIN LINK', '#ffc700')}
     ${heading('Your login link')}
     ${subheading('Use the code below in the SchedKit app, or tap the button to log in in your browser. This link expires in <strong style="color:#e8e8ea;">15 minutes</strong> and can only be used once.')}
     <div style="background:#0a0a0b;border:1px solid #2a3410;border-radius:12px;padding:20px 20px 18px;margin:0 0 22px;text-align:center;">
       <p style="margin:0 0 8px;font-size:11px;color:#5a5a6e;text-transform:uppercase;letter-spacing:0.08em;font-family:monospace;">Login code</p>
-      <div style="font-family:monospace;font-size:32px;font-weight:700;letter-spacing:0.24em;color:#DFFF00;line-height:1;">${code}</div>
+      <div style="font-family:monospace;font-size:32px;font-weight:700;letter-spacing:0.24em;color:#ffc700;line-height:1;">${code}</div>
       <p style="margin:12px 0 0;font-size:12px;color:#5a5a6e;line-height:1.5;">Using the iPhone app? Enter this code directly in SchedKit.</p>
     </div>
     ${primaryBtn(link, 'Log in to Dashboard →')}
@@ -255,12 +270,12 @@ export async function sendRescheduleNotification({ attendee_name, attendee_email
   const newLocal  = fmtTime(new_time, timezone);
 
   const html = emailWrap(`
-    ${statusLine(`YOUR ${label.toUpperCase()} HAS BEEN RESCHEDULED`, '#DFFF00')}
+    ${statusLine(`YOUR ${label.toUpperCase()} HAS BEEN RESCHEDULED`, '#ffc700')}
     ${heading(event_title)}
     ${subheading(`with ${host_name}`)}
     ${detailTable([
       ['Previous time', `<span style="font-family:monospace;color:#5a5a6e;text-decoration:line-through;">${oldLocal}</span>`],
-      ['New time', `<span style="font-family:monospace;color:#DFFF00;">${newLocal}</span>`],
+      ['New time', `<span style="font-family:monospace;color:#ffc700;">${newLocal}</span>`],
       ['Timezone', timezone],
     ])}
     <table cellpadding="0" cellspacing="0">
@@ -304,7 +319,7 @@ export async function sendBookingPending({ attendee_name, attendee_email, host_n
   const startLocal = fmtTime(start_time, timezone);
 
   const html = emailWrap(`
-    ${statusLine('⏳ AWAITING CONFIRMATION', '#DFFF00')}
+    ${statusLine('⏳ AWAITING CONFIRMATION', '#ffc700')}
     ${heading('Your booking request was received')}
     ${subheading(`${host_name} will review and confirm your booking shortly.`)}
     ${detailTable([
@@ -327,14 +342,14 @@ export async function sendHostConfirmationRequest({ host_name, host_email, atten
   const noteRow = notes ? [['Notes', notes]] : [];
 
   const html = emailWrap(`
-    ${statusLine('NEW BOOKING REQUEST', '#DFFF00')}
+    ${statusLine('NEW BOOKING REQUEST', '#ffc700')}
     ${heading('New booking request')}
     ${subheading(`${attendee_name} wants to book time with you.`)}
     ${detailTable([
       ['Name', attendee_name],
       ['Email', `<a href="mailto:${attendee_email}" style="color:#e8e8ea;text-decoration:none;">${attendee_email}</a>`],
       ['Event', event_title],
-      ['Requested time', `<span style="font-family:monospace;color:#DFFF00;">${startLocal}</span>`],
+      ['Requested time', `<span style="font-family:monospace;color:#ffc700;">${startLocal}</span>`],
       ['Timezone', timezone],
       ...noteRow,
     ])}
@@ -348,7 +363,8 @@ export async function sendHostConfirmationRequest({ host_name, host_email, atten
   `);
 
   try {
-    await mj.post('send', { version: 'v3.1' }).request({
+    const mj = mailjet();
+    if (mj) await mj.post('send', { version: 'v3.1' }).request({
       Messages: [{
         From: { Email: FROM_EMAIL, Name: FROM_NAME },
         To: [{ Email: host_email, Name: host_name }],
@@ -370,7 +386,7 @@ export async function sendBookingConfirmedByHost({ attendee_name, attendee_email
     ${detailTable([
       ['Event', event_title],
       ['With', host_name],
-      ['When', `<span style="font-family:monospace;color:#DFFF00;">${startLocal}</span>`],
+      ['When', `<span style="font-family:monospace;color:#ffc700;">${startLocal}</span>`],
       ['Timezone', timezone],
     ])}
     <table cellpadding="0" cellspacing="0">
@@ -396,14 +412,14 @@ function renderSubject(template, { ticket_id, title, priority, org_name }) {
 }
 
 export async function sendTicketCreated({ to_email, to_name, ticket_id, title, priority, status_url, org }) {
-  const priorityColors = { urgent: '#ff5f5f', high: '#f5a623', normal: '#DFFF00', low: '#5a5a6e' };
-  const color = priorityColors[priority] || '#DFFF00';
+  const priorityColors = { urgent: '#ff5f5f', high: '#f5a623', normal: '#ffc700', low: '#5a5a6e' };
+  const color = priorityColors[priority] || '#ffc700';
   const html = emailWrap(`
     ${statusLine('✓ TICKET RECEIVED', '#4ade80')}
     ${heading('We got your request')}
     ${subheading('Your ticket has been submitted. We\'ll respond based on priority.')}
     ${detailTable([
-      ['Ticket', `<span style="font-family:monospace;color:#DFFF00;">#${ticket_id}</span>`],
+      ['Ticket', `<span style="font-family:monospace;color:#ffc700;">#${ticket_id}</span>`],
       ['Subject', title],
       ['Priority', `<span style="font-family:monospace;color:${color};">${priority.toUpperCase()}</span>`],
       ['Status', 'Open'],
@@ -423,16 +439,16 @@ export async function sendTicketCreated({ to_email, to_name, ticket_id, title, p
 
 // ── Ticket status changed (customer) ─────────────────────────────────────────
 export async function sendTicketStatusChanged({ to_email, to_name, ticket_id, title, old_status, new_status, status_url, org }) {
-  const statusColors = { open: '#5a5a6e', in_progress: '#DFFF00', resolved: '#4ade80', closed: '#5a5a6e' };
+  const statusColors = { open: '#5a5a6e', in_progress: '#ffc700', resolved: '#4ade80', closed: '#5a5a6e' };
   const statusLabels = { open: 'OPEN', in_progress: 'IN PROGRESS', resolved: 'RESOLVED', closed: 'CLOSED' };
-  const color = statusColors[new_status] || '#DFFF00';
+  const color = statusColors[new_status] || '#ffc700';
   const isResolved = new_status === 'resolved' || new_status === 'closed';
   const html = emailWrap(`
     ${statusLine(`TICKET ${statusLabels[new_status] || new_status.toUpperCase()}`, color)}
     ${heading(isResolved ? 'Your ticket has been resolved' : 'Your ticket was updated')}
     ${subheading(isResolved ? 'Let us know if you need anything else.' : 'We\'re working on it.')}
     ${detailTable([
-      ['Ticket', `<span style="font-family:monospace;color:#DFFF00;">#${ticket_id}</span>`],
+      ['Ticket', `<span style="font-family:monospace;color:#ffc700;">#${ticket_id}</span>`],
       ['Subject', title],
       ['Previous status', `<span style="font-family:monospace;color:#5a5a6e;">${statusLabels[old_status] || old_status.toUpperCase()}</span>`],
       ['New status', `<span style="font-family:monospace;color:${color};">${statusLabels[new_status] || new_status.toUpperCase()}</span>`],

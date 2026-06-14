@@ -11,8 +11,13 @@ const PRICE_IDS = {
 
 const PLAN_FROM_PRICE = Object.fromEntries(Object.entries(PRICE_IDS).map(([k,v]) => [v, k]));
 
+function stripeClient() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return null;
+  return new Stripe(key);
+}
+
 export default async function billingRoutes(fastify) {
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   // POST /v1/billing/subscribe — create customer + subscription, return PaymentIntent clientSecret
@@ -39,6 +44,8 @@ export default async function billingRoutes(fastify) {
       },
     },
   }, async (req, reply) => {
+    const stripe = stripeClient();
+    if (!stripe) return reply.code(503).send({ error: 'Billing not configured' });
     const { plan } = req.body;
     const priceId = PRICE_IDS[plan];
     if (!priceId) return reply.code(400).send({ error: 'Invalid plan' });
@@ -88,6 +95,8 @@ export default async function billingRoutes(fastify) {
       response: { 200: { type: 'object', properties: { url: { type: 'string' } } } },
     },
   }, async (req, reply) => {
+    const stripe = stripeClient();
+    if (!stripe) return reply.code(503).send({ error: 'Billing not configured' });
     const user = req.user;
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     if (!customers.data.length) {
@@ -104,7 +113,8 @@ export default async function billingRoutes(fastify) {
   fastify.post('/billing/webhook', {
     schema: { tags: ['Billing'], summary: 'Stripe webhook receiver' },
   }, async (req, reply) => {
-    if (webhookSecret) {
+    const stripe = stripeClient();
+    if (webhookSecret && stripe) {
       const sig = req.headers['stripe-signature'];
       try {
         stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
@@ -119,7 +129,7 @@ export default async function billingRoutes(fastify) {
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
-      if (session.mode === 'subscription' && session.subscription) {
+      if (session.mode === 'subscription' && session.subscription && stripe) {
         try {
           const sub = await stripe.subscriptions.retrieve(session.subscription);
           const userId = sub.metadata?.user_id;
@@ -153,7 +163,7 @@ export default async function billingRoutes(fastify) {
     if (event.type === 'invoice.payment_succeeded') {
       const invoice = event.data.object;
       const subId = invoice.subscription;
-      if (subId) {
+      if (subId && stripe) {
         try {
           const sub = await stripe.subscriptions.retrieve(subId);
           const userId = sub.metadata?.user_id;

@@ -1,0 +1,82 @@
+# Plesk / Portainer stack — API internal only; bind CLIENT_PORT for reverse proxy.
+#
+# Mirrors signalforge-hub docker-compose.plesk.yml patterns (separate stack, not shared with SF).
+#
+# Minimal vars:
+#   POSTGRES_PASSWORD
+#   API_SECRET, BASE_DOMAIN=schedkit.net
+#   CLIENT_PORT (match Plesk Docker proxy rule)
+# DATABASE_URL is wired to the stack Postgres service — fresh DB, no NocoDB.
+#
+# Images from GHCR (published by .github/workflows/docker-publish.yml on push to main):
+#   ghcr.io/projectseven-co-ltd/schedkit-api:latest
+#   ghcr.io/projectseven-co-ltd/schedkit-api:<short-sha>
+#
+# Portainer env (minimum + image pin):
+#   IMAGE_TAG=<short-sha>   # or latest
+#   POSTGRES_PASSWORD, API_SECRET, BASE_DOMAIN, CLIENT_PORT
+#
+#   docker compose -f docker-compose.plesk.yml --env-file .env.production up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-schedkit}
+      POSTGRES_USER: ${POSTGRES_USER:-schedkit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-strong}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-schedkit} -d ${POSTGRES_DB:-schedkit}"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  api:
+    image: ${API_IMAGE:-${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_NAMESPACE:-projectseven-co-ltd}/schedkit-api:${IMAGE_TAG:-latest}}
+    restart: unless-stopped
+    env_file:
+      - path: .env.production
+        required: false
+      - path: .env
+        required: false
+    environment:
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-schedkit}:${POSTGRES_PASSWORD:-change-me-strong}@postgres:5432/${POSTGRES_DB:-schedkit}?sslmode=disable}
+      BASE_DOMAIN: ${BASE_DOMAIN:-schedkit.net}
+      API_SECRET:
+      MJ_APIKEY_PUBLIC:
+      MJ_APIKEY_PRIVATE:
+      MJ_FROM_EMAIL:
+      MJ_FROM_NAME:
+      GOOGLE_CLIENT_ID:
+      GOOGLE_CLIENT_SECRET:
+      VAPID_PUBLIC_KEY:
+      VAPID_PRIVATE_KEY:
+      VAPID_SUBJECT:
+      STRIPE_SECRET_KEY:
+      STRIPE_WEBHOOK_SECRET:
+      STRIPE_PRICE_STARTER:
+      STRIPE_PRICE_AGENCY:
+      NTFY_TOPIC:
+      NTFY_DEFAULT_TOPIC:
+    volumes:
+      - captures_data:/app/public/captures
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "3000"
+    ports:
+      - "${CLIENT_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
+  captures_data:

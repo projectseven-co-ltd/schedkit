@@ -1,0 +1,66 @@
+/* SchedKit theme — aligned with SignalForge (signalforge.org/BRAND.md) */
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface2: #161616;
+  --border: #1f1f1f;
+  --accent: #ffc700;
+  --accent-bright: #ffda47;
+  --accent-dim: rgba(255, 199, 0, 0.12);
+  --accent-border: rgba(255, 199, 0, 0.35);
+  --on-accent: #0a0a0a;
+  --text: #c9c9c9;
+  --muted: #555555;
+  --red: #ff4444;
+  --green: #4ade80;
+}
+
+[data-lights="on"],
+[data-lights="day"] {
+  --bg: #f5f4ef;
+  --surface: #edecea;
+  --surface2: #e4e3df;
+  --border: rgba(0, 0, 0, 0.1);
+  --accent: #997700;
+  --accent-bright: #b38f00;
+  --accent-dim: rgba(153, 119, 0, 0.1);
+  --accent-border: rgba(153, 119, 0, 0.28);
+  --on-accent: #f5f4ef;
+  --text: #141410;
+  --muted: #5a5a4a;
+  --red: #c0392b;
+  --green: #2d7a3a;
+}
+
+[data-lights="nite"] {
+  --bg: #080000;
+  --surface: #120404;
+  --surface2: #1a0808;
+  --border: #2a1010;
+  --accent: #aa2020;
+  --accent-bright: #cc3333;
+  --accent-dim: rgba(170, 32, 32, 0.1);
+  --accent-border: rgba(170, 32, 32, 0.28);
+  --text: #8a3030;
+  --muted: #4a2020;
+  --red: #ff4444;
+  --green: #882200;
+  filter: brightness(0.65);
+}
+
+[data-lights="nvg"] {
+  --bg: #000508;
+  --surface: #010c12;
+  --surface2: #021018;
+  --border: #031820;
+  --accent: #00ff41;
+  --accent-bright: #66ff88;
+  --accent-dim: rgba(0, 255, 65, 0.08);
+  --accent-border: rgba(0, 255, 65, 0.2);
+  --text: #00cc33;
+  --muted: #1e3a44;
+  --red: #2a5a6a;
+  --green: #00ff41;
+  filter: brightness(0.3) saturate(0.15);
+}

@@ -1,6 +1,6 @@
 // src/lib/schema.js — Create NocoDB tables if they don't exist
 
-import { meta } from './noco.mjs';
+import { meta } from './nocoClient.mjs';
 
 const TABLES = [
   {

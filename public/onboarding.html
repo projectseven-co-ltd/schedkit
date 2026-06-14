@@ -7,17 +7,18 @@
 <link rel="apple-touch-icon" href="/brand/logo-icon.svg">
 <meta property="og:image" content="https://schedkit.net/brand/logo-icon.svg">
 <meta property="og:site_name" content="SchedKit">
-<meta name="theme-color" content="#0A0A0B">
+<meta name="theme-color" content="#0a0a0a">
 <title>Welcome to SchedKit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="/theme.css">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  :root{--bg:#0a0a0b;--surface:#111114;--border:#1e1e24;--accent:#DFFF00;--text:#e8e8ea;--muted:#5a5a6e;--red:#ff5f5f;--font-sans:'Space Grotesk',sans-serif;--font-mono:'Fira Code',monospace}
-  [data-lights="on"]{--bg:#f5f4ef;--surface:#edecea;--border:rgba(0,0,0,0.1);--accent:#4a5500;--text:#141410;--muted:#5a5a4a}
+  :root{--bg:var(--bg);--surface:var(--surface);--border:var(--border);--accent:var(--accent);--text:var(--text);--muted:var(--muted);--red:var(--red);--font-sans:'Space Grotesk',sans-serif;--font-mono:'Fira Code',monospace}
+  [data-lights="on"]{--bg:#f5f4ef;--surface:#edecea;--border:rgba(0,0,0,0.1);--accent:var(--accent);--text:#141410;--muted:#5a5a4a}
   body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:48px 40px;width:100%;max-width:440px;position:relative;overflow:hidden}
-  .card::before{content:'';position:absolute;top:-1px;left:50%;transform:translateX(-50%);width:160px;height:1px;background:var(--accent);box-shadow:0 0 20px 2px rgba(223,255,0,0.25)}
+  .card::before{content:'';position:absolute;top:-1px;left:50%;transform:translateX(-50%);width:160px;height:1px;background:var(--accent);box-shadow:0 0 20px 2px rgba(255,199,0,0.25)}
   .logo{display:flex;align-items:center;gap:10px;font-family:var(--font-mono);color:var(--accent);font-size:20px;margin-bottom:8px}
   .logo span{color:var(--muted)}
   h1{font-size:22px;font-weight:700;margin-bottom:8px}
@@ -50,7 +51,7 @@
 </head>
 <body>
 <div class="card">
-  <div class="logo" style="display:flex;align-items:center;gap:10px;"><svg width="32" height="32" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#0A0A0B"/><line x1="128" y1="96" x2="208" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="#DFFF00" stroke-width="72" stroke-linecap="round"/></svg> sched<span>kit</span></div>
+  <div class="logo" style="display:flex;align-items:center;gap:10px;"><svg width="32" height="32" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="var(--bg)"/><line x1="128" y1="96" x2="208" y2="416" stroke="var(--accent)" stroke-width="72" stroke-linecap="round"/><line x1="272" y1="96" x2="352" y2="416" stroke="var(--accent)" stroke-width="72" stroke-linecap="round"/></svg> sched<span>kit</span></div>
   <h1>Welcome! Let's set up your account</h1>
   <p>You've been invited to SchedKit. Just fill in a couple of details and you're good to go.</p>
   <form id="form">

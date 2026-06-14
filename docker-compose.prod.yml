@@ -1,0 +1,54 @@
+# Production-style compose (build from source, expose API on host).
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-schedkit}
+      POSTGRES_USER: ${POSTGRES_USER:-schedkit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-strong}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-schedkit} -d ${POSTGRES_DB:-schedkit}"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+    image: ${API_IMAGE:-schedkit-api:local}
+    restart: unless-stopped
+    env_file:
+      - path: .env.production
+        required: false
+      - path: .env
+        required: false
+    environment:
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-schedkit}:${POSTGRES_PASSWORD:-change-me-strong}@postgres:5432/${POSTGRES_DB:-schedkit}?sslmode=disable}
+      BASE_DOMAIN: ${BASE_DOMAIN:-schedkit.net}
+    volumes:
+      - captures_data:/app/public/captures
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
+  captures_data:

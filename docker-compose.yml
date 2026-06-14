@@ -1,0 +1,48 @@
+# Local development — SchedKit API + Postgres (fresh DB; migrations run on startup).
+#   docker compose up --build
+#
+# API: http://localhost:${APP_PORT:-3000}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-schedkit}
+      POSTGRES_USER: ${POSTGRES_USER:-schedkit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-schedkit}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-schedkit} -d ${POSTGRES_DB:-schedkit}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: 3000
+      # App uses DATABASE_URL; schema applied automatically on startup.
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-schedkit}:${POSTGRES_PASSWORD:-schedkit}@postgres:5432/${POSTGRES_DB:-schedkit}?sslmode=disable}
+      BASE_DOMAIN: ${BASE_DOMAIN:-localhost:${APP_PORT:-3000}}
+    volumes:
+      - captures_data:/app/public/captures
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  captures_data:

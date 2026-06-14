@@ -5,6 +5,7 @@
   "main": "src/index.mjs",
   "scripts": {
     "start": "node src/index.mjs",
+    "migrate": "node -e \"import('dotenv/config'); import('./src/db/migrate.mjs').then(m => m.runMigrations()).then(() => process.exit(0))\"",
     "smoke": "bash scripts/smoke-test.sh"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "fastify": "^5.8.5",
     "nanoid": "^5.0.7",
     "node-mailjet": "^6.0.11",
+    "pg": "^8.21.0",
     "pm2": "^6.0.14",
     "stripe": "^20.4.1",
     "web-push": "^3.6.7"

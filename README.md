@@ -9,21 +9,29 @@ Lightweight API-first scheduling service. Think Cal.com but lean — built for e
 - **Booking engine** — conflict detection, cancel/reschedule tokens
 - **Webhooks** — fire on booking created/cancelled
 - **Multi-tenant** — each user gets an API key, public booking URLs under `/book/:slug/:event`
-- **NocoDB backend** — visual admin, Postgres underneath, zero extra infra
+- **Postgres backend** — direct SQL via `DATABASE_URL` (Docker Compose locally, Plesk stack in prod)
 
 ## Stack
 
 - Node.js + Fastify
-- NocoDB (data layer + admin UI)
+- PostgreSQL 16
 - date-fns + date-fns-tz (timezone math)
+- Docker Compose (optional local/prod stack)
 
 ## Quick Start
 
 ```bash
 cp .env.example .env
-# Fill in NOCO_URL, NOCO_TOKEN, NOCO_BASE_ID, API_SECRET
+# Set API_SECRET; DATABASE_URL is pre-filled for docker compose Postgres
+docker compose up --build
+# API: http://localhost:3000  ·  Postgres host port: 5433
+```
+
+Bare Node (Postgres already running):
+
+```bash
 npm install
-npm run dev
+npm start
 ```
 
 ## API Reference
