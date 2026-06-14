@@ -188,42 +188,49 @@ function buildTeamPage(orgSlug, teamSlug, eventSlug) {
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #111112;
-  --card: #1a1a1f;
-  --surface: #222228;
-  --surface2: #2a2a32;
-  --border: rgba(255,255,255,0.07);
-  --border2: rgba(255,255,255,0.12);
-  --accent: var(--accent);
-  --accent-fg: #0d0d0d;
-  --accent-dim: rgba(255,199,0,0.10);
-  --text: #f0f0f2;
-  --text2: #8888a0;
-  --muted: #4a4a5e;
-  --day-avail: #2a2a32;
-  --day-avail-hover: #35353f;
-  --error: var(--red);
+  --bg: #0a0a0a;
+  --card: #111111;
+  --surface: #161616;
+  --surface2: #1f1f1f;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,199,0,0.2);
+  --accent: #ffc700;
+  --accent-bright: #ffda47;
+  --accent-fg: #0a0a0a;
+  --accent-dim: rgba(255,199,0,0.12);
+  --text: #c9c9c9;
+  --text2: #9a9a9a;
+  --muted: #555555;
+  --red: #ff4444;
+  --error: #ff4444;
+  --day-avail: #1f1f1f;
+  --day-avail-hover: #2a2a2a;
   --font-sans: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'Fira Code', monospace;
   --r: 12px;
   --r-day: 10px;
 }
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-bright); text-decoration: underline; }
+a:visited { color: var(--accent); }
 [data-lights="on"] {
-  --bg: #eeecea;
-  --card: #f8f7f4;
-  --surface: #eeede9;
-  --surface2: #e4e3de;
-  --border: rgba(0,0,0,0.07);
-  --border2: rgba(0,0,0,0.13);
-  --accent: #3a4500;
-  --accent-fg: #f8f7f4;
-  --accent-dim: rgba(58,69,0,0.09);
-  --text: #111110;
-  --text2: #55554a;
-  --muted: #99997a;
-  --day-avail: #e4e3de;
-  --day-avail-hover: #d8d7d0;
+  --bg: #f5f4ef;
+  --card: #edecea;
+  --surface: #e4e3df;
+  --surface2: #d8d7d0;
+  --border: rgba(0,0,0,0.1);
+  --border2: rgba(153,119,0,0.25);
+  --accent: #997700;
+  --accent-bright: #b38f00;
+  --accent-fg: #f5f4ef;
+  --accent-dim: rgba(153,119,0,0.1);
+  --text: #141410;
+  --text2: #5a5a4a;
+  --muted: #888877;
+  --red: #c0392b;
   --error: #c0392b;
+  --day-avail: #e4e3df;
+  --day-avail-hover: #d8d7d0;
 }
 
 html, body {

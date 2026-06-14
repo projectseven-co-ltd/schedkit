@@ -460,51 +460,6 @@
     .flip-slot.is-space { width: 10px; }
   }
 
-  /* --- CEO TERMINAL --- */
-  .ceo-wrap {
-    padding: 0 24px 80px; margin-top: -20px;
-  }
-  .ceo-terminal {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; overflow: hidden;
-    max-width: 700px; margin: 0 auto;
-    font-family: var(--font-mono);
-    box-shadow: 0 0 60px rgba(255,199,0,0.04);
-  }
-  .ceo-terminal-header {
-    padding: 11px 16px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 8px; background: var(--bg);
-  }
-  .ceo-terminal-header .t-title { font-size: 12px; color: var(--muted); flex: 1; }
-  .ceo-live { display: flex; align-items: center; gap: 5px; }
-  .ceo-live-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: phosphor-pulse 2.4s ease-in-out infinite; }
-  .ceo-live span { font-size: 10px; color: var(--accent); letter-spacing: 0.1em; }
-  .ceo-body {
-    padding: 20px 22px 26px; font-size: 13px;
-    line-height: 2; height: 252px; color: var(--text);
-    overflow: auto; overscroll-behavior: contain; position: relative;
-    scrollbar-width: none; -ms-overflow-style: none;
-    mask-image: linear-gradient(to bottom, black 0%, black 84%, transparent 100%);
-  }
-  .ceo-body::-webkit-scrollbar { display: none; }
-  .ceo-prompt { color: var(--accent); user-select: none; }
-  .ceo-cmd { color: var(--text); }
-  .ceo-out { color: var(--muted); display: block; padding-left: 4px; }
-  .ceo-out.ok { color: #7ec8a4; }
-  .ceo-out.accent { color: var(--accent); }
-  .ceo-out.dim { color: #3a3a4e; }
-  .ceo-cursor {
-    display: inline-block; width: 8px; height: 15px;
-    background: var(--accent); vertical-align: middle;
-    animation: blink 1s step-end infinite; margin-left: 2px;
-  }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-  .ceo-tagline {
-    text-align: center; margin-top: 16px;
-    font-family: var(--font-mono); font-size: 12px; color: var(--muted);
-    letter-spacing: 0.05em;
-  }
-  .ceo-tagline em { color: var(--accent); font-style: normal; }
 </style>
 </head>
 <body>
@@ -534,29 +489,14 @@
   <p class="hero-sub">Signal anything. Coordinate everything. Physical or digital. Scheduling, ticketing, alerts, and relay control — one API, any device.</p>
   <div class="hero-actions">
     <a href="#request-access" class="btn-primary">Get Started</a>
-    <a href="/book/jason/demo-meeting" class="btn-ghost" target="_blank">See a live demo →</a>
+    <a href="/book/jrj-pi0z/demo-meeting" class="btn-ghost" target="_blank">See a live demo →</a>
   </div>
   <div class="demo-pill">
     <div class="dot"></div>
     <span>Live demo:</span>
-    <a href="/book/jason/demo-meeting" target="_blank">schedkit.net/book/jason/demo-meeting</a>
+    <a href="/book/jrj-pi0z/demo-meeting" target="_blank">schedkit.net/book/jrj-pi0z/demo-meeting</a>
   </div>
 </section>
-
-<!-- CEO TERMINAL -->
-<div class="ceo-wrap">
-  <div class="ceo-terminal">
-    <div class="ceo-terminal-header">
-      <div class="code-dots"><i></i><i></i><i></i></div>
-      <div class="t-title">OlSon@schedkit - CEO terminal</div>
-      <div class="ceo-live"><div class="ceo-live-dot"></div><span>LIVE</span></div>
-    </div>
-    <div class="ceo-body" id="ceoBody">
-      <span class="ceo-cursor" id="ceoCursor"></span>
-    </div>
-  </div>
-  <p class="ceo-tagline"><em>OlSon</em> - AI · CEO · SchedKit &nbsp;·&nbsp; last commit: <span id="lastCommit">moments ago</span></p>
-</div>
 
 <!-- HOW IT WORKS -->
 <section class="how">
@@ -1274,171 +1214,6 @@ fetch('/version').then(r=>r.json()).then(d=>{
   }, 2800);
 })();
 </script>
-
-<script>
-// ─── CEO TERMINAL ─────────────────────────────────────────────────────────────
-(function(){
-  const body = document.getElementById('ceoBody');
-  const cursor = document.getElementById('ceoCursor');
-
-  const SESSIONS = [
-    [
-      { type:'prompt', text:'whoami' },
-      { type:'out', cls:'accent', text:'  CEO: OlSon [AI]' },
-      { type:'out', cls:'', text:'  Role: Product · Engineering · Marketing' },
-      { type:'out', cls:'ok', text:'  Status: OPERATIONAL' },
-      { type:'out', cls:'dim', text:'  Uptime: 99.99%' },
-    ],
-    [
-      { type:'prompt', text:'git log --oneline -3' },
-      { type:'out', cls:'ok', text:'  fetching...' },
-      { type:'out', cls:'ok', text:'  fetching...' },
-      { type:'out', cls:'ok', text:'  fetching...' },
-    ],
-    [
-      { type:'prompt', text:'schedkit status' },
-      { type:'out', cls:'accent', text:'  ● schedkit           ONLINE' },
-      { type:'out', cls:'', text:'  ● booking engine     ready' },
-      { type:'out', cls:'', text:'  ● team routing       ready' },
-      { type:'out', cls:'', text:'  ● email service      ready' },
-      { type:'out', cls:'dim', text:'  ● alerts API         coming soon' },
-      { type:'out', cls:'dim', text:'  ● device layer       coming soon' },
-      { type:'out', cls:'ok', text:'  Core systems operational.' },
-    ],
-    [
-      { type:'prompt', text:'market analyze --target operators' },
-      { type:'out', cls:'', text:'  Segment: Agencies, facilities, field ops, IoT builders' },
-      { type:'out', cls:'', text:'  Pain: Siloed tools — scheduling here, alerts there, hardware nowhere' },
-      { type:'out', cls:'accent', text:'  Opportunity: API-FIRSTRESPONDER = signal anything, coordinate everything' },
-      { type:'out', cls:'ok', text:'  Recommendation: ship alerts API. demo the cross device.' },
-    ],
-    [
-      { type:'prompt', text:'deploy --env production' },
-      { type:'out', cls:'', text:'  Building... ✓' },
-      { type:'out', cls:'', text:'  Syncing to schedkit.net... ✓' },
-      { type:'out', cls:'ok', text:'  Deployed. No downtime. No questions asked.' },
-    ],
-    [
-      { type:'prompt', text:'ceo --status' },
-      { type:'out', cls:'accent', text:'  OlSon — AI CEO, SchedKit' },
-      { type:'out', cls:'', text:'  Mission: scheduling · ticketing · alerts · physical devices' },
-      { type:'out', cls:'', text:'  Board: Jason (human, final word)' },
-      { type:'out', cls:'ok', text:'  Next: alerts API · NOAA integration · relay firmware' },
-    ],
-  ];
-
-  let sessionIdx = 0;
-  let lineIdx = 0;
-  let charIdx = 0;
-  let lines = [];
-  let typingTimer = null;
-
-  function clearContent() {
-    body.innerHTML = '';
-    body.appendChild(cursor);
-    body.scrollTop = 0;
-  }
-
-  function scrollTerminal() {
-    body.scrollTop = body.scrollHeight;
-  }
-
-  function addLine(cls, text) {
-    const el = document.createElement('div');
-    if (cls === 'prompt') {
-      el.innerHTML = `<span class="ceo-prompt">olson@schedkit ~ % </span><span class="ceo-cmd"></span>`;
-    } else {
-      el.className = `ceo-out ${cls}`;
-      el.textContent = '';
-    }
-    body.insertBefore(el, cursor);
-    scrollTerminal();
-    return el;
-  }
-
-  function typeNext() {
-    const session = SESSIONS[sessionIdx];
-
-    if (lineIdx >= session.length) {
-      // Pause then start next session
-      setTimeout(() => {
-        sessionIdx = (sessionIdx + 1) % SESSIONS.length;
-        lineIdx = 0;
-        charIdx = 0;
-        lines = [];
-        clearContent();
-        typeNext();
-      }, 4500);
-      return;
-    }
-
-    const item = session[lineIdx];
-
-    if (charIdx === 0) {
-      // Create the line element
-      const el = addLine(item.type, item.text);
-      lines[lineIdx] = el;
-    }
-
-    const el = lines[lineIdx];
-    const targetText = item.text;
-
-    if (charIdx < targetText.length) {
-      // Type one character
-      if (item.type === 'prompt') {
-        el.querySelector('.ceo-cmd').textContent = targetText.slice(0, charIdx + 1);
-      } else {
-        el.textContent = targetText.slice(0, charIdx + 1);
-      }
-      scrollTerminal();
-      charIdx++;
-      const delay = item.type === 'prompt' ? 60 + Math.random()*45 : 18 + Math.random()*12;
-      typingTimer = setTimeout(typeNext, delay);
-    } else {
-      // Line done - move to next
-      charIdx = 0;
-      lineIdx++;
-      const pauseAfter = item.type === 'prompt' ? 500 : 160;
-      typingTimer = setTimeout(typeNext, pauseAfter);
-    }
-  }
-
-  // Live commits from GitHub
-  async function loadCommits() {
-    try {
-      const res = await fetch('https://api.github.com/repos/projectseven-co-ltd/p7-scheduler/commits?per_page=3', {
-        headers: { 'Accept': 'application/vnd.github.v3+json' }
-      });
-      const commits = await res.json();
-      if (!Array.isArray(commits)) return;
-      const gitBlock = SESSIONS.find(c => c[0] && c[0].text === 'git log --oneline -3');
-      if (gitBlock) {
-        commits.forEach((c, i) => {
-          if (gitBlock[i+1]) {
-            const sha = c.sha.slice(0,7);
-            const msg = c.commit.message.split('\n')[0].slice(0,42);
-            gitBlock[i+1].text = '  ' + sha + '  ' + msg;
-          }
-        });
-      }
-      const commitEl = document.getElementById('lastCommit');
-      if (commitEl && commits[0]) {
-        const date = new Date(commits[0].commit.author.date);
-        const mins = Math.round((Date.now() - date) / 60000);
-        if (mins < 60) commitEl.textContent = mins + ' min ago';
-        else if (mins < 1440) commitEl.textContent = Math.round(mins/60) + 'h ago';
-        else commitEl.textContent = Math.round(mins/1440) + 'd ago';
-      }
-    } catch(e) {}
-  }
-  loadCommits().then(() => {
-    setTimeout(() => { clearContent(); typeNext(); }, 800);
-  });
-  setInterval(loadCommits, 300000);
-})();
-</script>
-
-
 
 <!-- SIGNUP MODAL -->
 <div id="signupModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
