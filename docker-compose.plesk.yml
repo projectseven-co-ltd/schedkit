@@ -11,6 +11,7 @@
 # SchedKit, CLIENT_PORT=3000 will hijack the bind and fail against SF.
 #
 # Plesk proxy schedkit.net → localhost:3002
+# Maintenance page (502/503 during restarts): deploy/plesk/README.md
 # Images: ghcr.io/projectseven-co-ltd/schedkit-api:${IMAGE_TAG:-latest}
 #
 # Auto-deploy (push to main):
