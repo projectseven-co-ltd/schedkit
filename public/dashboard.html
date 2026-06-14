@@ -480,6 +480,9 @@ tr:hover td{background:var(--surface2)}
     <button class="nav-item" data-section="assignments">
       <span class="nav-icon">[■]</span> Assignments
     </button>
+    <button class="nav-item" data-section="work-orders">
+      <span class="nav-icon">[◆]</span> Work Orders
+    </button>
     <button class="nav-item" data-section="tickets">
       <span class="nav-icon">[×]</span> Incidents
     </button>
@@ -633,6 +636,44 @@ tr:hover td{background:var(--surface2)}
       <div class="table-wrap" id="bookings-table">
         <div class="loading">loading assignments...</div>
       </div>
+    </div>
+
+    <!-- WORK ORDERS -->
+    <div class="section" id="section-work-orders">
+      <div class="page-header" style="margin-bottom:16px">
+        <h2>Work Orders</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost" onclick="loadWorkOrders()">Refresh</button>
+          <button class="btn btn-primary" onclick="openWorkOrderModal()">+ New Work Order</button>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-label">open</div><div class="stat-value" id="wo-stat-open">—</div></div>
+        <div class="stat"><div class="stat-label">in progress</div><div class="stat-value" id="wo-stat-progress" style="color:#60a5fa">—</div></div>
+        <div class="stat"><div class="stat-label">completed (7d)</div><div class="stat-value" id="wo-stat-completed" style="color:#4ade80">—</div></div>
+      </div>
+      <div class="ticket-toolbar">
+        <select id="wo-filter-status" onchange="renderWorkOrdersTable(window._workOrders || [])">
+          <option value="all">All statuses</option>
+          <option value="draft">Draft</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="in_progress">In progress</option>
+          <option value="on_hold">On hold</option>
+          <option value="completed">Completed</option>
+          <option value="signed_off">Signed off</option>
+          <option value="closed">Closed</option>
+        </select>
+        <select id="wo-filter-priority" onchange="renderWorkOrdersTable(window._workOrders || [])">
+          <option value="all">All priorities</option>
+          <option value="urgent">Urgent</option>
+          <option value="high">High</option>
+          <option value="normal">Normal</option>
+          <option value="low">Low</option>
+        </select>
+        <input type="search" id="wo-filter-search" placeholder="Search title or site…" oninput="renderWorkOrdersTable(window._workOrders || [])" style="min-width:200px;flex:1">
+        <div class="meta" id="wo-results-meta">—</div>
+      </div>
+      <div class="table-wrap" id="work-orders-table"><div class="loading">loading work orders...</div></div>
     </div>
 
     <!-- TICKETS -->
@@ -1083,6 +1124,111 @@ tr:hover td{background:var(--surface2)}
     </div>
   </div>
 </div>
+
+<!-- WORK ORDER MODAL -->
+<div class="modal-overlay" id="wo-modal">
+  <div class="modal" style="max-width:560px">
+    <h3>New Work Order</h3>
+    <div class="form-row"><label>Title</label><input type="text" id="wo-title" placeholder="HVAC inspection — Building C"></div>
+    <div class="form-grid">
+      <div class="form-row"><label>Priority</label>
+        <select id="wo-priority"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select>
+      </div>
+      <div class="form-row"><label>Status</label>
+        <select id="wo-status"><option value="draft">Draft</option><option value="scheduled">Scheduled</option></select>
+      </div>
+    </div>
+    <div class="form-row"><label>Site address</label><input type="text" id="wo-site-address" placeholder="123 Main St"></div>
+    <div class="form-grid">
+      <div class="form-row"><label>Customer name</label><input type="text" id="wo-customer-name"></div>
+      <div class="form-row"><label>Customer email</label><input type="email" id="wo-customer-email"></div>
+    </div>
+    <div class="form-row"><label>Description</label><textarea id="wo-description" placeholder="Scope of work, access notes…"></textarea></div>
+    <input type="hidden" id="wo-booking-id">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('wo-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveWorkOrder()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- WORK ORDER DETAIL MODAL -->
+<div class="modal-overlay" id="wo-detail-modal">
+  <div class="modal" style="max-width:860px;max-height:92vh;overflow:auto">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+      <div>
+        <h3 id="wo-detail-title">Work Order</h3>
+        <div id="wo-detail-subtitle" style="font-size:12px;color:var(--muted);font-family:var(--font-mono)"></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="font-size:12px" onclick="woCopyPortalLink()">Copy Portal</button>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="woDownloadReport()">PDF</button>
+        <button class="btn btn-primary" style="font-size:12px" onclick="woStart()">Start</button>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="woPause()">Hold</button>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="woComplete()">Complete</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px" id="wo-tab-bar">
+      <button class="btn btn-ghost wo-tab active" data-wo-tab="overview" onclick="switchWoTab('overview')">Overview</button>
+      <button class="btn btn-ghost wo-tab" data-wo-tab="timelog" onclick="switchWoTab('timelog')">Timelog</button>
+      <button class="btn btn-ghost wo-tab" data-wo-tab="photos" onclick="switchWoTab('photos')">Photos</button>
+      <button class="btn btn-ghost wo-tab" data-wo-tab="checklist" onclick="switchWoTab('checklist')">Checklist</button>
+      <button class="btn btn-ghost wo-tab" data-wo-tab="parts" onclick="switchWoTab('parts')">Parts</button>
+      <button class="btn btn-ghost wo-tab" data-wo-tab="signatures" onclick="switchWoTab('signatures')">Signatures</button>
+      <button class="btn btn-ghost wo-tab" data-wo-tab="links" onclick="switchWoTab('links')">Links</button>
+    </div>
+    <div id="wo-panel-overview" class="wo-panel">
+      <div class="form-grid">
+        <div class="form-row"><label>Status</label><select id="wo-detail-status"><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="in_progress">In progress</option><option value="on_hold">On hold</option><option value="completed">Completed</option><option value="signed_off">Signed off</option><option value="closed">Closed</option></select></div>
+        <div class="form-row"><label>Priority</label><select id="wo-detail-priority"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>
+      </div>
+      <div class="form-row"><label>Site address</label><input type="text" id="wo-detail-site"></div>
+      <div class="form-row"><label>Description</label><textarea id="wo-detail-description"></textarea></div>
+      <div class="modal-actions"><button class="btn btn-primary" onclick="updateWorkOrder()">Save</button></div>
+    </div>
+    <div id="wo-panel-timelog" class="wo-panel" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn btn-primary" style="font-size:12px" onclick="woClockIn()">Clock in</button>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="woClockOut()">Clock out</button>
+      </div>
+      <div id="wo-timelog-list" style="font-size:13px;color:var(--muted)"></div>
+    </div>
+    <div id="wo-panel-photos" class="wo-panel" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <select id="wo-photo-category"><option value="before">Before</option><option value="during">During</option><option value="after">After</option><option value="inspection">Inspection</option><option value="other">Other</option></select>
+        <input type="text" id="wo-photo-caption" placeholder="Caption" style="flex:1;min-width:140px">
+        <button class="btn btn-primary" style="font-size:12px" onclick="document.getElementById('wo-photo-input').click()">Upload photo</button>
+      </div>
+      <div id="wo-photos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px"></div>
+    </div>
+    <div id="wo-panel-checklist" class="wo-panel" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:12px"><input type="text" id="wo-checklist-label" placeholder="New checklist item" style="flex:1"><button class="btn btn-primary" style="font-size:12px" onclick="addWoChecklistItem()">Add</button></div>
+      <div id="wo-checklist-list"></div>
+    </div>
+    <div id="wo-panel-parts" class="wo-panel" style="display:none">
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-row"><label>Description</label><input type="text" id="wo-part-desc"></div>
+        <div class="form-row"><label>Qty</label><input type="number" id="wo-part-qty" value="1" min="0" step="0.01"></div>
+        <div class="form-row"><label>Unit cost</label><input type="number" id="wo-part-cost" min="0" step="0.01"></div>
+      </div>
+      <button class="btn btn-primary" style="font-size:12px;margin-bottom:12px" onclick="addWoLineItem()">Add line item</button>
+      <div id="wo-parts-list"></div>
+    </div>
+    <div id="wo-panel-signatures" class="wo-panel" style="display:none">
+      <div id="wo-sigs-list" style="margin-bottom:12px"></div>
+      <div class="form-row"><label>Technician name</label><input type="text" id="wo-tech-signer-name"></div>
+      <canvas id="wo-sig-canvas" width="600" height="120" style="width:100%;background:#fff;border-radius:8px;touch-action:none"></canvas>
+      <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-ghost" style="font-size:12px" onclick="woClearSig()">Clear</button><button class="btn btn-primary" style="font-size:12px" onclick="submitWoTechSignature()">Save signature</button></div>
+    </div>
+    <div id="wo-panel-links" class="wo-panel" style="display:none">
+      <div class="form-row"><label>Linked assignment ID</label><div style="display:flex;gap:8px"><input type="text" id="wo-link-booking-id" style="flex:1"><button class="btn btn-ghost" style="font-size:12px" onclick="linkWoBooking()">Link</button></div></div>
+      <div id="wo-linked-incidents" style="margin-top:16px"></div>
+      <div style="margin-top:12px;display:flex;gap:8px"><input type="text" id="wo-link-incident-id" placeholder="Incident ID" style="flex:1"><button class="btn btn-ghost" style="font-size:12px" onclick="linkWoIncident()">Attach incident</button></div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px"><button class="btn btn-ghost" onclick="closeModal('wo-detail-modal')">Close</button></div>
+  </div>
+</div>
+<input type="file" id="wo-photo-input" accept="image/*" style="display:none">
 
 <!-- EVENT TYPE MODAL -->
 <div class="modal-overlay" id="et-modal">
@@ -1633,7 +1779,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.add('active');
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById('section-' + section).classList.add('active');
-    const titles = { sitrep:'SITREP', assignments:'Assignments', tickets:'Incidents', signals:'Signals', kit:'Manifest', 'event-types':'Assignment Types', availability:'Standby Windows', blackout:'Blackout Dates', clients:'Client Flags', orgs:'Units', platform:'Platform Admin', settings:'Account' };
+    const titles = { sitrep:'SITREP', assignments:'Assignments', 'work-orders':'Work Orders', tickets:'Incidents', signals:'Signals', kit:'Manifest', 'event-types':'Assignment Types', availability:'Standby Windows', blackout:'Blackout Dates', clients:'Client Flags', orgs:'Units', platform:'Platform Admin', settings:'Account' };
     document.getElementById('page-title').textContent = titles[section] || section;
     loadSection(section);
     closeSidebar(); // close on mobile after nav
@@ -1653,6 +1799,7 @@ function closeSidebar() {
 async function loadSection(name) {
   if (name === 'sitrep') await loadSitrep();
   if (name === 'assignments') await loadAssignments();
+  if (name === 'work-orders') await loadWorkOrders();
   if (name === 'tickets') await loadTickets();
   if (name === 'signals') { initSignalsPage(); }
   if (name === 'kit') await loadKitTab(currentKitTab || 'event-types');
@@ -2189,6 +2336,7 @@ function renderAssignmentsTable(bookings) {
       isPending ? `<button class="btn" style="font-size:12px;padding:6px 12px;background:rgba(255,95,95,.08);color:var(--red);border:1px solid rgba(255,95,95,.2)" onclick='declineBooking(${JSON.stringify(b.confirm_token||'').replace(/'/g,"&#39;")}, ${bJson})'>✕ Decline</button>` : '',
       canReschedule ? `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openRescheduleModal(${bJson})'>Reschedule</button>` : '',
       canCancel ? `<button class="btn" style="font-size:12px;padding:6px 12px;background:rgba(255,95,95,.08);color:var(--red);border:1px solid rgba(255,95,95,.2)" onclick='openCancelAssignmentModal(${bJson})'>Cancel</button>` : '',
+      `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='createWorkOrderFromAssignment(${bJson})'>Work Order</button>`,
       `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='copyText(${JSON.stringify(b.attendee_email)})' title="Copy email">Copy</button>`,
       `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openFlagModal(${flagJson})'>${flag ? 'Flag ▾' : '+ Flag'}</button>`,
     ].filter(Boolean).join(' ');
@@ -2748,7 +2896,11 @@ async function openTicketDetail(ticket, opts = {}) {
   document.getElementById('ticket-detail-routing').innerHTML = `
     <div><strong>Priority:</strong> ${esc(ticket.priority || 'normal')}</div>
     <div style="margin-top:8px"><strong>Source:</strong> ${esc(ticket.source || 'api')}</div>
-    <div style="margin-top:8px"><strong>Public URL:</strong> ${publicUrl ? `<a href="${publicUrl}" target="_blank" style="color:var(--accent)">open →</a>` : '—'}</div>`;
+    <div style="margin-top:8px"><strong>Public URL:</strong> ${publicUrl ? `<a href="${publicUrl}" target="_blank" style="color:var(--accent)">open →</a>` : '—'}</div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="ticket-attach-wo-id" placeholder="Work order ID" style="flex:1;min-width:100px;font-size:12px;padding:6px 8px">
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" type="button" onclick="attachTicketToWorkOrder(${ticket.Id})">Attach to WO</button>
+    </div>`;
   document.getElementById('ticket-copy-link-btn').onclick = () => publicUrl ? copyText(publicUrl) : toast('No public link on this ticket', 'err');
   document.getElementById('ticket-close-btn').onclick = () => closeTicket(ticket.Id);
   if (!opts.skipReplyLoad) await loadTicketReplies(ticket.Id);
@@ -5463,6 +5615,330 @@ function closeBillingModal() {
 
 document.getElementById('billing-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('billing-modal')) closeBillingModal();
+});
+
+// ── Work Orders ───────────────────────────────────────
+let activeWorkOrder = null;
+let woSigDrawing = false;
+
+function switchWoTab(tab) {
+  document.querySelectorAll('.wo-tab').forEach(b => b.classList.toggle('active', b.dataset.woTab === tab));
+  document.querySelectorAll('.wo-panel').forEach(p => { p.style.display = p.id === 'wo-panel-' + tab ? '' : 'none'; });
+}
+
+async function loadWorkOrders() {
+  const res = await apiFetch('/v1/work-orders?limit=100');
+  if (!res?.ok) return;
+  const { work_orders = [], total = 0 } = await res.json();
+  window._workOrders = work_orders;
+  const open = work_orders.filter(w => ['draft','scheduled','in_progress','on_hold'].includes(w.status)).length;
+  const inProg = work_orders.filter(w => w.status === 'in_progress').length;
+  const weekAgo = Date.now() - 7 * 86400000;
+  const completedWeek = work_orders.filter(w => ['completed','signed_off','closed'].includes(w.status) && new Date(w.completed_at || w.updated_at || 0).getTime() >= weekAgo).length;
+  document.getElementById('wo-stat-open').textContent = open;
+  document.getElementById('wo-stat-progress').textContent = inProg;
+  document.getElementById('wo-stat-completed').textContent = completedWeek;
+  document.getElementById('wo-results-meta').textContent = `${total} total`;
+  renderWorkOrdersTable(work_orders);
+}
+
+function renderWorkOrdersTable(list) {
+  const statusFilter = document.getElementById('wo-filter-status')?.value || 'all';
+  const priorityFilter = document.getElementById('wo-filter-priority')?.value || 'all';
+  const search = (document.getElementById('wo-filter-search')?.value || '').trim().toLowerCase();
+  const filtered = (list || []).filter(w =>
+    (statusFilter === 'all' || w.status === statusFilter) &&
+    (priorityFilter === 'all' || w.priority === priorityFilter) &&
+    (!search || (w.title||'').toLowerCase().includes(search) || (w.site_address||'').toLowerCase().includes(search))
+  );
+  document.getElementById('wo-results-meta').textContent = `${filtered.length} shown · ${(list||[]).length} total`;
+  const el = document.getElementById('work-orders-table');
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">[◆]</div><p>No work orders yet.</p></div>`;
+    return;
+  }
+  const rows = filtered.map(w => {
+    const badges = [
+      w.timer_active ? '<span class="badge badge-in_progress">timer</span>' : '',
+      w.incident_count ? `<span class="badge badge-normal">${w.incident_count} inc</span>` : '',
+      w.photo_count ? `<span class="badge badge-normal">${w.photo_count} photos</span>` : '',
+    ].filter(Boolean).join(' ');
+    return `<tr>
+      <td data-label="Work Order"><strong>${esc(w.title)}</strong><div style="font-size:12px;color:var(--muted)">${esc(w.site_address || '')}</div><div class="ticket-meta-row"><span class="badge badge-${w.priority}">${esc(w.priority)}</span><span class="badge badge-${w.status}">${esc(w.status)}</span>${badges}</div></td>
+      <td data-label="UID" style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${esc(w.uid || w.Id)}</td>
+      <td data-label="Actions"><button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openWorkOrderDetailById(${w.Id})'>Open</button></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<table><thead><tr><th>Work Order</th><th>UID</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function openWorkOrderModal(prefill = {}) {
+  document.getElementById('wo-title').value = prefill.title || '';
+  document.getElementById('wo-priority').value = prefill.priority || 'normal';
+  document.getElementById('wo-status').value = prefill.status || 'draft';
+  document.getElementById('wo-site-address').value = prefill.site_address || '';
+  document.getElementById('wo-customer-name').value = prefill.customer_name || '';
+  document.getElementById('wo-customer-email').value = prefill.customer_email || '';
+  document.getElementById('wo-description').value = prefill.description || '';
+  document.getElementById('wo-booking-id').value = prefill.booking_id || '';
+  openModal('wo-modal');
+}
+
+async function createWorkOrderFromAssignment(booking) {
+  openWorkOrderModal({
+    title: `${booking.attendee_name || 'Assignment'} — field work`,
+    customer_name: booking.attendee_name || '',
+    customer_email: booking.attendee_email || '',
+    booking_id: String(booking.Id),
+    status: 'scheduled',
+    description: booking.notes || '',
+  });
+}
+
+async function saveWorkOrder() {
+  const body = {
+    title: v('wo-title'),
+    priority: document.getElementById('wo-priority').value,
+    status: document.getElementById('wo-status').value,
+    site_address: v('wo-site-address'),
+    customer_name: v('wo-customer-name'),
+    customer_email: v('wo-customer-email'),
+    description: v('wo-description'),
+  };
+  const bookingId = document.getElementById('wo-booking-id').value;
+  if (bookingId) body.booking_id = bookingId;
+  if (!body.title) return toast('Title required', 'err');
+  const res = await apiFetch('/v1/work-orders', { method: 'POST', body: JSON.stringify(body) });
+  if (!res?.ok) return toast('Failed to create work order', 'err');
+  closeModal('wo-modal');
+  toast('Work order created', 'ok');
+  await loadWorkOrders();
+  const wo = await res.json();
+  openWorkOrderDetail(wo);
+}
+
+async function openWorkOrderDetailById(id) {
+  const res = await apiFetch(`/v1/work-orders/${id}`);
+  if (!res?.ok) return toast('Could not load work order', 'err');
+  openWorkOrderDetail(await res.json());
+}
+
+function initWoSigCanvas() {
+  const canvas = document.getElementById('wo-sig-canvas');
+  if (!canvas || canvas._woSigInit) return;
+  canvas._woSigInit = true;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches?.[0] || e;
+    return { x: (t.clientX - r.left) * (canvas.width / r.width), y: (t.clientY - r.top) * (canvas.height / r.height) };
+  }
+  canvas.onmousedown = e => { woSigDrawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+  canvas.onmousemove = e => { if (!woSigDrawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+  canvas.onmouseup = () => { woSigDrawing = false; };
+  canvas.onmouseleave = () => { woSigDrawing = false; };
+  canvas.ontouchstart = e => { woSigDrawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+  canvas.ontouchmove = e => { if (!woSigDrawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+  canvas.ontouchend = () => { woSigDrawing = false; };
+}
+
+async function openWorkOrderDetail(wo) {
+  activeWorkOrder = wo;
+  document.getElementById('wo-detail-title').textContent = wo.title || 'Work Order';
+  document.getElementById('wo-detail-subtitle').textContent = `${wo.uid || ''} · ${wo.status} · ${wo.checklist_done ?? 0}/${wo.checklist_total ?? 0} checklist`;
+  document.getElementById('wo-detail-status').value = wo.status || 'draft';
+  document.getElementById('wo-detail-priority').value = wo.priority || 'normal';
+  document.getElementById('wo-detail-site').value = wo.site_address || '';
+  document.getElementById('wo-detail-description').value = wo.description || '';
+  document.getElementById('wo-link-booking-id').value = wo.booking_id || '';
+  renderWoTimelog(wo.time_entries || []);
+  renderWoPhotos(wo.attachments || []);
+  renderWoChecklist(wo.checklist || []);
+  renderWoParts(wo.line_items || [], wo.parts_subtotal);
+  renderWoSignatures(wo.signatures || []);
+  renderWoLinks(wo);
+  switchWoTab('overview');
+  initWoSigCanvas();
+  openModal('wo-detail-modal');
+}
+
+async function refreshActiveWorkOrder() {
+  if (!activeWorkOrder?.Id) return;
+  const res = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}`);
+  if (res?.ok) openWorkOrderDetail(await res.json());
+}
+
+async function updateWorkOrder() {
+  if (!activeWorkOrder?.Id) return;
+  const body = {
+    status: document.getElementById('wo-detail-status').value,
+    priority: document.getElementById('wo-detail-priority').value,
+    site_address: document.getElementById('wo-detail-site').value.trim(),
+    description: document.getElementById('wo-detail-description').value.trim(),
+  };
+  const res = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}`, { method: 'PATCH', body: JSON.stringify(body) });
+  if (!res?.ok) return toast('Update failed', 'err');
+  activeWorkOrder = await res.json();
+  toast('Saved', 'ok');
+  await loadWorkOrders();
+}
+
+async function woStart() { if (!activeWorkOrder?.Id) return; const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/start`, { method: 'POST' }); if (!r?.ok) return toast('Start failed', 'err'); await refreshActiveWorkOrder(); toast('Started', 'ok'); }
+async function woPause() { if (!activeWorkOrder?.Id) return; const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/pause`, { method: 'POST' }); if (!r?.ok) return toast('Pause failed', 'err'); await refreshActiveWorkOrder(); }
+async function woComplete() { if (!activeWorkOrder?.Id) return; const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/complete`, { method: 'POST' }); if (!r?.ok) return toast('Complete failed', 'err'); await refreshActiveWorkOrder(); toast('Completed', 'ok'); }
+
+function renderWoTimelog(entries) {
+  const el = document.getElementById('wo-timelog-list');
+  if (!entries.length) { el.innerHTML = '<p>No time entries yet.</p>'; return; }
+  el.innerHTML = entries.map(e => `<div style="padding:8px 0;border-bottom:1px solid var(--border)"><strong>${esc(e.entry_type)}</strong> · ${esc(e.duration_minutes ?? 'active')} min<br><span style="font-size:11px">${esc(new Date(e.started_at).toLocaleString())}${e.ended_at ? ' – ' + esc(new Date(e.ended_at).toLocaleString()) : ''}</span></div>`).join('');
+}
+async function woClockIn() { if (!activeWorkOrder?.Id) return; const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/time/clock-in`, { method: 'POST', body: '{}' }); if (!r?.ok) return toast('Clock in failed', 'err'); await refreshActiveWorkOrder(); }
+async function woClockOut() { if (!activeWorkOrder?.Id) return; const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/time/clock-out`, { method: 'POST' }); if (!r?.ok) return toast('Clock out failed', 'err'); await refreshActiveWorkOrder(); }
+
+function renderWoPhotos(atts) {
+  const grid = document.getElementById('wo-photos-grid');
+  if (!atts.length) { grid.innerHTML = '<p style="color:var(--muted);font-size:13px">No photos yet.</p>'; return; }
+  grid.innerHTML = atts.map(a => `<div><img src="${esc(a.url)}" style="width:100%;border-radius:6px;border:1px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:4px">${esc(a.category)} ${esc(a.caption||'')}</div></div>`).join('');
+}
+
+function renderWoChecklist(items) {
+  const el = document.getElementById('wo-checklist-list');
+  if (!items.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px">No checklist items.</p>'; return; }
+  el.innerHTML = items.map(i => `<label style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer"><input type="checkbox" ${i.completed ? 'checked' : ''} onchange="toggleWoChecklistItem(${i.Id}, this.checked)"><span>${esc(i.label)}</span></label>`).join('');
+}
+async function addWoChecklistItem() {
+  const label = document.getElementById('wo-checklist-label').value.trim();
+  if (!label || !activeWorkOrder?.Id) return;
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/checklist`, { method: 'POST', body: JSON.stringify({ label }) });
+  if (!r?.ok) return toast('Failed', 'err');
+  document.getElementById('wo-checklist-label').value = '';
+  await refreshActiveWorkOrder();
+}
+async function toggleWoChecklistItem(id, completed) {
+  if (!activeWorkOrder?.Id) return;
+  await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/checklist/${id}`, { method: 'PATCH', body: JSON.stringify({ completed }) });
+  await refreshActiveWorkOrder();
+}
+
+function renderWoParts(items, subtotal) {
+  const el = document.getElementById('wo-parts-list');
+  if (!items.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px">No parts logged.</p>'; return; }
+  el.innerHTML = items.map(li => `<div style="padding:8px 0;border-bottom:1px solid var(--border)">${esc(li.description)} · qty ${li.quantity} · $${Number(li.unit_cost||0).toFixed(2)}</div>`).join('') + `<div style="margin-top:8px;font-weight:600">Subtotal: $${Number(subtotal||0).toFixed(2)}</div>`;
+}
+async function addWoLineItem() {
+  if (!activeWorkOrder?.Id) return;
+  const description = document.getElementById('wo-part-desc').value.trim();
+  if (!description) return toast('Description required', 'err');
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/line-items`, { method: 'POST', body: JSON.stringify({
+    description,
+    quantity: Number(document.getElementById('wo-part-qty').value) || 1,
+    unit_cost: Number(document.getElementById('wo-part-cost').value) || 0,
+  })});
+  if (!r?.ok) return toast('Failed', 'err');
+  document.getElementById('wo-part-desc').value = '';
+  await refreshActiveWorkOrder();
+}
+
+function renderWoSignatures(sigs) {
+  const el = document.getElementById('wo-sigs-list');
+  if (!sigs.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px">No signatures yet.</p>'; return; }
+  el.innerHTML = sigs.map(s => `<div style="margin-bottom:8px"><strong>${esc(s.role)}</strong>: ${esc(s.signer_name)} · ${esc(new Date(s.signed_at).toLocaleString())}<br><img src="${esc(s.image_url)}" style="max-width:200px;margin-top:4px;background:#fff;border-radius:4px"></div>`).join('');
+}
+function woClearSig() { const c = document.getElementById('wo-sig-canvas'); c?.getContext('2d')?.clearRect(0, 0, c.width, c.height); }
+async function submitWoTechSignature() {
+  if (!activeWorkOrder?.Id) return;
+  const name = document.getElementById('wo-tech-signer-name').value.trim();
+  if (!name) return toast('Enter signer name', 'err');
+  const canvas = document.getElementById('wo-sig-canvas');
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+  const uid = activeWorkOrder.uid;
+  const up = await fetch(`/v1/upload/work-order/${uid}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'image/png' }, body: blob });
+  if (!up.ok) return toast('Upload failed', 'err');
+  const { url } = await up.json();
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/signatures`, { method: 'POST', body: JSON.stringify({ role: 'technician', signer_name: name, image_url: url }) });
+  if (!r?.ok) return toast('Signature failed', 'err');
+  woClearSig();
+  await refreshActiveWorkOrder();
+  toast('Signature saved', 'ok');
+}
+
+function renderWoLinks(wo) {
+  const inc = wo.incidents || [];
+  document.getElementById('wo-linked-incidents').innerHTML = inc.length
+    ? inc.map(i => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Incident #${esc(i.ticket_id)}</span><button class="btn btn-ghost" style="font-size:11px" onclick="unlinkWoIncident('${i.ticket_id}')">Remove</button></div>`).join('')
+    : '<p style="color:var(--muted);font-size:13px">No linked incidents.</p>';
+}
+async function linkWoBooking() {
+  if (!activeWorkOrder?.Id) return;
+  const booking_id = document.getElementById('wo-link-booking-id').value.trim() || null;
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/booking`, { method: 'PATCH', body: JSON.stringify({ booking_id }) });
+  if (!r?.ok) return toast('Link failed', 'err');
+  await refreshActiveWorkOrder();
+  toast('Assignment linked', 'ok');
+}
+async function linkWoIncident() {
+  if (!activeWorkOrder?.Id) return;
+  const ticket_id = document.getElementById('wo-link-incident-id').value.trim();
+  if (!ticket_id) return;
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/incidents`, { method: 'POST', body: JSON.stringify({ ticket_id }) });
+  if (!r?.ok) return toast('Attach failed', 'err');
+  document.getElementById('wo-link-incident-id').value = '';
+  await refreshActiveWorkOrder();
+}
+async function unlinkWoIncident(ticketId) {
+  if (!activeWorkOrder?.Id) return;
+  await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/incidents/${ticketId}`, { method: 'DELETE' });
+  await refreshActiveWorkOrder();
+}
+async function attachTicketToWorkOrder(ticketId) {
+  const woId = document.getElementById('ticket-attach-wo-id')?.value?.trim();
+  if (!woId) return toast('Enter work order ID', 'err');
+  const r = await apiFetch(`/v1/work-orders/${woId}/incidents`, { method: 'POST', body: JSON.stringify({ ticket_id: String(ticketId) }) });
+  if (!r?.ok) return toast('Attach failed', 'err');
+  toast('Incident linked to work order', 'ok');
+}
+function woCopyPortalLink() {
+  const url = activeWorkOrder?.customer_status_url || (activeWorkOrder?.customer_token ? `https://schedkit.net/work-orders/status/${activeWorkOrder.customer_token}` : '');
+  if (!url) return toast('No portal link', 'err');
+  copyText(url);
+}
+function woDownloadReport() {
+  if (!activeWorkOrder?.Id) return;
+  void (async () => {
+    const res = await fetch(`/v1/work-orders/${activeWorkOrder.Id}/report.pdf`, { credentials: 'include' });
+    if (!res.ok) return toast('PDF failed', 'err');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `work-order-${activeWorkOrder.uid || activeWorkOrder.Id}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  })();
+}
+
+document.getElementById('wo-photo-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file || !activeWorkOrder?.uid) return;
+  try {
+    const blob = await resizeImageToBlob(file);
+    const up = await fetch(`/v1/upload/work-order/${activeWorkOrder.uid}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+    if (!up.ok) throw new Error('upload failed');
+    const { url } = await up.json();
+    const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/attachments`, { method: 'POST', body: JSON.stringify({
+      url,
+      filename: file.name,
+      mime_type: 'image/jpeg',
+      caption: document.getElementById('wo-photo-caption').value.trim(),
+      category: document.getElementById('wo-photo-category').value,
+    })});
+    if (!r?.ok) throw new Error('register failed');
+    document.getElementById('wo-photo-caption').value = '';
+    await refreshActiveWorkOrder();
+    toast('Photo uploaded', 'ok');
+  } catch { toast('Photo upload failed', 'err'); }
 });
 </script>
 </body>

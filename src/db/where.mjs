@@ -11,6 +11,10 @@ const ALLOWED_COLUMNS = new Set([
   'note', 'meta', 'severity', 'fired_at', 'acked_at', 'resolved_at', 'device_id', 'endpoint', 'subscription_json',
   'updated_at', 'provider', 'access_token', 'refresh_token', 'calendar_email', 'risk_level', 'discount_flag',
   'flagged_by', 'company', 'message', 'submitted_at', 'ticket_subject_template', 'ticket_from_prefix',
+  'site_address', 'site_notes', 'scheduled_start', 'scheduled_end', 'started_at', 'completed_at', 'booking_id',
+  'work_order_id', 'entry_type', 'ended_at', 'duration_minutes', 'sort_order', 'required', 'completed',
+  'completed_at', 'completed_by', 'sku', 'quantity', 'unit', 'unit_cost', 'url', 'filename', 'mime_type',
+  'caption', 'category', 'uploaded_by', 'role', 'signer_name', 'signed_at', 'ip_hash',
 ]);
 
 function col(name) {
@@ -47,9 +51,16 @@ export function parseWhere(where) {
     if (!m) throw new Error(`Invalid where clause: ${part}`);
     const field = col(m[1].trim());
     const op = m[2].trim();
+    const value = parseValue(m[3].trim());
+    if (value === null && op === 'eq') {
+      return `${field} IS NULL`;
+    }
+    if (value === null && op === 'ne') {
+      return `${field} IS NOT NULL`;
+    }
     const sqlOp = OP_SQL[op];
     if (!sqlOp) throw new Error(`Unsupported operator: ${op}`);
-    params.push(parseValue(m[3].trim()));
+    params.push(value);
     return `${field} ${sqlOp} $${params.length}`;
   });
   return { clause: clauses.join(' AND '), params };
@@ -67,6 +78,8 @@ export const ALLOWED_TABLES = new Set([
   'organizations', 'org_members', 'teams', 'team_members', 'team_event_types', 'tickets',
   'ticket_responders', 'ticket_replies', 'signals', 'alerts', 'crosses', 'push_subscriptions',
   'calendar_connections', 'client_flags', 'leads',
+  'work_orders', 'work_order_incidents', 'work_order_time_entries', 'work_order_checklist_items',
+  'work_order_line_items', 'work_order_attachments', 'work_order_signatures',
 ]);
 
 export function assertTable(table) {

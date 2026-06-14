@@ -1,0 +1,100 @@
+---
+title: Work Orders
+description: Field job documentation — timelog, photos, checklists, parts, signatures, customer portal, and PDF evidence packs.
+---
+
+## Overview
+
+Work orders are the **field execution layer** in SchedKit. They capture what happened on site: time on the clock, inspection photos, checklist completion, parts used, technician and customer signatures, and a downloadable PDF evidence pack.
+
+Work orders are **standalone**. You can optionally link them to:
+
+- **Manifest assignments** (`booking_id`) — the scheduled job that spawned the visit
+- **Incidents** (many-to-many) — tickets tied to the same operational event
+
+## Status workflow
+
+```
+draft → scheduled → in_progress → on_hold → completed → signed_off → closed
+```
+
+| Status | Meaning |
+|--------|---------|
+| `draft` | Created, not yet scheduled |
+| `scheduled` | Planned visit |
+| `in_progress` | Work actively underway |
+| `on_hold` | Paused |
+| `completed` | Work finished, awaiting sign-off |
+| `signed_off` | Customer or technician signature captured |
+| `closed` | Archived |
+
+Use `POST /v1/work-orders/:id/start`, `/pause`, and `/complete` for quick transitions.
+
+## Customer portal
+
+Every work order gets a `customer_token`. Share the public status URL:
+
+```
+https://schedkit.net/work-orders/status/:customer_token
+```
+
+Customers see progress, checklist completion, photo gallery (no internal notes), and can sign off when status is `completed`. PDF download is available after completion.
+
+## Timelog
+
+Manual entries and clock in/out are supported:
+
+```bash
+# Clock in
+curl -X POST https://schedkit.net/v1/work-orders/42/time/clock-in \
+  -H "x-api-key: $SCHEDKIT_KEY"
+
+# Clock out
+curl -X POST https://schedkit.net/v1/work-orders/42/time/clock-out \
+  -H "x-api-key: $SCHEDKIT_KEY"
+```
+
+Only one active timer per user per work order.
+
+## Photos
+
+Upload raw JPEG/PNG to `/v1/upload/work-order/:uid`, then register metadata:
+
+```bash
+curl -X POST https://schedkit.net/v1/work-orders/42/attachments \
+  -H "x-api-key: $SCHEDKIT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"/captures/wo/wo_abc/cap_123.jpg","category":"inspection","caption":"Panel A"}'
+```
+
+Files are stored under `public/captures/wo/{uid}/` on the `captures_data` Docker volume.
+
+## Evidence PDF
+
+```bash
+curl -O -H "x-api-key: $SCHEDKIT_KEY" \
+  https://schedkit.net/v1/work-orders/42/report.pdf
+```
+
+Includes header, timelog totals, checklist summary, parts subtotal, signatures, and photo appendix (up to 24 images).
+
+## Linking incidents
+
+```bash
+curl -X POST https://schedkit.net/v1/work-orders/42/incidents \
+  -H "x-api-key: $SCHEDKIT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"ticket_id":"15"}'
+```
+
+## Environment
+
+No new required env vars. Optional:
+
+- `PUBLIC_BASE_URL` — base URL for portal links and PDF footers (default `https://schedkit.net`)
+
+Run migration after deploy:
+
+```bash
+npm run migrate
+```

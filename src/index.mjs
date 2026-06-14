@@ -41,6 +41,8 @@ import ticketsRoutes from './routes/tickets.mjs';
 import incidentsRoutes from './routes/incidents.mjs';
 import warRoomRoutes from './routes/warRoom.mjs';
 import incidentStatusRoutes from './routes/incidentStatus.mjs';
+import workOrdersRoutes from './routes/workOrders.mjs';
+import workOrderStatusRoutes from './routes/workOrderStatus.mjs';
 import settingsRoutes from './routes/settings.mjs';
 import uploadsRoutes from './routes/uploads.mjs';
 import billingRoutes from './routes/billing.mjs';
@@ -113,6 +115,7 @@ await fastify.register(swagger, {
       { name: 'Incidents', description: 'Real-time incident coordination layer. **Same underlying records as `/v1/tickets`** — no separate table. Adds SSE streaming, responder management, and reply threads on top of the ticket object. Use `/v1/incidents` for ops war rooms, dispatch systems, or alert pipelines. Use `/v1/tickets` for helpdesk or ITSM flows. Both share identical data.' },
       { name: 'Settings', description: 'User settings management. Get or update per-user configuration — currently `ntfy_topic` for push notifications via ntfy.sh.' },
       { name: 'Alerts', description: 'Inbound signal alerts — fire, acknowledge, and resolve alerts from any source (sensor, webhook, NOAA, API). Critical alerts auto-create incident tickets. Live events via SSE stream.' },
+      { name: 'Work Orders', description: 'Field job documentation — timelog, inspection photos, checklists, parts/materials, signatures, customer portal, and PDF evidence packs. Optional links to incidents and manifest assignments.' },
     ],
     servers: [{ url: 'https://schedkit.net', description: 'Production' }],
     components: {
@@ -130,8 +133,9 @@ await fastify.register(swaggerUi, {
   uiConfig: { docExpansion: 'none', deepLinking: true, defaultModelsExpandDepth: 0, displayRequestDuration: true },
   logo: { type: 'image/png', content: readFileSync(join(__dirname, '../public/logo.png')) },
   theme: {
-    title: '\\\\ SchedKit API',
+    title: 'SchedKit API',
     css: [{ filename: 'docs.css', content: `
+      :root { --bg: #0d0d10; --surface: #141418; --border: #222230; --accent: #ffc700; --text: #e0e0e6; }
       body { background: var(--bg) !important; }
       .swagger-ui { background: var(--bg); color: var(--text); }
       .swagger-ui .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 0; }
@@ -147,8 +151,12 @@ await fastify.register(swaggerUi, {
   },
 });
 
-// Static (landing page) — must come after swagger
-await fastify.register(staticFiles, { root: join(__dirname, '../public'), prefix: '/' });
+// Public assets — decorateReply: false so swagger-ui's nested static keeps working
+await fastify.register(staticFiles, {
+  root: join(__dirname, '../public'),
+  prefix: '/',
+  decorateReply: false,
+});
 
 await initDb();
 
@@ -170,8 +178,10 @@ await fastify.register(pushRoutes, { prefix: '/v1' });
 await fastify.register(signalsRoutes, { prefix: '/v1' });
 await fastify.register(ticketsRoutes, { prefix: '/v1' });
 await fastify.register(incidentsRoutes, { prefix: '/v1' });
+await fastify.register(workOrdersRoutes, { prefix: '/v1' });
 await fastify.register(warRoomRoutes);
 await fastify.register(incidentStatusRoutes);
+await fastify.register(workOrderStatusRoutes);
 await fastify.register(settingsRoutes, { prefix: '/v1' });
 
 // Register binary content type parser for image uploads

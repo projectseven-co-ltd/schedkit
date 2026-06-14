@@ -25,6 +25,13 @@ const POSTGRES_TABLES = {
   calendar_connections: 'calendar_connections',
   client_flags: 'client_flags',
   leads: 'leads',
+  work_orders: 'work_orders',
+  work_order_incidents: 'work_order_incidents',
+  work_order_time_entries: 'work_order_time_entries',
+  work_order_checklist_items: 'work_order_checklist_items',
+  work_order_line_items: 'work_order_line_items',
+  work_order_attachments: 'work_order_attachments',
+  work_order_signatures: 'work_order_signatures',
 };
 
 // NocoDB fallback IDs (used until DATABASE_URL cutover)

@@ -52,6 +52,7 @@
         "concepts/signals",
         "concepts/beacon",
         "concepts/assignments",
+        "concepts/work-orders",
         "concepts/incidents",
         "concepts/units"
       ]
