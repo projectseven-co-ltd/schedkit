@@ -48,6 +48,8 @@ import uploadsRoutes from './routes/uploads.mjs';
 import billingRoutes from './routes/billing.mjs';
 import alertsRoutes from './routes/alerts.mjs';
 import adminRoutes from './routes/admin.mjs';
+import portalAuthRoutes from './routes/portalAuth.mjs';
+import portalTicketsRoutes from './routes/portalTickets.mjs';
 
 const fastify = Fastify({ logger: true, bodyLimit: 10 * 1024 * 1024 }); // 10MB for image captures
 
@@ -116,6 +118,7 @@ await fastify.register(swagger, {
       { name: 'Settings', description: 'User settings management. Get or update per-user configuration — currently `ntfy_topic` for push notifications via ntfy.sh.' },
       { name: 'Alerts', description: 'Inbound signal alerts — fire, acknowledge, and resolve alerts from any source (sensor, webhook, NOAA, API). Critical alerts auto-create incident tickets. Live events via SSE stream.' },
       { name: 'Work Orders', description: 'Field job documentation — timelog, inspection photos, checklists, parts/materials, signatures, customer portal, and PDF evidence packs. Optional links to incidents and manifest assignments.' },
+      { name: 'Portal', description: 'Project Seven client portal API — Blesta-compatible ticket and auth endpoints scoped to hosting clients.' },
     ],
     servers: [{ url: 'https://schedkit.net', description: 'Production' }],
     components: {
@@ -193,6 +196,8 @@ await fastify.register(uploadsRoutes, { prefix: '/v1' });
 await fastify.register(billingRoutes, { prefix: '/v1' });
 await fastify.register(alertsRoutes, { prefix: '/v1' });
 await fastify.register(adminRoutes, { prefix: '/v1' });
+await fastify.register(portalAuthRoutes, { prefix: '/v1/portal' });
+await fastify.register(portalTicketsRoutes, { prefix: '/v1/portal' });
 
 // Page routes (no prefix)
 fastify.get('/login', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } }, schema: { hide: true } }, async (req, reply) => {

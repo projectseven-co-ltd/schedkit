@@ -15,7 +15,9 @@ const ALLOWED_COLUMNS = new Set([
   'work_order_id', 'entry_type', 'ended_at', 'duration_minutes', 'sort_order', 'required', 'completed',
   'completed_at', 'completed_by', 'sku', 'quantity', 'unit', 'unit_cost', 'url', 'filename', 'mime_type',
   'caption', 'category', 'uploaded_by', 'annotations', 'assignee_ack_at', 'dispatch_ack_at', 'en_route_at',
-  'role', 'signer_name', 'signed_at', 'ip_hash', 'assignee_id', 'can_manage_work_orders',
+  'role', 'signer_name', 'signed_at', 'ip_hash',   'assignee_id', 'can_manage_work_orders',
+  'company_name', 'blesta_client_id', 'plan_tier', 'client_id', 'department_id', 'public_code',
+  'domain', 'is_primary', 'blesta_contact_id', 'sort_order',
 ]);
 
 function col(name) {
@@ -78,7 +80,8 @@ export const ALLOWED_TABLES = new Set([
   'users', 'event_types', 'availability', 'bookings', 'blocked_times', 'magic_links', 'sessions',
   'organizations', 'org_members', 'teams', 'team_members', 'team_event_types', 'tickets',
   'ticket_responders', 'ticket_replies', 'signals', 'alerts', 'crosses', 'push_subscriptions',
-  'calendar_connections', 'client_flags', 'leads',
+  'calendar_connections', 'client_flags', 'clients', 'client_domains', 'client_contacts',
+  'ticket_departments', 'leads',
   'work_orders', 'work_order_incidents', 'work_order_time_entries', 'work_order_checklist_items',
   'work_order_line_items', 'work_order_attachments', 'work_order_signatures',
 ]);
