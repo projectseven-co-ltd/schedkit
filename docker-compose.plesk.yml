@@ -70,6 +70,14 @@ services:
       STRIPE_PRICE_AGENCY:
       NTFY_TOPIC:
       NTFY_DEFAULT_TOPIC:
+      PORTAL_ORG_SLUG:
+      PORTAL_ORG_NAME:
+      PORTAL_ORG_OWNER_EMAIL:
+      PORTAL_COOKIE_DOMAIN:
+      BLESTA_AUTH_BRIDGE_URL:
+      BLESTA_URL:
+      BLESTA_API_USER:
+      BLESTA_API_KEY:
       # MAINTENANCE_MODE: "true"
     volumes:
       - captures_data:/app/public/captures

@@ -138,7 +138,7 @@ export default async function portalAuthRoutes(fastify) {
       if (String(err.message).includes('Portal org not found')) {
         return reply.code(503).send({
           authenticated: false,
-          error: `Portal org "${PORTAL_ORG_SLUG}" not configured. Run: npm run ensure:portal-org`,
+          error: 'Portal is still starting up. Try again in a minute or contact support.',
         });
       }
       throw err;
