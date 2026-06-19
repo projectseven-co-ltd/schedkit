@@ -36,7 +36,7 @@ export async function ensureSchedkitUser({ email, name, passwordHash }) {
   return user;
 }
 
-export async function upsertPortalFromBlestaClient(blestaClient, { orgSlug = 'projectseven' } = {}) {
+export async function upsertPortalFromBlestaClient(blestaClient, { orgSlug = 'projectseven', contacts: contactsOverride } = {}) {
   const org = await getPortalOrg(orgSlug);
   if (!org) throw new Error(`Portal org not found: ${orgSlug}`);
 
@@ -57,12 +57,14 @@ export async function upsertPortalFromBlestaClient(blestaClient, { orgSlug = 'pr
     });
   }
 
-  let contacts = [];
-  try {
-    const { blestaApi } = await import('./blestaApi.mjs');
-    contacts = await blestaApi('contacts', 'getAll', { client_id: blestaId });
-  } catch {
-    contacts = [];
+  let contacts = Array.isArray(contactsOverride) ? contactsOverride : [];
+  if (!contacts.length) {
+    try {
+      const { blestaApi } = await import('./blestaApi.mjs');
+      contacts = await blestaApi('contacts', 'getAll', { client_id: blestaId });
+    } catch {
+      contacts = [];
+    }
   }
   if (!Array.isArray(contacts)) contacts = contacts ? [contacts] : [];
 

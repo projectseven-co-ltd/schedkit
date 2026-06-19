@@ -8,12 +8,15 @@ import {
   validateBlestaLogin,
   provisionFromBlestaUser,
 } from '../lib/blestaBridge.mjs';
+import { upsertPortalFromBlestaClient } from '../lib/portalProvision.mjs';
 import { addDays } from 'date-fns';
 import { nanoid } from 'nanoid';
 
 const PASSWORD_LOGIN_ENABLED = process.env.AUTH_PASSWORD_LOGIN_ENABLED !== 'false';
 const PORTAL_ORG_SLUG = process.env.PORTAL_ORG_SLUG || 'projectseven';
-const PORTAL_BRIDGE_SECRET = process.env.PORTAL_BRIDGE_SECRET || '';
+const PORTAL_BRIDGE_SECRET = process.env.PORTAL_BRIDGE_SECRET
+  || process.env.BLESTA_API_KEY
+  || '';
 
 function normalizeLogin(value) {
   return String(value || '').trim().toLowerCase();
@@ -31,8 +34,16 @@ async function createSessionForUser(user) {
   return sessionToken;
 }
 
-async function createBlestaBridgeSession(userId, email, reply, { setCookie = true } = {}) {
-  const identity = await provisionFromBlestaUser(userId, PORTAL_ORG_SLUG);
+async function createBlestaBridgeSession(userId, email, reply, { setCookie = true, blestaClient, contacts } = {}) {
+  let identity;
+  if (blestaClient?.id) {
+    identity = await upsertPortalFromBlestaClient(blestaClient, {
+      orgSlug: PORTAL_ORG_SLUG,
+      contacts,
+    });
+  } else {
+    identity = await provisionFromBlestaUser(userId, PORTAL_ORG_SLUG);
+  }
   if (!identity?.user || !identity?.client) return null;
 
   const sessionToken = await createSessionForUser(identity.user);
@@ -172,6 +183,8 @@ export default async function portalAuthRoutes(fastify) {
           user_id: { type: 'integer' },
           username: { type: 'string' },
           email: { type: 'string' },
+          blesta_client: { type: 'object' },
+          contacts: { type: 'array' },
         },
       },
     },
@@ -183,12 +196,24 @@ export default async function portalAuthRoutes(fastify) {
 
     const userId = Number(req.body?.user_id);
     const email = normalizeLogin(req.body?.email || req.body?.username);
+    const blestaClient = req.body?.blesta_client;
+    const contacts = Array.isArray(req.body?.contacts) ? req.body.contacts : undefined;
     if (!userId || !email) {
       return reply.code(400).send({ authenticated: false, error: 'Missing user_id or username' });
     }
+    if (blestaClient?.user_id) {
+      const clientUserId = Number(blestaClient.user_id);
+      if (clientUserId && clientUserId !== userId) {
+        return reply.code(400).send({ authenticated: false, error: 'Client/user mismatch' });
+      }
+    }
 
     try {
-      const result = await createBlestaBridgeSession(userId, email, reply, { setCookie: false });
+      const result = await createBlestaBridgeSession(userId, email, reply, {
+        setCookie: false,
+        blestaClient,
+        contacts,
+      });
       if (!result) {
         return reply.code(502).send({
           authenticated: false,
