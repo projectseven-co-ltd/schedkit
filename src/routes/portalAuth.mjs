@@ -2,19 +2,20 @@ import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { verifyPassword } from '../lib/password.mjs';
 import { findContactByEmail, resolvePortalIdentity } from '../middleware/portalClient.mjs';
+import { sessionCookie, clearSessionCookie } from '../lib/sessionCookie.mjs';
+import {
+  blestaBridgeConfigured,
+  validateBlestaLogin,
+  provisionFromBlestaUser,
+} from '../lib/blestaBridge.mjs';
 import { addDays } from 'date-fns';
 import { nanoid } from 'nanoid';
 
 const PASSWORD_LOGIN_ENABLED = process.env.AUTH_PASSWORD_LOGIN_ENABLED !== 'false';
-const PORTAL_COOKIE_DOMAIN = process.env.PORTAL_COOKIE_DOMAIN || '';
+const PORTAL_ORG_SLUG = process.env.PORTAL_ORG_SLUG || 'projectseven';
 
 function normalizeLogin(value) {
   return String(value || '').trim().toLowerCase();
-}
-
-function portalSessionCookie(token) {
-  const domainPart = PORTAL_COOKIE_DOMAIN ? `; Domain=${PORTAL_COOKIE_DOMAIN}` : '';
-  return `sk_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}; Secure${domainPart}`;
 }
 
 async function createSessionForUser(user) {
@@ -29,13 +30,86 @@ async function createSessionForUser(user) {
   return sessionToken;
 }
 
+async function loginViaBlestaBridge(email, password, reply) {
+  if (!blestaBridgeConfigured()) return null;
+
+  try {
+    const auth = await validateBlestaLogin(email, password);
+    if (!auth) return null;
+
+    const identity = await provisionFromBlestaUser(auth.user_id, PORTAL_ORG_SLUG);
+    if (!identity?.user || !identity?.client) return null;
+
+    const sessionToken = await createSessionForUser(identity.user);
+    reply.header('Set-Cookie', sessionCookie(sessionToken));
+
+    return {
+      authenticated: true,
+      client_id: Number(identity.client.Id ?? identity.client.id),
+      name: identity.contact?.name || identity.user.name || '',
+      email: identity.contact?.email || identity.user.email || email,
+      source: 'blesta_bridge',
+    };
+  } catch (err) {
+    reply.log.warn({ err: err.message }, 'Blesta bridge login failed');
+    if (String(err.message).includes('Portal org not found')) {
+      throw err;
+    }
+    return null;
+  }
+}
+
+async function loginViaSchedkit(email, password, reply) {
+  const contact = await findContactByEmail(email);
+  if (!contact) return null;
+
+  let user = null;
+  if (contact.user_id) {
+    user = await db.get(tables.users, contact.user_id);
+  }
+  if (!user) {
+    const userResult = await db.find(tables.users, `(email,eq,${email})`);
+    user = userResult.list?.[0];
+    if (user) {
+      await db.update(tables.client_contacts, contact.Id, { user_id: String(user.Id) });
+    }
+  }
+
+  if (!user?.password_hash) return null;
+
+  const valid = await verifyPassword(password, user.password_hash);
+  if (!valid) return null;
+
+  const client = await db.get(tables.clients, contact.client_id);
+  if (!client || client.status === 'inactive') return null;
+
+  const sessionToken = await createSessionForUser(user);
+  reply.header('Set-Cookie', sessionCookie(sessionToken));
+
+  return {
+    authenticated: true,
+    client_id: Number(client.Id ?? client.id),
+    name: contact.name || user.name || '',
+    email: contact.email || user.email,
+    source: 'schedkit',
+  };
+}
+
 export default async function portalAuthRoutes(fastify) {
-  // POST /v1/portal/auth/login — Blesta-compatible portal login
+  fastify.get('/auth/capabilities', {
+    schema: { tags: ['Portal'], summary: 'Portal auth capabilities' },
+  }, async () => ({
+    passwordLoginEnabled: PASSWORD_LOGIN_ENABLED,
+    blestaBridgeEnabled: blestaBridgeConfigured(),
+    orgSlug: PORTAL_ORG_SLUG,
+  }));
+
+  // POST /v1/portal/auth/login
   fastify.post('/auth/login', {
     config: { rateLimit: { max: 20, timeWindow: '15 minutes' } },
     schema: {
       tags: ['Portal'],
-      summary: 'Client portal login',
+      summary: 'Client portal login (Blesta bridge + SchedKit native)',
       body: {
         type: 'object',
         required: ['password'],
@@ -57,54 +131,32 @@ export default async function portalAuthRoutes(fastify) {
       return reply.code(401).send({ authenticated: false, error: 'Incorrect username or password.' });
     }
 
-    const contact = await findContactByEmail(email);
-    if (!contact) {
-      return reply.code(401).send({ authenticated: false, error: 'Incorrect username or password.' });
-    }
-
-    let user = null;
-    if (contact.user_id) {
-      user = await db.get(tables.users, contact.user_id);
-    }
-    if (!user) {
-      const userResult = await db.find(tables.users, `(email,eq,${email})`);
-      user = userResult.list?.[0];
-      if (user) {
-        await db.update(tables.client_contacts, contact.Id, { user_id: String(user.Id) });
+    let result = null;
+    try {
+      result = await loginViaBlestaBridge(email, password, reply);
+    } catch (err) {
+      if (String(err.message).includes('Portal org not found')) {
+        return reply.code(503).send({
+          authenticated: false,
+          error: `Portal org "${PORTAL_ORG_SLUG}" not configured. Run: npm run ensure:portal-org`,
+        });
       }
+      throw err;
+    }
+    if (!result) {
+      result = await loginViaSchedkit(email, password, reply);
     }
 
-    if (!user?.password_hash) {
+    if (!result) {
       return reply.code(401).send({ authenticated: false, error: 'Incorrect username or password.' });
     }
 
-    const valid = await verifyPassword(password, user.password_hash);
-    if (!valid) {
-      return reply.code(401).send({ authenticated: false, error: 'Incorrect username or password.' });
-    }
-
-    const client = await db.get(tables.clients, contact.client_id);
-    if (!client || client.status === 'inactive') {
-      return reply.code(403).send({ authenticated: false, error: 'Account inactive' });
-    }
-
-    const sessionToken = await createSessionForUser(user);
-    reply.header('Set-Cookie', portalSessionCookie(sessionToken));
-    return {
-      authenticated: true,
-      client_id: Number(client.Id ?? client.id),
-      name: contact.name || user.name || '',
-      email: contact.email || user.email,
-    };
+    return result;
   });
 
-  // GET /v1/portal/auth/me — Blesta-compatible session check
   fastify.get('/auth/me', {
-    schema: {
-      tags: ['Portal'],
-      summary: 'Portal session check',
-    },
-  }, async (req, reply) => {
+    schema: { tags: ['Portal'], summary: 'Portal session check' },
+  }, async (req) => {
     const cookieHeader = req.headers['cookie'] || '';
     const match = cookieHeader.match(/sk_session=([^;]+)/);
     if (!match) return { authenticated: false, client_id: null };
@@ -129,7 +181,6 @@ export default async function portalAuthRoutes(fastify) {
     };
   });
 
-  // POST /v1/portal/auth/logout
   fastify.post('/auth/logout', {
     schema: { tags: ['Portal'], summary: 'Portal logout' },
   }, async (req, reply) => {
@@ -141,8 +192,7 @@ export default async function portalAuthRoutes(fastify) {
         if (result.list?.length) await db.delete(tables.sessions, result.list[0].Id);
       } catch {}
     }
-    const domainPart = PORTAL_COOKIE_DOMAIN ? `; Domain=${PORTAL_COOKIE_DOMAIN}` : '';
-    reply.header('Set-Cookie', `sk_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${domainPart}`);
+    reply.header('Set-Cookie', clearSessionCookie());
     return { ok: true, authenticated: false };
   });
 }

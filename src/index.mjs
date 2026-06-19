@@ -66,7 +66,7 @@ if (MAINTENANCE_MODE) {
   });
 }
 
-await fastify.register(cors, { origin: true });
+await fastify.register(cors, { origin: true, credentials: true });
 await fastify.register(formbody);
 
 // Global rate limit — 200 req/min per IP by default, tightened per-route on auth/sensitive endpoints

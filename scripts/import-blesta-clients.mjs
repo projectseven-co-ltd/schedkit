@@ -21,9 +21,7 @@ import { initDb, db } from '../src/lib/db.mjs';
 import { tables } from '../src/lib/tables.mjs';
 import { isBcryptHash } from '../src/lib/password.mjs';
 
-const BLESTA_URL = (process.env.BLESTA_URL || 'https://projectseven.us/core/api/').replace(/\/?$/, '/');
-const BLESTA_USER = process.env.BLESTA_API_USER;
-const BLESTA_KEY = process.env.BLESTA_API_KEY;
+import { blestaApi, blestaConfigured } from '../src/lib/blestaApi.mjs';
 const MYSQL_URL = process.env.BLESTA_MYSQL_URL;
 
 function arg(name) {
@@ -36,33 +34,6 @@ const orgSlug = arg('org-slug') || 'projectseven';
 const statusFilter = arg('status') || 'active';
 
 const stats = { clients: 0, contacts: 0, users: 0, domains: 0, skipped: 0, errors: 0 };
-
-async function blestaApi(model, method, params = {}, httpMethod = 'GET') {
-  if (!BLESTA_USER || !BLESTA_KEY) {
-    throw new Error('Set BLESTA_API_USER and BLESTA_API_KEY');
-  }
-  let url = `${BLESTA_URL}${model}/${method}.json`;
-  if (httpMethod === 'GET' && Object.keys(params).length) {
-    url += '?' + new URLSearchParams(params).toString();
-  }
-  const opts = {
-    method: httpMethod,
-    headers: {
-      'BLESTA-API-USER': BLESTA_USER,
-      'BLESTA-API-KEY': BLESTA_KEY,
-    },
-  };
-  if (httpMethod === 'POST') {
-    opts.headers['Content-Type'] = 'application/x-www-form-urlencoded';
-    opts.body = new URLSearchParams(params).toString();
-  }
-  const res = await fetch(url, opts);
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(`Blesta ${model}/${method} → ${res.status}: ${json.message || res.statusText}`);
-  }
-  return json.response ?? json;
-}
 
 async function loadBlestaPasswords() {
   if (!MYSQL_URL) return new Map();
@@ -263,6 +234,11 @@ async function importClient(orgId, blestaClient, passwordMap, dry) {
 
 async function main() {
   await initDb();
+
+  if (!blestaConfigured()) {
+    console.error('Set BLESTA_API_USER and BLESTA_API_KEY');
+    process.exit(1);
+  }
 
   const orgs = await db.find(tables.organizations, `(slug,eq,${orgSlug})`);
   const org = orgs.list?.[0];
