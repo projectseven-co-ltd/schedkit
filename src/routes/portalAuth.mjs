@@ -13,6 +13,7 @@ import { nanoid } from 'nanoid';
 
 const PASSWORD_LOGIN_ENABLED = process.env.AUTH_PASSWORD_LOGIN_ENABLED !== 'false';
 const PORTAL_ORG_SLUG = process.env.PORTAL_ORG_SLUG || 'projectseven';
+const PORTAL_BRIDGE_SECRET = process.env.PORTAL_BRIDGE_SECRET || '';
 
 function normalizeLogin(value) {
   return String(value || '').trim().toLowerCase();
@@ -30,26 +31,30 @@ async function createSessionForUser(user) {
   return sessionToken;
 }
 
+async function createBlestaBridgeSession(userId, email, reply, { setCookie = true } = {}) {
+  const identity = await provisionFromBlestaUser(userId, PORTAL_ORG_SLUG);
+  if (!identity?.user || !identity?.client) return null;
+
+  const sessionToken = await createSessionForUser(identity.user);
+  if (setCookie) reply.header('Set-Cookie', sessionCookie(sessionToken));
+
+  return {
+    authenticated: true,
+    client_id: Number(identity.client.Id ?? identity.client.id),
+    name: identity.contact?.name || identity.user.name || '',
+    email: identity.contact?.email || identity.user.email || email,
+    source: 'blesta_bridge',
+    sessionToken,
+  };
+}
+
 async function loginViaBlestaBridge(email, password, reply) {
   if (!blestaBridgeConfigured()) return null;
 
   try {
     const auth = await validateBlestaLogin(email, password);
     if (!auth) return null;
-
-    const identity = await provisionFromBlestaUser(auth.user_id, PORTAL_ORG_SLUG);
-    if (!identity?.user || !identity?.client) return null;
-
-    const sessionToken = await createSessionForUser(identity.user);
-    reply.header('Set-Cookie', sessionCookie(sessionToken));
-
-    return {
-      authenticated: true,
-      client_id: Number(identity.client.Id ?? identity.client.id),
-      name: identity.contact?.name || identity.user.name || '',
-      email: identity.contact?.email || identity.user.email || email,
-      source: 'blesta_bridge',
-    };
+    return await createBlestaBridgeSession(auth.user_id, email, reply);
   } catch (err) {
     reply.log.warn({ err: err.message }, 'Blesta bridge login failed');
     if (String(err.message).includes('Portal org not found')) {
@@ -152,6 +157,58 @@ export default async function portalAuthRoutes(fastify) {
     }
 
     return result;
+  });
+
+  // POST /v1/portal/auth/exchange — trusted portal proxy issues session after local Blesta auth
+  fastify.post('/auth/exchange', {
+    config: { rateLimit: { max: 30, timeWindow: '15 minutes' } },
+    schema: {
+      tags: ['Portal'],
+      summary: 'Exchange validated Blesta user_id for SchedKit portal session (portal proxy only)',
+      body: {
+        type: 'object',
+        required: ['user_id'],
+        properties: {
+          user_id: { type: 'integer' },
+          username: { type: 'string' },
+          email: { type: 'string' },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const secret = String(req.headers['x-portal-bridge-secret'] || '');
+    if (!PORTAL_BRIDGE_SECRET || secret !== PORTAL_BRIDGE_SECRET) {
+      return reply.code(403).send({ authenticated: false, error: 'Forbidden' });
+    }
+
+    const userId = Number(req.body?.user_id);
+    const email = normalizeLogin(req.body?.email || req.body?.username);
+    if (!userId || !email) {
+      return reply.code(400).send({ authenticated: false, error: 'Missing user_id or username' });
+    }
+
+    try {
+      const result = await createBlestaBridgeSession(userId, email, reply, { setCookie: false });
+      if (!result) {
+        return reply.code(502).send({
+          authenticated: false,
+          error: 'Could not provision portal account. Contact support.',
+        });
+      }
+      return result;
+    } catch (err) {
+      reply.log.warn({ err: err.message, userId }, 'Portal auth exchange failed');
+      if (String(err.message).includes('Portal org not found')) {
+        return reply.code(503).send({
+          authenticated: false,
+          error: 'Portal is still starting up. Try again in a minute or contact support.',
+        });
+      }
+      return reply.code(502).send({
+        authenticated: false,
+        error: 'Portal sign-in temporarily unavailable. Try again shortly.',
+      });
+    }
   });
 
   fastify.get('/auth/me', {
