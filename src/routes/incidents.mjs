@@ -267,7 +267,7 @@ export default async function incidentsRoutes(fastify) {
     broadcastAll(event);
 
     if (isStaff) {
-      notifyCustomerOfStaffReply(ticket, replyRow).catch(() => {});
+      notifyCustomerOfStaffReply(ticket, replyRow, true);
     }
 
     return reply.code(201).send(replyRow);

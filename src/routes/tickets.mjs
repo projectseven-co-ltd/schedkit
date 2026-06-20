@@ -13,7 +13,8 @@ import { userOwnsRow } from '../lib/ownership.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
 import { nanoid } from 'nanoid';
-import { sendTicketCreated, sendTicketStatusChanged } from '../lib/mailer.mjs';
+import { sendTicketCreated } from '../lib/mailer.mjs';
+import { notifyCustomerOfStatusChange } from '../lib/ticketCustomer.mjs';
 import { calcSlaDueAt, withSlaStatus } from '../lib/ticketSla.mjs';
 import { listStaffTickets } from '../lib/staffTickets.mjs';
 
@@ -374,22 +375,7 @@ export default async function ticketsRoutes(fastify) {
 
     // Email customer on status change
     if (status && status !== existing.status) {
-      const owner = await db.get(tables.users, existing.user_id);
-      if (owner?.email) {
-        const org = existing.org_id ? await db.get(tables.organizations, existing.org_id) : null;
-        sendTicketStatusChanged({
-          to_email: owner.email,
-          to_name: owner.name || owner.email,
-          ticket_id: existing.Id,
-          title: updated.title,
-          old_status: existing.status,
-          new_status: status,
-          status_url: updated.customer_token
-            ? `https://schedkit.net/incidents/status/${updated.customer_token}`
-            : `https://schedkit.net/dashboard`,
-          org,
-        });
-      }
+      notifyCustomerOfStatusChange(updated, existing.status, status);
     }
 
     // Check if SLA just breached
@@ -444,6 +430,7 @@ export default async function ticketsRoutes(fastify) {
 
     await db.update(tables.tickets, existing.Id, { status: 'closed' });
     tryBroadcast('incident.resolved', { ...existing, status: 'closed' });
+    notifyCustomerOfStatusChange({ ...existing, status: 'closed' }, existing.status, 'closed');
     return { ok: true, status: 'closed', id: existing.Id };
   });
 }
