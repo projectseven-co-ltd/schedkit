@@ -1,23 +1,17 @@
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requirePortalClient } from '../middleware/portalClient.mjs';
-import {
-  assignPublicCode,
+import { assignPublicCode,
   formatPortalReply,
   formatPortalTicketDetail,
   formatPortalTicketRow,
   schedkitPriorityFromPortal,
 } from '../lib/portalFormat.mjs';
+import { calcSlaDueAt, withSlaStatus } from '../lib/ticketSla.mjs';
 import { nanoid } from 'nanoid';
 import { sendTicketCreated } from '../lib/mailer.mjs';
 
-const SLA_HOURS = { urgent: 1, high: 4, normal: 24, low: 48 };
 const TAG = 'Portal';
-
-function calcSlaDueAt(priority) {
-  const hours = SLA_HOURS[priority] ?? 24;
-  return new Date(Date.now() + hours * 3600 * 1000).toISOString();
-}
 
 async function tryBroadcast(type, payload) {
   try {
@@ -222,7 +216,7 @@ export default async function portalTicketsRoutes(fastify) {
       customer_status_url: `${process.env.BASE_URL || 'https://schedkit.net'}/incidents/status/${customer_token}`,
     };
 
-    tryBroadcast('incident.created', { ...ticket, public_code, Id: ticket.Id, title: subject, org_id: orgId, client_id: req.client_id });
+    tryBroadcast('incident.created', withSlaStatus(ticket));
 
     const org = orgId ? await db.get(tables.organizations, orgId) : null;
     if (org) {

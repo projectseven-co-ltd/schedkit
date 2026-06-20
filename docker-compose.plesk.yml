@@ -74,6 +74,7 @@ services:
       PORTAL_ORG_NAME:
       PORTAL_ORG_OWNER_EMAIL:
       PORTAL_COOKIE_DOMAIN:
+      PORTAL_INBOUND_SECRET:
       # MAINTENANCE_MODE: "true"
     volumes:
       - captures_data:/app/public/captures

@@ -2110,7 +2110,7 @@ function sitrepHandleSSE(type, payload) {
       'incident',
       `[■] Incident · ${payload.title || 'Untitled'} · ${(payload.priority||'normal').toUpperCase()}`,
       payload.CreatedAt || payload.created_at,
-      `ticket:${payload.Id}:created`,
+      `ticket:${payload.Id ?? payload.id}:created`,
     );
     // Refresh incident tile count live
     const el = document.getElementById('sitrep-incidents-open');
@@ -2771,12 +2771,28 @@ async function loadTicketReplies(ticketId) {
 }
 
 function mergeTicketIntoCache(ticket) {
+  const row = normalizeTicketRow(ticket);
+  if (!row?.Id) return;
   const list = window._tickets || [];
-  const idx = list.findIndex(t => String(t.Id) === String(ticket.Id));
-  if (idx >= 0) list[idx] = { ...list[idx], ...ticket };
-  else list.unshift(ticket);
+  const idx = list.findIndex(t => String(t.Id) === String(row.Id));
+  if (idx >= 0) list[idx] = { ...list[idx], ...row };
+  else list.unshift(row);
   window._tickets = list;
   renderTicketsTable(window._tickets);
+}
+
+function normalizeTicketRow(ticket) {
+  if (!ticket) return null;
+  const Id = ticket.Id ?? ticket.id;
+  if (Id == null) return null;
+  const created = ticket.created_at || ticket.CreatedAt;
+  return {
+    ...ticket,
+    Id,
+    id: Id,
+    CreatedAt: created,
+    created_at: created,
+  };
 }
 
 function connectTicketStream() {

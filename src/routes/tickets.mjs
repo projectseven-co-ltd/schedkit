@@ -14,53 +14,14 @@ import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
 import { nanoid } from 'nanoid';
 import { sendTicketCreated, sendTicketStatusChanged } from '../lib/mailer.mjs';
+import { calcSlaDueAt, withSlaStatus } from '../lib/ticketSla.mjs';
+import { listStaffTickets } from '../lib/staffTickets.mjs';
 
 async function requireAuth(req, reply) {
   if (req.headers['x-api-key']) return requireApiKey(req, reply);
   return requireSession(req, reply);
 }
 
-// Fetch the primary org for a user (first owned org, else first membership)
-async function getPrimaryOrg(userId) {
-  try {
-    const owned = await db.find(tables.organizations, `(owner_user_id,eq,${userId})`, { sort: 'created_at', limit: 1 });
-    if (owned.list?.[0]) return owned.list[0];
-    const memberships = await db.find(tables.org_members, `(user_id,eq,${userId})`, { sort: 'created_at', limit: 1 });
-    if (memberships.list?.[0]) return db.get(tables.organizations, memberships.list[0].org_id);
-  } catch (_) {}
-  return null;
-}
-
-// SLA window in hours by priority
-const SLA_HOURS = { urgent: 1, high: 4, normal: 24, low: 48 };
-
-function calcSlaDueAt(priority) {
-  const hours = SLA_HOURS[priority] ?? 24;
-  return new Date(Date.now() + hours * 3600 * 1000).toISOString();
-}
-
-function slaStatus(ticket) {
-  const { sla_due_at, sla_breached, status, priority } = ticket;
-  if (!sla_due_at) return 'ok';
-  const resolved = status === 'resolved' || status === 'closed';
-  if (resolved) return sla_breached ? 'breached' : 'ok';
-
-  const now = Date.now();
-  const due = new Date(sla_due_at).getTime();
-  if (sla_breached || now >= due) return 'breached';
-
-  const hours = SLA_HOURS[priority] ?? 24;
-  const windowMs = hours * 3600 * 1000;
-  const remaining = due - now;
-  if (remaining / windowMs <= 0.2) return 'warning';
-  return 'ok';
-}
-
-function withSlaStatus(ticket) {
-  return { ...ticket, sla_status: slaStatus(ticket) };
-}
-
-// Lazy broadcast — imported after module init to avoid circular issues
 async function tryBroadcast(type, payload) {
   try {
     const { broadcastAll } = await import('./incidents.mjs');
@@ -182,24 +143,7 @@ export default async function ticketsRoutes(fastify) {
     },
   }, async (req) => {
     const { status, priority, limit = 50, page = 1 } = req.query;
-    let where;
-    const org = await getPrimaryOrg(req.user.Id);
-    if (org) {
-      where = `(org_id,eq,${org.Id})`;
-    } else {
-      where = `(user_id,eq,${req.user.Id})`;
-    }
-    if (status) where += `~and(status,eq,${status})`;
-    if (priority) where += `~and(priority,eq,${priority})`;
-
-    const result = await db.list(tables.tickets, {
-      where,
-      limit,
-      offset: (page - 1) * limit,
-      sort: '-CreatedAt',
-    });
-    const tickets = (result.list || []).map(withSlaStatus);
-    return { tickets, total: result.pageInfo?.totalRows || 0 };
+    return listStaffTickets(req.user.Id, { status, priority, limit, page });
   });
 
   // POST /v1/tickets — create ticket / incident
