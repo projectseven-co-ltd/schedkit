@@ -6,10 +6,14 @@ const DEFAULT_ORG_SLUG = process.env.PORTAL_ORG_SLUG || 'projectseven';
 
 function assertInboundSecret(req, reply) {
   const secret = String(req.headers['x-portal-inbound-secret'] || '');
-  if (!INBOUND_SECRET || secret !== INBOUND_SECRET) {
-    reply.code(403).send({ success: false, error: 'Forbidden' });
-    return false;
+  if (INBOUND_SECRET) {
+    if (secret !== INBOUND_SECRET) {
+      reply.code(403).send({ success: false, error: 'Forbidden' });
+      return false;
+    }
+    return true;
   }
+  req.log.warn('PORTAL_INBOUND_SECRET unset — accepting inbound ticket (set secret in production)');
   return true;
 }
 
