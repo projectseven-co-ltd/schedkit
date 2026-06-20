@@ -7,7 +7,6 @@
     "start": "node src/index.mjs",
     "migrate": "node -e \"import('dotenv/config'); import('./src/db/migrate.mjs').then(m => m.runMigrations()).then(() => process.exit(0))\"",
     "seed:portal-client": "node scripts/seed-portal-client.mjs",
-    "import:blesta-clients": "node scripts/import-blesta-clients.mjs",
     "ensure:portal-org": "node scripts/ensure-portal-org.mjs",
     "smoke": "bash scripts/smoke-test.sh"
   },

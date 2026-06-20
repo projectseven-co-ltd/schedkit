@@ -182,7 +182,13 @@ export default async function ticketsRoutes(fastify) {
     },
   }, async (req) => {
     const { status, priority, limit = 50, page = 1 } = req.query;
-    let where = `(user_id,eq,${req.user.Id})`;
+    let where;
+    const org = await getPrimaryOrg(req.user.Id);
+    if (org) {
+      where = `(org_id,eq,${org.Id})`;
+    } else {
+      where = `(user_id,eq,${req.user.Id})`;
+    }
     if (status) where += `~and(status,eq,${status})`;
     if (priority) where += `~and(priority,eq,${priority})`;
 

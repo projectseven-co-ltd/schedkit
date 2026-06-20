@@ -10,17 +10,19 @@ export async function findContactByEmail(email) {
   if (!normalized) return null;
   const result = await db.list(tables.client_contacts, {
     where: `(email,eq,${normalized})`,
-    limit: 5,
+    limit: 20,
   });
-  return result.list?.[0] || null;
+  const list = result.list || [];
+  return list.find(c => c.is_primary) || list[0] || null;
 }
 
 export async function findContactByUserId(userId) {
   const result = await db.list(tables.client_contacts, {
     where: `(user_id,eq,${String(userId)})`,
-    limit: 1,
+    limit: 20,
   });
-  return result.list?.[0] || null;
+  const list = result.list || [];
+  return list.find(c => c.is_primary) || list[0] || null;
 }
 
 export async function loadClientBundle(clientId) {

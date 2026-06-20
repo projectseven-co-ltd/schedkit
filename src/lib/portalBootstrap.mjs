@@ -9,11 +9,7 @@ const DEFAULT_DEPARTMENTS = [
 ];
 
 function portalBootstrapEnabled() {
-  return Boolean(
-    process.env.PORTAL_ORG_SLUG
-    || process.env.BLESTA_API_USER
-    || process.env.BLESTA_AUTH_BRIDGE_URL,
-  );
+  return Boolean(process.env.PORTAL_ORG_SLUG);
 }
 
 async function findOwnerUser() {

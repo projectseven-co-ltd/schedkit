@@ -118,7 +118,7 @@ await fastify.register(swagger, {
       { name: 'Settings', description: 'User settings management. Get or update per-user configuration — currently `ntfy_topic` for push notifications via ntfy.sh.' },
       { name: 'Alerts', description: 'Inbound signal alerts — fire, acknowledge, and resolve alerts from any source (sensor, webhook, NOAA, API). Critical alerts auto-create incident tickets. Live events via SSE stream.' },
       { name: 'Work Orders', description: 'Field job documentation — timelog, inspection photos, checklists, parts/materials, signatures, customer portal, and PDF evidence packs. Optional links to incidents and manifest assignments.' },
-      { name: 'Portal', description: 'Project Seven client portal API — Blesta-compatible ticket and auth endpoints scoped to hosting clients.' },
+      { name: 'Portal', description: 'Project Seven client portal — auth and support tickets via SchedKit.' },
     ],
     servers: [{ url: 'https://schedkit.net', description: 'Production' }],
     components: {

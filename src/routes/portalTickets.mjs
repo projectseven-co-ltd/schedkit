@@ -79,7 +79,7 @@ export default async function portalTicketsRoutes(fastify) {
     preHandler: requirePortalClient,
     schema: {
       tags: [TAG],
-      summary: 'List client tickets (Blesta-shaped)',
+      summary: 'List client tickets',
       querystring: {
         type: 'object',
         properties: {
@@ -140,7 +140,7 @@ export default async function portalTicketsRoutes(fastify) {
   // GET /v1/portal/tickets/:id
   fastify.get('/tickets/:id', {
     preHandler: requirePortalClient,
-    schema: { tags: [TAG], summary: 'Get ticket with replies (Blesta-shaped)' },
+    schema: { tags: [TAG], summary: 'Get ticket with replies' },
   }, async (req, reply) => {
     const ticket = await db.get(tables.tickets, req.params.id);
     if (!(await assertClientOwnsTicket(ticket, req.client_id))) {
@@ -190,7 +190,7 @@ export default async function portalTicketsRoutes(fastify) {
       status: 'open',
       priority,
       user_id: ownerUserId ? String(ownerUserId) : String(req.user.Id),
-      client_id: req.client_id,
+      client_id: String(req.client_id),
       org_id: orgId,
       department_id: departmentId ? String(departmentId) : null,
       source: 'portal',
@@ -222,7 +222,7 @@ export default async function portalTicketsRoutes(fastify) {
       customer_status_url: `${process.env.BASE_URL || 'https://schedkit.net'}/incidents/status/${customer_token}`,
     };
 
-    tryBroadcast('incident.created', formatPortalTicketRow(result, deptName));
+    tryBroadcast('incident.created', { ...ticket, public_code, Id: ticket.Id, title: subject, org_id: orgId, client_id: req.client_id });
 
     const org = orgId ? await db.get(tables.organizations, orgId) : null;
     if (org) {

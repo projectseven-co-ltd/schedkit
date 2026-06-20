@@ -28,7 +28,6 @@ async function main() {
   const name = arg('name') || email.split('@')[0];
   const company = arg('company') || name;
   const password = arg('password');
-  const blestaId = arg('blesta-client-id');
 
   if (!email) {
     console.error('Missing --email');
@@ -72,7 +71,6 @@ async function main() {
       org_id: String(org.Id),
       company_name: company,
       slug: company.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-      blesta_client_id: blestaId ? Number(blestaId) : null,
       status: 'active',
       created_at: new Date().toISOString(),
     });

@@ -3,20 +3,11 @@ import { tables } from '../lib/tables.mjs';
 import { verifyPassword } from '../lib/password.mjs';
 import { findContactByEmail, resolvePortalIdentity } from '../middleware/portalClient.mjs';
 import { sessionCookie, clearSessionCookie } from '../lib/sessionCookie.mjs';
-import {
-  blestaBridgeConfigured,
-  validateBlestaLogin,
-  provisionFromBlestaUser,
-} from '../lib/blestaBridge.mjs';
-import { upsertPortalFromBlestaClient } from '../lib/portalProvision.mjs';
 import { addDays } from 'date-fns';
 import { nanoid } from 'nanoid';
 
 const PASSWORD_LOGIN_ENABLED = process.env.AUTH_PASSWORD_LOGIN_ENABLED !== 'false';
 const PORTAL_ORG_SLUG = process.env.PORTAL_ORG_SLUG || 'projectseven';
-const PORTAL_BRIDGE_SECRET = process.env.PORTAL_BRIDGE_SECRET
-  || process.env.BLESTA_API_KEY
-  || '';
 
 function normalizeLogin(value) {
   return String(value || '').trim().toLowerCase();
@@ -32,47 +23,6 @@ async function createSessionForUser(user) {
     created_at: new Date().toISOString(),
   });
   return sessionToken;
-}
-
-async function createBlestaBridgeSession(userId, email, reply, { setCookie = true, blestaClient, contacts } = {}) {
-  let identity;
-  if (blestaClient?.id) {
-    identity = await upsertPortalFromBlestaClient(blestaClient, {
-      orgSlug: PORTAL_ORG_SLUG,
-      contacts,
-    });
-  } else {
-    identity = await provisionFromBlestaUser(userId, PORTAL_ORG_SLUG);
-  }
-  if (!identity?.user || !identity?.client) return null;
-
-  const sessionToken = await createSessionForUser(identity.user);
-  if (setCookie) reply.header('Set-Cookie', sessionCookie(sessionToken));
-
-  return {
-    authenticated: true,
-    client_id: Number(identity.client.Id ?? identity.client.id),
-    name: identity.contact?.name || identity.user.name || '',
-    email: identity.contact?.email || identity.user.email || email,
-    source: 'blesta_bridge',
-    sessionToken,
-  };
-}
-
-async function loginViaBlestaBridge(email, password, reply) {
-  if (!blestaBridgeConfigured()) return null;
-
-  try {
-    const auth = await validateBlestaLogin(email, password);
-    if (!auth) return null;
-    return await createBlestaBridgeSession(auth.user_id, email, reply);
-  } catch (err) {
-    reply.log.warn({ err: err.message }, 'Blesta bridge login failed');
-    if (String(err.message).includes('Portal org not found')) {
-      throw err;
-    }
-    return null;
-  }
 }
 
 async function loginViaSchedkit(email, password, reply) {
@@ -107,7 +57,6 @@ async function loginViaSchedkit(email, password, reply) {
     client_id: Number(client.Id ?? client.id),
     name: contact.name || user.name || '',
     email: contact.email || user.email,
-    source: 'schedkit',
   };
 }
 
@@ -116,16 +65,14 @@ export default async function portalAuthRoutes(fastify) {
     schema: { tags: ['Portal'], summary: 'Portal auth capabilities' },
   }, async () => ({
     passwordLoginEnabled: PASSWORD_LOGIN_ENABLED,
-    blestaBridgeEnabled: blestaBridgeConfigured(),
     orgSlug: PORTAL_ORG_SLUG,
   }));
 
-  // POST /v1/portal/auth/login
   fastify.post('/auth/login', {
     config: { rateLimit: { max: 20, timeWindow: '15 minutes' } },
     schema: {
       tags: ['Portal'],
-      summary: 'Client portal login (Blesta bridge + SchedKit native)',
+      summary: 'Client portal login',
       body: {
         type: 'object',
         required: ['password'],
@@ -147,93 +94,12 @@ export default async function portalAuthRoutes(fastify) {
       return reply.code(401).send({ authenticated: false, error: 'Incorrect username or password.' });
     }
 
-    let result = null;
-    try {
-      result = await loginViaBlestaBridge(email, password, reply);
-    } catch (err) {
-      if (String(err.message).includes('Portal org not found')) {
-        return reply.code(503).send({
-          authenticated: false,
-          error: 'Portal is still starting up. Try again in a minute or contact support.',
-        });
-      }
-      throw err;
-    }
-    if (!result) {
-      result = await loginViaSchedkit(email, password, reply);
-    }
-
+    const result = await loginViaSchedkit(email, password, reply);
     if (!result) {
       return reply.code(401).send({ authenticated: false, error: 'Incorrect username or password.' });
     }
 
     return result;
-  });
-
-  // POST /v1/portal/auth/exchange — trusted portal proxy issues session after local Blesta auth
-  fastify.post('/auth/exchange', {
-    config: { rateLimit: { max: 30, timeWindow: '15 minutes' } },
-    schema: {
-      tags: ['Portal'],
-      summary: 'Exchange validated Blesta user_id for SchedKit portal session (portal proxy only)',
-      body: {
-        type: 'object',
-        required: ['user_id'],
-        properties: {
-          user_id: { type: 'integer' },
-          username: { type: 'string' },
-          email: { type: 'string' },
-          blesta_client: { type: 'object' },
-          contacts: { type: 'array' },
-        },
-      },
-    },
-  }, async (req, reply) => {
-    const secret = String(req.headers['x-portal-bridge-secret'] || '');
-    if (!PORTAL_BRIDGE_SECRET || secret !== PORTAL_BRIDGE_SECRET) {
-      return reply.code(403).send({ authenticated: false, error: 'Forbidden' });
-    }
-
-    const userId = Number(req.body?.user_id);
-    const email = normalizeLogin(req.body?.email || req.body?.username);
-    const blestaClient = req.body?.blesta_client;
-    const contacts = Array.isArray(req.body?.contacts) ? req.body.contacts : undefined;
-    if (!userId || !email) {
-      return reply.code(400).send({ authenticated: false, error: 'Missing user_id or username' });
-    }
-    if (blestaClient?.user_id) {
-      const clientUserId = Number(blestaClient.user_id);
-      if (clientUserId && clientUserId !== userId) {
-        return reply.code(400).send({ authenticated: false, error: 'Client/user mismatch' });
-      }
-    }
-
-    try {
-      const result = await createBlestaBridgeSession(userId, email, reply, {
-        setCookie: false,
-        blestaClient,
-        contacts,
-      });
-      if (!result) {
-        return reply.code(502).send({
-          authenticated: false,
-          error: 'Could not provision portal account. Contact support.',
-        });
-      }
-      return result;
-    } catch (err) {
-      reply.log.warn({ err: err.message, userId }, 'Portal auth exchange failed');
-      if (String(err.message).includes('Portal org not found')) {
-        return reply.code(503).send({
-          authenticated: false,
-          error: 'Portal is still starting up. Try again in a minute or contact support.',
-        });
-      }
-      return reply.code(502).send({
-        authenticated: false,
-        error: 'Portal sign-in temporarily unavailable. Try again shortly.',
-      });
-    }
   });
 
   fastify.get('/auth/me', {
