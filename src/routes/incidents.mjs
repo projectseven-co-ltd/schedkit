@@ -4,6 +4,7 @@ import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
+import { notifyCustomerOfStaffReply } from '../lib/ticketCustomer.mjs';
 
 // Active SSE connections: userId → Set of raw response objects
 const connections = new Map();
@@ -264,6 +265,10 @@ export default async function incidentsRoutes(fastify) {
       },
     };
     broadcastAll(event);
+
+    if (isStaff) {
+      notifyCustomerOfStaffReply(ticket, replyRow).catch(() => {});
+    }
 
     return reply.code(201).send(replyRow);
   });

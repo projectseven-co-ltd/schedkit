@@ -1,4 +1,6 @@
-# Portal tickets — SchedKit-only cutover
+# Portal tickets — technical notes
+
+> **Start here when tired:** [DEPLOY-TODO.md](DEPLOY-TODO.md) — short checkbox list, no code.
 
 **Status:** Blesta integration removed (2026-06-19). Portal auth + tickets are SchedKit-only.
 
@@ -27,18 +29,7 @@ Portal-created tickets were disappearing on the staff Incidents page because:
 
 ## Deploy checklist
 
-1. **SchedKit** — redeploy API with `PORTAL_ORG_SLUG=projectseven` set
-2. **Seed portal users** (if not already):
-   ```bash
-   node scripts/seed-portal-client.mjs \
-     --org-slug projectseven \
-     --email client@example.com \
-     --name "Client Name" \
-     --company "Company" \
-     --password 'their-password'
-   ```
-3. **Portal** — `npm install && npm run build`, deploy `dist/` + `public/api/schedkit.php`
-4. Leave `PORTAL_COOKIE_DOMAIN` **unset** on SchedKit when using the PHP proxy
+See **[DEPLOY-TODO.md](DEPLOY-TODO.md)** — this file is background only.
 
 ## Still TODO
 

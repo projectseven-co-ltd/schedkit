@@ -461,6 +461,60 @@ export async function sendTicketStatusChanged({ to_email, to_name, ticket_id, ti
   } catch(e) { console.error('Ticket status email error:', e.message); }
 }
 
+// ── Ticket reply (customer) ────────────────────────────────────────────────────
+function escHtml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/\n/g, '<br>');
+}
+
+function truncateReply(text, max = 1200) {
+  const s = String(text || '').trim();
+  if (s.length <= max) return s;
+  return `${s.slice(0, max)}…`;
+}
+
+export async function sendTicketReply({
+  to_email,
+  to_name,
+  ticket_id,
+  title,
+  reply_body,
+  author_name,
+  status_url,
+  org,
+  public_code,
+}) {
+  const code = public_code || `P7-${ticket_id}`;
+  const excerpt = truncateReply(reply_body);
+  const html = emailWrap(`
+    ${statusLine('NEW REPLY', '#ffc700')}
+    ${heading('You have a new reply')}
+    ${subheading(`${author_name || 'Support'} responded to your ticket.`)}
+    ${detailTable([
+      ['Ticket', `<span style="font-family:monospace;color:#ffc700;">${code}</span>`],
+      ['Subject', title],
+      ['From', author_name || 'Support'],
+    ])}
+    <div style="background:#0a0a0b;border:1px solid #1e1e24;border-radius:8px;padding:16px 18px;margin-bottom:28px;">
+      <p style="margin:0 0 8px;font-size:11px;color:#5a5a6e;text-transform:uppercase;letter-spacing:0.06em;font-family:monospace;">Message</p>
+      <p style="margin:0;font-size:14px;color:#e8e8ea;line-height:1.6;">${escHtml(excerpt)}</p>
+    </div>
+    ${status_url ? primaryBtn(status_url, 'View & Reply →') : ''}
+    ${status_url ? `<br><br>${note('Reply from this link — no login required.')}` : ''}
+  `);
+  try {
+    const fromPrefix = org?.ticket_from_prefix || 'SchedKit-INC';
+    const subject = `Re: [${code}] ${title}`;
+    await send(to_email, to_name, subject, html, null, `${fromPrefix}${ticket_id}`);
+  } catch (e) {
+    console.error('Ticket reply email error:', e.message);
+  }
+}
+
 // ── Booking declined by host (attendee) ──────────────────────────────────────
 export async function sendBookingDeclined({ attendee_name, attendee_email, host_name, event_title, start_time, timezone }) {
   const startLocal = fmtTime(start_time, timezone);
