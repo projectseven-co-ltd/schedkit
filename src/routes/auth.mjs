@@ -16,6 +16,8 @@ function sanitizeRedirect(url) {
 import { requireSession } from '../middleware/session.mjs';
 import { isPlatformAdmin } from '../lib/platformAdmin.mjs';
 import { hashPassword, verifyPassword } from '../lib/password.mjs';
+import { clearSessionCookie, sessionCookie } from '../lib/sessionCookie.mjs';
+import { applyUserEntitlements, isEnterpriseEmail } from '../lib/entitlements.mjs';
 
 const BASE_DOMAIN = process.env.BASE_DOMAIN || 'schedkit.net';
 const PASSWORD_LOGIN_ENABLED = process.env.AUTH_PASSWORD_LOGIN_ENABLED !== 'false';
@@ -27,22 +29,25 @@ function wantsMobileAuth(req) {
 }
 
 function toMobileUser(user) {
+  const entitledUser = applyUserEntitlements(user);
   return {
-    Id: user.Id,
-    id: user.Id,
-    name: user.name || '',
-    email: user.email,
-    slug: user.slug || '',
-    plan: user.plan || 'free',
-    timezone: user.timezone || 'UTC',
-    api_key: user.api_key,
+    Id: entitledUser.Id,
+    id: entitledUser.Id,
+    name: entitledUser.name || '',
+    email: entitledUser.email,
+    slug: entitledUser.slug || '',
+    plan: entitledUser.plan || 'free',
+    timezone: entitledUser.timezone || 'UTC',
+    api_key: entitledUser.api_key,
   };
 }
 
 async function ensureUserApiKey(user) {
-  if (user?.api_key) return user;
-  const api_key = `p7s_${nanoid(32)}`;
-  return db.update(tables.users, user.Id, { api_key });
+  const updates = {};
+  if (!user?.api_key) updates.api_key = `p7s_${nanoid(32)}`;
+  if (isEnterpriseEmail(user?.email) && user?.plan !== 'enterprise') updates.plan = 'enterprise';
+  if (!Object.keys(updates).length) return applyUserEntitlements(user);
+  return applyUserEntitlements(await db.update(tables.users, user.Id, updates));
 }
 
 async function createSessionForUser(user) {
@@ -181,7 +186,7 @@ export default async function authRoutes(fastify) {
         const newUser = await db.create(tables.users, {
           email,
           name: '',
-          plan: 'free',
+          plan: isEnterpriseEmail(email) ? 'enterprise' : 'free',
           created_at: new Date().toISOString(),
         });
         result = { list: [newUser] };
@@ -204,7 +209,12 @@ export default async function authRoutes(fastify) {
     });
 
     const link = `https://${BASE_DOMAIN}/v1/auth/verify?token=${token}${next ? '&next=' + encodeURIComponent(next) : ''}`;
-    await sendMagicLink({ to: email, name: user.name, link, code });
+    try {
+      await sendMagicLink({ to: email, name: user.name, link, code });
+    } catch (error) {
+      req.log.error({ err: error }, 'Magic link email delivery failed');
+      return reply.code(503).send({ error: 'email_delivery_failed', message: 'Email delivery is temporarily unavailable. Please try again later.' });
+    }
 
     return { ok: true };
   });
@@ -324,7 +334,7 @@ export default async function authRoutes(fastify) {
       } catch {}
     }
     reply
-      .header('Set-Cookie', 'sk_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0')
+      .header('Set-Cookie', clearSessionCookie())
       .send({ ok: true });
   });
 
@@ -356,7 +366,8 @@ export default async function authRoutes(fastify) {
     },
     preHandler: requireSession
   }, async (req) => {
-    const { Id, name, email, slug, timezone, api_key, enterprise, ntfy_topic, plan, password_hash } = req.user;
+    const entitledUser = applyUserEntitlements(req.user);
+    const { Id, name, email, slug, timezone, api_key, enterprise, ntfy_topic, plan, password_hash } = entitledUser;
     return {
       Id, name, email, slug, timezone, api_key,
       enterprise: !!enterprise,
@@ -434,7 +445,7 @@ function resolveLoginDestination(user, next) {
 async function issueWebSession(reply, user, { next } = {}) {
   const { sessionToken } = await createSessionForUser(user);
   const destination = resolveLoginDestination(user, next);
-  reply.header('Set-Cookie', `sk_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}; Secure`);
+  reply.header('Set-Cookie', sessionCookie(sessionToken));
   return reply.send({ ok: true, destination });
 }
 
@@ -443,7 +454,7 @@ async function consumeLoginAndCreateSession(reply, link, user, { redirect, next 
 
   const { sessionToken } = await createSessionForUser(user);
   const destination = resolveLoginDestination(user, next);
-  reply.header('Set-Cookie', `sk_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}; Secure`);
+  reply.header('Set-Cookie', sessionCookie(sessionToken));
 
   if (redirect) return reply.redirect(destination);
   return reply.send({ ok: true, destination });

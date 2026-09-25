@@ -6,6 +6,7 @@ import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
+import { applyUserEntitlements } from '../lib/entitlements.mjs';
 
 async function requireAuth(req, reply) {
   if (req.headers['x-api-key']) return requireApiKey(req, reply);
@@ -35,7 +36,7 @@ export default async function settingsRoutes(fastify) {
       },
     },
   }, async (req) => {
-    const { email, plan, ntfy_topic } = req.user;
+    const { email, plan, ntfy_topic } = applyUserEntitlements(req.user);
     return {
       email: email || '',
       plan: plan || 'free',
@@ -93,7 +94,7 @@ export default async function settingsRoutes(fastify) {
     }
 
     // Return fresh settings
-    const updated = await db.get(tables.users, req.user.Id);
+    const updated = applyUserEntitlements(await db.get(tables.users, req.user.Id));
     return {
       email: updated.email || '',
       plan: updated.plan || 'free',

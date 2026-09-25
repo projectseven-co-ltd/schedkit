@@ -57,6 +57,7 @@ services:
       BASE_DOMAIN: ${BASE_DOMAIN:-schedkit.net}
       API_SECRET:
       PLATFORM_ADMIN_EMAILS:
+      ENTERPRISE_EMAILS:
       MJ_APIKEY_PUBLIC:
       MJ_APIKEY_PRIVATE:
       MJ_FROM_EMAIL:

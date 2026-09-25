@@ -1,5 +1,6 @@
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
+import { applyUserEntitlements } from '../lib/entitlements.mjs';
 
 // Middleware: require dashboard session cookie OR x-api-key header / api_key query param
 export async function requireSession(req, reply) {
@@ -8,7 +9,7 @@ export async function requireSession(req, reply) {
   if (apiKey) {
     const result = await db.find(tables.users, `(api_key,eq,${apiKey})`);
     const user = result.list?.[0];
-    if (user) { req.user = user; return; }
+    if (user) { req.user = applyUserEntitlements(user); return; }
   }
 
   // 2. Try session cookie
@@ -33,7 +34,7 @@ export async function requireSession(req, reply) {
   const user = await db.get(tables.users, session.user_id);
   if (!user) return unauth('User not found');
 
-  req.user = user;
+  req.user = applyUserEntitlements(user);
   req.sessionToken = token;
 }
 
@@ -47,6 +48,6 @@ export async function getSessionUser(req) {
     if (!result.list?.length) return null;
     const session = result.list[0];
     if (new Date(session.expires_at) < new Date()) return null;
-    return await db.get(tables.users, session.user_id);
+    return applyUserEntitlements(await db.get(tables.users, session.user_id));
   } catch { return null; }
 }
