@@ -1,0 +1,10 @@
+name = "p7-support-inbound"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+SCHEDKIT_URL = "https://schedkit.net"
+PORTAL_ORG_SLUG = "projectseven"
+INBOUND_DEPARTMENT_SLUG = "technical"
+
+# wrangler secret put PORTAL_INBOUND_SECRET

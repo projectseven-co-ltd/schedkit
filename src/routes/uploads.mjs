@@ -6,6 +6,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
+import { canAccessWorkOrder } from '../lib/workOrderAuth.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CAPTURES_DIR = join(__dirname, '../../public/captures');
@@ -72,7 +73,7 @@ export default async function uploadsRoutes(fastify) {
     const { uid } = req.params;
     const result = await db.find(tables.work_orders, `(uid,eq,${uid})`);
     const wo = result?.list?.[0];
-    if (!wo || String(wo.user_id) !== String(req.user.Id)) {
+    if (!wo || !(await canAccessWorkOrder(req.user, wo))) {
       return reply.code(404).send({ error: 'Work order not found' });
     }
 

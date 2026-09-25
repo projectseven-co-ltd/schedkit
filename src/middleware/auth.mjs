@@ -2,6 +2,7 @@
 
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
+import { applyUserEntitlements } from '../lib/entitlements.mjs';
 
 export async function requireApiKey(request, reply) {
   const key = request.headers['x-api-key'] || request.query.api_key;
@@ -13,5 +14,5 @@ export async function requireApiKey(request, reply) {
   const user = result.list[0];
   if (!user.active) return reply.code(403).send({ error: 'Account inactive' });
 
-  request.user = user;
+  request.user = applyUserEntitlements(user);
 }

@@ -670,6 +670,11 @@ tr:hover td{background:var(--surface2)}
           <option value="normal">Normal</option>
           <option value="low">Low</option>
         </select>
+        <select id="wo-filter-assignee" onchange="renderWorkOrdersTable(window._workOrders || [])">
+          <option value="all">All assignees</option>
+          <option value="me">Assigned to me</option>
+          <option value="unassigned">Unassigned</option>
+        </select>
         <input type="search" id="wo-filter-search" placeholder="Search title or site…" oninput="renderWorkOrdersTable(window._workOrders || [])" style="min-width:200px;flex:1">
         <div class="meta" id="wo-results-meta">—</div>
       </div>
@@ -1182,6 +1187,17 @@ tr:hover td{background:var(--surface2)}
         <div class="form-row"><label>Status</label><select id="wo-detail-status"><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="in_progress">In progress</option><option value="on_hold">On hold</option><option value="completed">Completed</option><option value="signed_off">Signed off</option><option value="closed">Closed</option></select></div>
         <div class="form-row"><label>Priority</label><select id="wo-detail-priority"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>
       </div>
+      <div class="form-row" id="wo-detail-assignee-row" style="display:none"><label>Assignee</label><select id="wo-detail-assignee"></select></div>
+      <div class="form-row" id="wo-detail-assignee-readonly" style="display:none"><label>Assignee</label><div id="wo-detail-assignee-label" style="font-size:13px;color:var(--muted)">—</div></div>
+      <div id="wo-ack-panel" style="margin:12px 0;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">Dispatch / radio ack</div>
+        <div id="wo-ack-status" style="color:var(--muted);margin-bottom:8px">—</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost" style="font-size:12px" type="button" onclick="woAck('dispatch')">Dispatch ack</button>
+          <button class="btn btn-ghost" style="font-size:12px" type="button" onclick="woAck('assignee')">Field ack</button>
+          <button class="btn btn-primary" style="font-size:12px" type="button" onclick="woEnRoute()">Mark en route</button>
+        </div>
+      </div>
       <div class="form-row"><label>Site address</label><input type="text" id="wo-detail-site"></div>
       <div class="form-row"><label>Description</label><textarea id="wo-detail-description"></textarea></div>
       <div class="modal-actions"><button class="btn btn-primary" onclick="updateWorkOrder()">Save</button></div>
@@ -1216,9 +1232,16 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div id="wo-panel-signatures" class="wo-panel" style="display:none">
       <div id="wo-sigs-list" style="margin-bottom:12px"></div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">Technician</div>
       <div class="form-row"><label>Technician name</label><input type="text" id="wo-tech-signer-name"></div>
       <canvas id="wo-sig-canvas" width="600" height="120" style="width:100%;background:#fff;border-radius:8px;touch-action:none"></canvas>
-      <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-ghost" style="font-size:12px" onclick="woClearSig()">Clear</button><button class="btn btn-primary" style="font-size:12px" onclick="submitWoTechSignature()">Save signature</button></div>
+      <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-ghost" style="font-size:12px" onclick="woClearSig()">Clear</button><button class="btn btn-primary" style="font-size:12px" onclick="submitWoTechSignature()">Save technician signature</button></div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">On-site customer</div>
+        <div class="form-row"><label>Customer name</label><input type="text" id="wo-customer-signer-name"></div>
+        <canvas id="wo-customer-sig-canvas" width="600" height="120" style="width:100%;background:#fff;border-radius:8px;touch-action:none"></canvas>
+        <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-ghost" style="font-size:12px" onclick="woClearCustomerSig()">Clear</button><button class="btn btn-primary" style="font-size:12px" onclick="submitWoCustomerSignature()">Save customer signature</button></div>
+      </div>
     </div>
     <div id="wo-panel-links" class="wo-panel" style="display:none">
       <div class="form-row"><label>Linked assignment ID</label><div style="display:flex;gap:8px"><input type="text" id="wo-link-booking-id" style="flex:1"><button class="btn btn-ghost" style="font-size:12px" onclick="linkWoBooking()">Link</button></div></div>
@@ -1229,6 +1252,25 @@ tr:hover td{background:var(--surface2)}
   </div>
 </div>
 <input type="file" id="wo-photo-input" accept="image/*" style="display:none">
+
+<!-- WORK ORDER PHOTO MARKUP -->
+<div class="modal-overlay" id="wo-markup-modal" style="display:none">
+  <div class="modal" style="max-width:920px;max-height:92vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="margin:0;font-size:16px">Photo markup</h3>
+      <button class="btn btn-ghost" style="font-size:12px" type="button" onclick="closeWoMarkup()">Close</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Click and drag to draw red arrows. Saves as overlay metadata on the photo.</p>
+    <div style="position:relative;max-width:100%;overflow:auto;border:1px solid var(--border);border-radius:8px;background:#111">
+      <canvas id="wo-markup-canvas" style="max-width:100%;display:block;touch-action:none;cursor:crosshair"></canvas>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="font-size:12px" type="button" onclick="woMarkupUndo()">Undo last</button>
+      <button class="btn btn-ghost" style="font-size:12px" type="button" onclick="woMarkupClear()">Clear all</button>
+      <button class="btn btn-primary" style="font-size:12px" type="button" onclick="saveWoMarkup()">Save markup</button>
+    </div>
+  </div>
+</div>
 
 <!-- EVENT TYPE MODAL -->
 <div class="modal-overlay" id="et-modal">
@@ -2068,7 +2110,7 @@ function sitrepHandleSSE(type, payload) {
       'incident',
       `[■] Incident · ${payload.title || 'Untitled'} · ${(payload.priority||'normal').toUpperCase()}`,
       payload.CreatedAt || payload.created_at,
-      `ticket:${payload.Id}:created`,
+      `ticket:${payload.Id ?? payload.id}:created`,
     );
     // Refresh incident tile count live
     const el = document.getElementById('sitrep-incidents-open');
@@ -2729,12 +2771,28 @@ async function loadTicketReplies(ticketId) {
 }
 
 function mergeTicketIntoCache(ticket) {
+  const row = normalizeTicketRow(ticket);
+  if (!row?.Id) return;
   const list = window._tickets || [];
-  const idx = list.findIndex(t => String(t.Id) === String(ticket.Id));
-  if (idx >= 0) list[idx] = { ...list[idx], ...ticket };
-  else list.unshift(ticket);
+  const idx = list.findIndex(t => String(t.Id) === String(row.Id));
+  if (idx >= 0) list[idx] = { ...list[idx], ...row };
+  else list.unshift(row);
   window._tickets = list;
   renderTicketsTable(window._tickets);
+}
+
+function normalizeTicketRow(ticket) {
+  if (!ticket) return null;
+  const Id = ticket.Id ?? ticket.id;
+  if (Id == null) return null;
+  const created = ticket.created_at || ticket.CreatedAt;
+  return {
+    ...ticket,
+    Id,
+    id: Id,
+    CreatedAt: created,
+    created_at: created,
+  };
 }
 
 function connectTicketStream() {
@@ -3545,7 +3603,7 @@ async function loadOrgDetail(orgSlug) {
             ${isAdmin ? `<button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="openInviteMemberModal('${esc(org.slug)}')">+ Invite Member</button>` : ''}
           </div>
           <table>
-            <thead><tr><th>Email</th><th>Name</th><th>Role</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
+            <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Dispatch</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
             <tbody>
               ${members.map(m => `<tr>
                 <td style="font-size:13px">${esc(m.user?.email || m.user_id)}</td>
@@ -3558,6 +3616,14 @@ async function loadOrgDetail(orgSlug) {
                       <option value="admin" ${m.role==='admin'?'selected':''}>admin</option>
                     </select>
                   ` : `<span class="badge">${m.role}</span>`}
+                </td>
+                <td style="font-size:12px">
+                  ${isAdmin && m.role !== 'owner' ? `
+                    <label style="cursor:pointer;display:flex;align-items:center;gap:6px">
+                      <input type="checkbox" ${m.can_manage_work_orders ? 'checked' : ''} onchange="toggleOrgMemberDispatch('${esc(org.slug)}','${m.user_id}',this.checked)">
+                      <span style="color:var(--muted);font-size:11px">Work orders</span>
+                    </label>
+                  ` : (m.can_manage_work_orders || m.role === 'admin' ? '<span class="badge">dispatch</span>' : '—')}
                 </td>
                 ${isAdmin ? `<td>${m.role !== 'owner' ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--red)" onclick="removeOrgMember('${esc(org.slug)}','${m.user_id}')">Remove</button>` : ''}</td>` : ''}
               </tr>`).join('')}
@@ -3691,6 +3757,15 @@ async function changeOrgMemberRole(orgSlug, userId, role) {
   const res = await apiFetch(`/v1/orgs/${orgSlug}/members/${userId}`, { method: 'PATCH', body: JSON.stringify({ role }) });
   if (!res?.ok) { toast('Failed to update role', 'err'); await loadOrgDetail(orgSlug); return; }
   toast('Role updated', 'ok');
+}
+
+async function toggleOrgMemberDispatch(orgSlug, userId, enabled) {
+  const res = await apiFetch(`/v1/orgs/${orgSlug}/members/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ can_manage_work_orders: !!enabled }),
+  });
+  if (!res?.ok) { toast('Failed to update dispatch access', 'err'); await loadOrgDetail(orgSlug); return; }
+  toast('Dispatch access updated', 'ok');
 }
 
 async function removeOrgMember(orgSlug, userId) {
@@ -5619,11 +5694,56 @@ document.getElementById('billing-modal').addEventListener('click', e => {
 
 // ── Work Orders ───────────────────────────────────────
 let activeWorkOrder = null;
-let woSigDrawing = false;
+let activeWoTab = 'overview';
+const woSigDrawingState = {};
 
 function switchWoTab(tab) {
+  activeWoTab = tab;
   document.querySelectorAll('.wo-tab').forEach(b => b.classList.toggle('active', b.dataset.woTab === tab));
   document.querySelectorAll('.wo-panel').forEach(p => { p.style.display = p.id === 'wo-panel-' + tab ? '' : 'none'; });
+}
+
+function updateWoDetailHeader(wo) {
+  document.getElementById('wo-detail-title').textContent = wo.title || 'Work Order';
+  const assigneePart = wo.assignee_name ? ` · ${wo.assignee_name}` : '';
+  document.getElementById('wo-detail-subtitle').textContent = `${wo.uid || ''} · ${wo.status} · ${wo.checklist_done ?? 0}/${wo.checklist_total ?? 0} checklist${assigneePart}`;
+}
+
+function populateWoDetailFields(wo) {
+  document.getElementById('wo-detail-status').value = wo.status || 'draft';
+  document.getElementById('wo-detail-priority').value = wo.priority || 'normal';
+  document.getElementById('wo-detail-site').value = wo.site_address || '';
+  document.getElementById('wo-detail-description').value = wo.description || '';
+  document.getElementById('wo-link-booking-id').value = wo.booking_id || '';
+  const assigneeRow = document.getElementById('wo-detail-assignee-row');
+  const assigneeReadonly = document.getElementById('wo-detail-assignee-readonly');
+  if (wo.can_manage) {
+    assigneeRow.style.display = '';
+    assigneeReadonly.style.display = 'none';
+  } else {
+    assigneeRow.style.display = 'none';
+    assigneeReadonly.style.display = '';
+    document.getElementById('wo-detail-assignee-label').textContent = wo.assignee_name || 'Unassigned';
+  }
+  const ackParts = [];
+  if (wo.dispatch_ack_at) ackParts.push(`Dispatch ack ${new Date(wo.dispatch_ack_at).toLocaleString()}`);
+  if (wo.assignee_ack_at) ackParts.push(`Field ack ${new Date(wo.assignee_ack_at).toLocaleString()}`);
+  if (wo.en_route_at) ackParts.push(`En route ${new Date(wo.en_route_at).toLocaleString()}`);
+  document.getElementById('wo-ack-status').textContent = ackParts.length ? ackParts.join(' · ') : 'No acks yet';
+}
+
+async function populateWoAssigneeSelect(wo) {
+  const sel = document.getElementById('wo-detail-assignee');
+  if (!sel || !wo.can_manage) return;
+  const params = new URLSearchParams();
+  if (wo.org_id) params.set('org_id', wo.org_id);
+  if (wo.Id) params.set('work_order_id', String(wo.Id));
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  const res = await apiFetch(`/v1/work-orders/assignees${qs}`);
+  const { assignees = [] } = res?.ok ? await res.json() : { assignees: [] };
+  sel.innerHTML = '<option value="">Unassigned</option>' + assignees.map(a =>
+    `<option value="${esc(String(a.id))}" ${String(wo.assignee_id) === String(a.id) ? 'selected' : ''}>${esc(a.name || a.email)}</option>`
+  ).join('');
 }
 
 async function loadWorkOrders() {
@@ -5645,10 +5765,14 @@ async function loadWorkOrders() {
 function renderWorkOrdersTable(list) {
   const statusFilter = document.getElementById('wo-filter-status')?.value || 'all';
   const priorityFilter = document.getElementById('wo-filter-priority')?.value || 'all';
+  const assigneeFilter = document.getElementById('wo-filter-assignee')?.value || 'all';
   const search = (document.getElementById('wo-filter-search')?.value || '').trim().toLowerCase();
   const filtered = (list || []).filter(w =>
     (statusFilter === 'all' || w.status === statusFilter) &&
     (priorityFilter === 'all' || w.priority === priorityFilter) &&
+    (assigneeFilter === 'all' ||
+      (assigneeFilter === 'me' && String(w.assignee_id) === String(currentUser?.Id)) ||
+      (assigneeFilter === 'unassigned' && !w.assignee_id)) &&
     (!search || (w.title||'').toLowerCase().includes(search) || (w.site_address||'').toLowerCase().includes(search))
   );
   document.getElementById('wo-results-meta').textContent = `${filtered.length} shown · ${(list||[]).length} total`;
@@ -5664,7 +5788,7 @@ function renderWorkOrdersTable(list) {
       w.photo_count ? `<span class="badge badge-normal">${w.photo_count} photos</span>` : '',
     ].filter(Boolean).join(' ');
     return `<tr>
-      <td data-label="Work Order"><strong>${esc(w.title)}</strong><div style="font-size:12px;color:var(--muted)">${esc(w.site_address || '')}</div><div class="ticket-meta-row"><span class="badge badge-${w.priority}">${esc(w.priority)}</span><span class="badge badge-${w.status}">${esc(w.status)}</span>${badges}</div></td>
+      <td data-label="Work Order"><strong>${esc(w.title)}</strong><div style="font-size:12px;color:var(--muted)">${esc(w.site_address || '')}</div><div class="ticket-meta-row"><span class="badge badge-${w.priority}">${esc(w.priority)}</span><span class="badge badge-${w.status}">${esc(w.status)}</span>${badges}</div>${w.assignee_name ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">→ ${esc(w.assignee_name)}</div>` : ''}</td>
       <td data-label="UID" style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${esc(w.uid || w.Id)}</td>
       <td data-label="Actions"><button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick='openWorkOrderDetailById(${w.Id})'>Open</button></td>
     </tr>`;
@@ -5723,10 +5847,11 @@ async function openWorkOrderDetailById(id) {
   openWorkOrderDetail(await res.json());
 }
 
-function initWoSigCanvas() {
-  const canvas = document.getElementById('wo-sig-canvas');
+function initWoSigCanvas(canvasId) {
+  const canvas = document.getElementById(canvasId);
   if (!canvas || canvas._woSigInit) return;
   canvas._woSigInit = true;
+  woSigDrawingState[canvasId] = false;
   const ctx = canvas.getContext('2d');
   ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.lineCap = 'round';
   function pos(e) {
@@ -5734,39 +5859,38 @@ function initWoSigCanvas() {
     const t = e.touches?.[0] || e;
     return { x: (t.clientX - r.left) * (canvas.width / r.width), y: (t.clientY - r.top) * (canvas.height / r.height) };
   }
-  canvas.onmousedown = e => { woSigDrawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
-  canvas.onmousemove = e => { if (!woSigDrawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
-  canvas.onmouseup = () => { woSigDrawing = false; };
-  canvas.onmouseleave = () => { woSigDrawing = false; };
-  canvas.ontouchstart = e => { woSigDrawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
-  canvas.ontouchmove = e => { if (!woSigDrawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
-  canvas.ontouchend = () => { woSigDrawing = false; };
+  canvas.onmousedown = e => { woSigDrawingState[canvasId] = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+  canvas.onmousemove = e => { if (!woSigDrawingState[canvasId]) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+  canvas.onmouseup = () => { woSigDrawingState[canvasId] = false; };
+  canvas.onmouseleave = () => { woSigDrawingState[canvasId] = false; };
+  canvas.ontouchstart = e => { woSigDrawingState[canvasId] = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+  canvas.ontouchmove = e => { if (!woSigDrawingState[canvasId]) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+  canvas.ontouchend = () => { woSigDrawingState[canvasId] = false; };
 }
 
-async function openWorkOrderDetail(wo) {
+async function openWorkOrderDetail(wo, opts = {}) {
+  const { preserveTab = false, preserveModal = false } = opts;
   activeWorkOrder = wo;
-  document.getElementById('wo-detail-title').textContent = wo.title || 'Work Order';
-  document.getElementById('wo-detail-subtitle').textContent = `${wo.uid || ''} · ${wo.status} · ${wo.checklist_done ?? 0}/${wo.checklist_total ?? 0} checklist`;
-  document.getElementById('wo-detail-status').value = wo.status || 'draft';
-  document.getElementById('wo-detail-priority').value = wo.priority || 'normal';
-  document.getElementById('wo-detail-site').value = wo.site_address || '';
-  document.getElementById('wo-detail-description').value = wo.description || '';
-  document.getElementById('wo-link-booking-id').value = wo.booking_id || '';
+  updateWoDetailHeader(wo);
+  populateWoDetailFields(wo);
   renderWoTimelog(wo.time_entries || []);
   renderWoPhotos(wo.attachments || []);
   renderWoChecklist(wo.checklist || []);
   renderWoParts(wo.line_items || [], wo.parts_subtotal);
   renderWoSignatures(wo.signatures || []);
   renderWoLinks(wo);
-  switchWoTab('overview');
-  initWoSigCanvas();
-  openModal('wo-detail-modal');
+  if (!preserveTab) activeWoTab = 'overview';
+  switchWoTab(activeWoTab);
+  initWoSigCanvas('wo-sig-canvas');
+  initWoSigCanvas('wo-customer-sig-canvas');
+  await populateWoAssigneeSelect(wo);
+  if (!preserveModal) openModal('wo-detail-modal');
 }
 
 async function refreshActiveWorkOrder() {
   if (!activeWorkOrder?.Id) return;
   const res = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}`);
-  if (res?.ok) openWorkOrderDetail(await res.json());
+  if (res?.ok) openWorkOrderDetail(await res.json(), { preserveTab: true, preserveModal: true });
 }
 
 async function updateWorkOrder() {
@@ -5777,9 +5901,14 @@ async function updateWorkOrder() {
     site_address: document.getElementById('wo-detail-site').value.trim(),
     description: document.getElementById('wo-detail-description').value.trim(),
   };
+  if (activeWorkOrder.can_manage) {
+    const assigneeEl = document.getElementById('wo-detail-assignee');
+    if (assigneeEl) body.assignee_id = assigneeEl.value || null;
+  }
   const res = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}`, { method: 'PATCH', body: JSON.stringify(body) });
   if (!res?.ok) return toast('Update failed', 'err');
-  activeWorkOrder = await res.json();
+  const wo = await res.json();
+  openWorkOrderDetail(wo, { preserveTab: true, preserveModal: true });
   toast('Saved', 'ok');
   await loadWorkOrders();
 }
@@ -5799,7 +5928,147 @@ async function woClockOut() { if (!activeWorkOrder?.Id) return; const r = await 
 function renderWoPhotos(atts) {
   const grid = document.getElementById('wo-photos-grid');
   if (!atts.length) { grid.innerHTML = '<p style="color:var(--muted);font-size:13px">No photos yet.</p>'; return; }
-  grid.innerHTML = atts.map(a => `<div><img src="${esc(a.url)}" style="width:100%;border-radius:6px;border:1px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:4px">${esc(a.category)} ${esc(a.caption||'')}</div></div>`).join('');
+  grid.innerHTML = atts.map(a => {
+    const ann = Array.isArray(a.annotations) ? a.annotations : [];
+    const badge = ann.length ? ` · <span style="color:var(--accent)">${ann.length} markup</span>` : '';
+    return `<div style="cursor:pointer" onclick="openWoPhotoMarkupById(${a.Id})" title="Click to annotate">
+      <img src="${esc(a.url)}" style="width:100%;border-radius:6px;border:1px solid var(--border)">
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${esc(a.category)} ${esc(a.caption||'')}${badge}</div>
+    </div>`;
+  }).join('');
+}
+
+let woMarkupAttId = null;
+let woMarkupAnnotations = [];
+let woMarkupDrag = null;
+
+function parseWoAnnotations(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try { return JSON.parse(raw); } catch { return []; }
+}
+
+function drawWoMarkupCanvas(img, canvas, annotations) {
+  const ctx = canvas.getContext('2d');
+  const maxW = Math.min(860, img.naturalWidth || img.width);
+  const scale = maxW / (img.naturalWidth || img.width);
+  canvas.width = maxW;
+  canvas.height = Math.round((img.naturalHeight || img.height) * scale);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  for (const ann of annotations) drawWoMarkupShape(ctx, ann, canvas.width, canvas.height);
+}
+
+function drawWoMarkupShape(ctx, ann, w, h) {
+  const x1 = ann.x1 * w, y1 = ann.y1 * h, x2 = ann.x2 * w, y2 = ann.y2 * h;
+  ctx.strokeStyle = ann.color || '#ff3333';
+  ctx.fillStyle = ann.color || '#ff3333';
+  ctx.lineWidth = 3;
+  if (ann.type === 'line') {
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); return;
+  }
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const head = 14;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - head * Math.cos(angle - 0.4), y2 - head * Math.sin(angle - 0.4));
+  ctx.lineTo(x2 - head * Math.cos(angle + 0.4), y2 - head * Math.sin(angle + 0.4));
+  ctx.closePath(); ctx.fill();
+}
+
+function openWoPhotoMarkupById(attId) {
+  const att = (activeWorkOrder?.attachments || []).find(a => String(a.Id) === String(attId));
+  if (!att) return;
+  woMarkupAttId = att.Id;
+  woMarkupAnnotations = parseWoAnnotations(att.annotations);
+  const modal = document.getElementById('wo-markup-modal');
+  const canvas = document.getElementById('wo-markup-canvas');
+  modal.style.display = 'flex';
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    drawWoMarkupCanvas(img, canvas, woMarkupAnnotations);
+    if (canvas._woMarkupInit) return;
+    canvas._woMarkupInit = true;
+    canvas.onmousedown = e => {
+      const r = canvas.getBoundingClientRect();
+      woMarkupDrag = { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) };
+    };
+    canvas.onmouseup = e => {
+      if (!woMarkupDrag) return;
+      const r = canvas.getBoundingClientRect();
+      const x2 = (e.clientX - r.left) * (canvas.width / r.width);
+      const y2 = (e.clientY - r.top) * (canvas.height / r.height);
+      if (Math.hypot(x2 - woMarkupDrag.x, y2 - woMarkupDrag.y) < 8) { woMarkupDrag = null; return; }
+      woMarkupAnnotations.push({
+        type: 'arrow',
+        x1: woMarkupDrag.x / canvas.width,
+        y1: woMarkupDrag.y / canvas.height,
+        x2: x2 / canvas.width,
+        y2: y2 / canvas.height,
+        color: '#ff3333',
+      });
+      woMarkupDrag = null;
+      drawWoMarkupCanvas(img, canvas, woMarkupAnnotations);
+    };
+    canvas.onmouseleave = () => { woMarkupDrag = null; };
+  };
+  img.src = att.url.startsWith('http') ? att.url : att.url;
+}
+
+function closeWoMarkup() {
+  document.getElementById('wo-markup-modal').style.display = 'none';
+  woMarkupAttId = null;
+  woMarkupAnnotations = [];
+}
+
+function woMarkupUndo() {
+  if (!woMarkupAnnotations.length) return;
+  woMarkupAnnotations.pop();
+  const att = (activeWorkOrder?.attachments || []).find(a => String(a.Id) === String(woMarkupAttId));
+  if (!att) return;
+  const canvas = document.getElementById('wo-markup-canvas');
+  const img = new Image();
+  img.onload = () => drawWoMarkupCanvas(img, canvas, woMarkupAnnotations);
+  img.src = att.url.startsWith('http') ? att.url : att.url;
+}
+
+function woMarkupClear() {
+  woMarkupAnnotations = [];
+  const att = (activeWorkOrder?.attachments || []).find(a => String(a.Id) === String(woMarkupAttId));
+  if (!att) return;
+  const canvas = document.getElementById('wo-markup-canvas');
+  const img = new Image();
+  img.onload = () => drawWoMarkupCanvas(img, canvas, woMarkupAnnotations);
+  img.src = att.url.startsWith('http') ? att.url : att.url;
+}
+
+async function saveWoMarkup() {
+  if (!activeWorkOrder?.Id || !woMarkupAttId) return;
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/attachments/${woMarkupAttId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ annotations: woMarkupAnnotations }),
+  });
+  if (!r?.ok) return toast('Save markup failed', 'err');
+  closeWoMarkup();
+  await refreshActiveWorkOrder();
+  toast('Markup saved', 'ok');
+}
+
+async function woAck(role) {
+  if (!activeWorkOrder?.Id) return;
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/ack`, { method: 'POST', body: JSON.stringify({ role }) });
+  if (!r?.ok) return toast('Ack failed', 'err');
+  await refreshActiveWorkOrder();
+  toast(role === 'dispatch' ? 'Dispatch ack recorded' : 'Field ack recorded', 'ok');
+}
+
+async function woEnRoute() {
+  if (!activeWorkOrder?.Id) return;
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/en-route`, { method: 'POST', body: '{}' });
+  if (!r?.ok) return toast('En route failed', 'err');
+  await refreshActiveWorkOrder();
+  toast('Marked en route — customer portal will update when beacon is active', 'ok');
 }
 
 function renderWoChecklist(items) {
@@ -5846,6 +6115,7 @@ function renderWoSignatures(sigs) {
   el.innerHTML = sigs.map(s => `<div style="margin-bottom:8px"><strong>${esc(s.role)}</strong>: ${esc(s.signer_name)} · ${esc(new Date(s.signed_at).toLocaleString())}<br><img src="${esc(s.image_url)}" style="max-width:200px;margin-top:4px;background:#fff;border-radius:4px"></div>`).join('');
 }
 function woClearSig() { const c = document.getElementById('wo-sig-canvas'); c?.getContext('2d')?.clearRect(0, 0, c.width, c.height); }
+function woClearCustomerSig() { const c = document.getElementById('wo-customer-sig-canvas'); c?.getContext('2d')?.clearRect(0, 0, c.width, c.height); }
 async function submitWoTechSignature() {
   if (!activeWorkOrder?.Id) return;
   const name = document.getElementById('wo-tech-signer-name').value.trim();
@@ -5861,6 +6131,24 @@ async function submitWoTechSignature() {
   woClearSig();
   await refreshActiveWorkOrder();
   toast('Signature saved', 'ok');
+}
+
+async function submitWoCustomerSignature() {
+  if (!activeWorkOrder?.Id) return;
+  const name = document.getElementById('wo-customer-signer-name').value.trim();
+  if (!name) return toast('Enter customer name', 'err');
+  const canvas = document.getElementById('wo-customer-sig-canvas');
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+  const uid = activeWorkOrder.uid;
+  const up = await fetch(`/v1/upload/work-order/${uid}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'image/png' }, body: blob });
+  if (!up.ok) return toast('Upload failed', 'err');
+  const { url } = await up.json();
+  const r = await apiFetch(`/v1/work-orders/${activeWorkOrder.Id}/signatures`, { method: 'POST', body: JSON.stringify({ role: 'customer', signer_name: name, image_url: url }) });
+  if (!r?.ok) return toast('Signature failed', 'err');
+  woClearCustomerSig();
+  document.getElementById('wo-customer-signer-name').value = '';
+  await refreshActiveWorkOrder();
+  toast('Customer signature saved', 'ok');
 }
 
 function renderWoLinks(wo) {

@@ -1,0 +1,146 @@
+import { db } from '../lib/noco.mjs';
+import { tables } from '../lib/tables.mjs';
+import { verifyPassword } from '../lib/password.mjs';
+import { findContactByEmail, resolvePortalIdentity } from '../middleware/portalClient.mjs';
+import { sessionCookie, clearSessionCookie } from '../lib/sessionCookie.mjs';
+import { addDays } from 'date-fns';
+import { nanoid } from 'nanoid';
+
+const PASSWORD_LOGIN_ENABLED = process.env.AUTH_PASSWORD_LOGIN_ENABLED !== 'false';
+const PORTAL_ORG_SLUG = process.env.PORTAL_ORG_SLUG || 'projectseven';
+
+function normalizeLogin(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+async function createSessionForUser(user) {
+  const sessionToken = nanoid(48);
+  const sessionExpiry = addDays(new Date(), 30).toISOString();
+  await db.create(tables.sessions, {
+    token: sessionToken,
+    user_id: String(user.Id),
+    expires_at: sessionExpiry,
+    created_at: new Date().toISOString(),
+  });
+  return sessionToken;
+}
+
+async function loginViaSchedkit(email, password, reply) {
+  const contact = await findContactByEmail(email);
+  if (!contact) return null;
+
+  let user = null;
+  if (contact.user_id) {
+    user = await db.get(tables.users, contact.user_id);
+  }
+  if (!user) {
+    const userResult = await db.find(tables.users, `(email,eq,${email})`);
+    user = userResult.list?.[0];
+    if (user) {
+      await db.update(tables.client_contacts, contact.Id, { user_id: String(user.Id) });
+    }
+  }
+
+  if (!user?.password_hash) return null;
+
+  const valid = await verifyPassword(password, user.password_hash);
+  if (!valid) return null;
+
+  const client = await db.get(tables.clients, contact.client_id);
+  if (!client || client.status === 'inactive') return null;
+
+  const sessionToken = await createSessionForUser(user);
+  reply.header('Set-Cookie', sessionCookie(sessionToken));
+
+  return {
+    authenticated: true,
+    client_id: Number(client.Id ?? client.id),
+    name: contact.name || user.name || '',
+    email: contact.email || user.email,
+  };
+}
+
+export default async function portalAuthRoutes(fastify) {
+  fastify.get('/auth/capabilities', {
+    schema: { tags: ['Portal'], summary: 'Portal auth capabilities' },
+  }, async () => ({
+    passwordLoginEnabled: PASSWORD_LOGIN_ENABLED,
+    orgSlug: PORTAL_ORG_SLUG,
+  }));
+
+  fastify.post('/auth/login', {
+    config: { rateLimit: { max: 20, timeWindow: '15 minutes' } },
+    schema: {
+      tags: ['Portal'],
+      summary: 'Client portal login',
+      body: {
+        type: 'object',
+        required: ['password'],
+        properties: {
+          username: { type: 'string' },
+          email: { type: 'string' },
+          password: { type: 'string' },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    if (!PASSWORD_LOGIN_ENABLED) {
+      return reply.code(403).send({ authenticated: false, error: 'Password login disabled' });
+    }
+
+    const email = normalizeLogin(req.body?.email || req.body?.username);
+    const password = String(req.body?.password || '');
+    if (!email || !password) {
+      return reply.code(401).send({ authenticated: false, error: 'Incorrect username or password.' });
+    }
+
+    const result = await loginViaSchedkit(email, password, reply);
+    if (!result) {
+      return reply.code(401).send({ authenticated: false, error: 'Incorrect username or password.' });
+    }
+
+    return result;
+  });
+
+  fastify.get('/auth/me', {
+    schema: { tags: ['Portal'], summary: 'Portal session check' },
+  }, async (req) => {
+    const cookieHeader = req.headers['cookie'] || '';
+    const match = cookieHeader.match(/sk_session=([^;]+)/);
+    if (!match) return { authenticated: false, client_id: null };
+
+    const result = await db.find(tables.sessions, `(token,eq,${match[1]})`);
+    if (!result.list?.length) return { authenticated: false, client_id: null };
+
+    const session = result.list[0];
+    if (new Date(session.expires_at) < new Date()) return { authenticated: false, client_id: null };
+
+    const user = await db.get(tables.users, session.user_id);
+    if (!user) return { authenticated: false, client_id: null };
+
+    const identity = await resolvePortalIdentity(user);
+    if (!identity) return { authenticated: false, client_id: null };
+
+    return {
+      authenticated: true,
+      client_id: Number(identity.client.Id ?? identity.client.id),
+      name: identity.contact.name || user.name || '',
+      email: identity.contact.email || user.email,
+    };
+  });
+
+  fastify.post('/auth/logout', {
+    schema: { tags: ['Portal'], summary: 'Portal logout' },
+  }, async (req, reply) => {
+    const cookieHeader = req.headers['cookie'] || '';
+    const match = cookieHeader.match(/sk_session=([^;]+)/);
+    if (match) {
+      try {
+        const result = await db.find(tables.sessions, `(token,eq,${match[1]})`);
+        if (result.list?.length) await db.delete(tables.sessions, result.list[0].Id);
+      } catch {}
+    }
+    reply.header('Set-Cookie', clearSessionCookie());
+    return { ok: true, authenticated: false };
+  });
+}

@@ -10,6 +10,11 @@
 // Org scoping: signals are tagged with the sender's active org_id.
 // SSE stream only delivers signals from orgs the viewer is a member of.
 
+import {
+  touchActiveBeacon,
+  clearActiveBeacon,
+  hasActiveBeacon,
+} from '../lib/activeBeacons.mjs';
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireSession } from '../middleware/session.mjs';
@@ -18,20 +23,7 @@ import { requireSession } from '../middleware/session.mjs';
 // Map: orgId (string) → Set of reply objects
 const signalClientsByOrg = new Map();
 
-// ── Active beacon tracking (server-side) ─────────────
-// Map: deviceId (string) → { userId, orgId, firstSeen: ms }
-// Used to detect beacon_on (first ping from device) without a DB read per ping.
-// Cleared on beacon_off or stale prune (>5min since last ping).
-const _activeBeacons = new Map();
-const BEACON_STALE_MS = 5 * 60 * 1000; // 5 minutes
-
-// Prune stale beacons every 2 minutes
-setInterval(() => {
-  const cutoff = Date.now() - BEACON_STALE_MS;
-  for (const [k, v] of _activeBeacons) {
-    if (v.lastSeen < cutoff) _activeBeacons.delete(k);
-  }
-}, 120_000);
+// ── Active beacon tracking — see src/lib/activeBeacons.mjs ─────────────
 
 export function broadcastSignal(orgId, event) {
   const clients = signalClientsByOrg.get(String(orgId));
@@ -119,10 +111,19 @@ export default async function signalsRoutes(fastify) {
     // EXCEPT: first ping from a device writes a beacon_on log entry.
     if (type === 'beacon') {
       const deviceId = (meta && meta.device_id) ? meta.device_id : null;
+      const workOrderId = meta?.work_order_id ? String(meta.work_order_id) : null;
       const beaconKey = deviceId || `user-${req.user.Id}`;
-      const isNew = !_activeBeacons.has(beaconKey);
+      const isNew = !hasActiveBeacon(beaconKey);
 
-      _activeBeacons.set(beaconKey, { userId: req.user.Id, orgId, lastSeen: Date.now() });
+      touchActiveBeacon(beaconKey, {
+        userId: req.user.Id,
+        orgId,
+        lat: lat ?? null,
+        lng: lng ?? null,
+        accuracy: accuracy ?? null,
+        workOrderId,
+        deviceId,
+      });
 
       // First ping — write beacon_on to DB
       if (isNew) {
@@ -286,7 +287,7 @@ export default async function signalsRoutes(fastify) {
     const deviceId = req.body?.device_id || req.query?.device_id || null;
     const beaconKey = deviceId || `user-${req.user.Id}`;
     // Clear active beacon tracker so next start logs beacon_on again
-    _activeBeacons.delete(beaconKey);
+    clearActiveBeacon(beaconKey);
     // Persist beacon_off to DB for audit trail
     let logEntry = null;
     try {

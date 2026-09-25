@@ -290,9 +290,11 @@ export default async function orgsRoutes(fastify) {
       description: 'Change the role of an org member. Requires `admin`.',
       params: { type: 'object', properties: { org_slug: { type: 'string' }, user_id: { type: 'string' } } },
       body: {
-        type: 'object', required: ['role'],
-        properties: { role: { type: 'string', enum: ['admin', 'member'] } },
-        examples: [{ role: 'admin' }],
+        type: 'object',
+        properties: {
+          role: { type: 'string', enum: ['admin', 'member'] },
+          can_manage_work_orders: { type: 'boolean', description: 'Dispatcher: view and assign all unit work orders' },
+        },
       },
       response: { 200: { type: 'object', additionalProperties: true, example: { Id: 19, org_id: '4', user_id: '12', role: 'admin' } } },
     },
@@ -304,7 +306,13 @@ export default async function orgsRoutes(fastify) {
     const mr = await db.find(tables.org_members, `(org_id,eq,${org.Id})~and(user_id,eq,${req.params.user_id})`);
     if (!mr.list?.length) return reply.code(404).send({ error: 'Member not found' });
 
-    const updated = await db.update(tables.org_members, mr.list[0].Id, { role: req.body.role });
+    const patch = {};
+    if (req.body.role !== undefined) patch.role = req.body.role;
+    if (req.body.can_manage_work_orders !== undefined) {
+      patch.can_manage_work_orders = !!req.body.can_manage_work_orders;
+    }
+    if (!Object.keys(patch).length) return reply.code(400).send({ error: 'No changes' });
+    const updated = await db.update(tables.org_members, mr.list[0].Id, patch);
     return updated;
   });
 

@@ -4,6 +4,14 @@ import { createHash } from 'crypto';
 import { db } from '../lib/noco.mjs';
 import { tables } from '../lib/tables.mjs';
 import { userOwnsRow } from '../lib/ownership.mjs';
+import {
+  canAccessWorkOrder,
+  canManageWorkOrder,
+  canManageWorkOrdersInOrg,
+  getAccessibleWorkOrder,
+  listWorkOrdersForUser,
+  resolveAssigneeName,
+} from '../lib/workOrderAuth.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
 import { requireSession } from '../middleware/session.mjs';
 import { nanoid } from 'nanoid';
@@ -37,13 +45,13 @@ function withUrls(wo) {
 }
 
 async function getOwnedWorkOrder(id, user) {
-  const wo = await db.get(tables.work_orders, id);
-  if (!wo || !userOwnsRow(wo, user)) return null;
-  return wo;
+  return getAccessibleWorkOrder(id, user);
 }
 
-async function enrichWorkOrder(wo) {
+async function enrichWorkOrder(wo, user = null) {
   const id = String(rowId(wo));
+  const assignee_name = await resolveAssigneeName(wo.assignee_id);
+  const can_manage = user ? await canManageWorkOrder(user, wo) : undefined;
   const [incidents, timeEntries, checklist, lineItems, attachments, signatures] = await Promise.all([
     db.find(tables.work_order_incidents, `(work_order_id,eq,${id})`, { limit: 100 }).catch(() => ({ list: [] })),
     db.find(tables.work_order_time_entries, `(work_order_id,eq,${id})`, { limit: 200, sort: '-started_at' }).catch(() => ({ list: [] })),
@@ -63,6 +71,8 @@ async function enrichWorkOrder(wo) {
 
   return withUrls({
     ...wo,
+    assignee_name,
+    ...(can_manage !== undefined ? { can_manage } : {}),
     incident_count: (incidents.list || []).length,
     photo_count: (attachments.list || []).length,
     timer_active: activeTimers.length > 0,
@@ -73,13 +83,30 @@ async function enrichWorkOrder(wo) {
     time_entries: timeEntries.list || [],
     checklist: checklist.list || [],
     line_items: lineItems.list || [],
-    attachments: attachments.list || [],
+    attachments: mapAttachments(attachments.list),
     signatures: signatures.list || [],
   });
 }
 
 function calcDurationMinutes(start, end) {
   return Math.max(0, Math.round((new Date(end) - new Date(start)) / 60000));
+}
+
+function parseAnnotations(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function mapAttachments(list) {
+  return (list || []).map(a => ({
+    ...a,
+    annotations: parseAnnotations(a.annotations),
+  }));
 }
 
 export default async function workOrdersRoutes(fastify) {
@@ -96,35 +123,38 @@ export default async function workOrdersRoutes(fastify) {
           status: { type: 'string' },
           priority: { type: 'string' },
           search: { type: 'string' },
+          assignee: { type: 'string', enum: ['me', 'unassigned', 'all'], description: 'Filter by assignment' },
           limit: { type: 'integer', default: 50 },
           page: { type: 'integer', default: 1 },
         },
       },
     },
   }, async (req) => {
-    const { status, priority, limit = 50, page = 1 } = req.query;
-    let where = `(user_id,eq,${req.user.Id})`;
-    if (status) where += `~and(status,eq,${status})`;
-    if (priority) where += `~and(priority,eq,${priority})`;
+    const { status, priority, limit = 50, page = 1, assignee = 'all' } = req.query;
+    const { list, total } = await listWorkOrdersForUser(req.user, { status, priority, limit: 200, page: 1 });
 
-    const result = await db.list(tables.work_orders, {
-      where,
-      limit,
-      offset: (page - 1) * limit,
-      sort: '-updated_at',
-    });
+    let filtered = list;
+    if (assignee === 'me') {
+      filtered = list.filter(wo => String(wo.assignee_id) === String(req.user.Id));
+    } else if (assignee === 'unassigned') {
+      filtered = list.filter(wo => !wo.assignee_id);
+    }
 
-    let list = result.list || [];
     if (req.query.search) {
       const q = String(req.query.search).toLowerCase();
-      list = list.filter(wo =>
+      filtered = filtered.filter(wo =>
         (wo.title || '').toLowerCase().includes(q) ||
         (wo.site_address || '').toLowerCase().includes(q) ||
         (wo.customer_name || '').toLowerCase().includes(q));
     }
 
-    const work_orders = await Promise.all(list.map(async (wo) => {
+    const totalFiltered = filtered.length;
+    const offset = (page - 1) * limit;
+    const pageList = filtered.slice(offset, offset + limit);
+
+    const work_orders = await Promise.all(pageList.map(async (wo) => {
       const id = String(rowId(wo));
+      const assignee_name = await resolveAssigneeName(wo.assignee_id);
       const [incidents, attachments, timeEntries] = await Promise.all([
         db.find(tables.work_order_incidents, `(work_order_id,eq,${id})`, { limit: 1 }).catch(() => ({ list: [] })),
         db.find(tables.work_order_attachments, `(work_order_id,eq,${id})`, { limit: 1 }).catch(() => ({ list: [] })),
@@ -132,13 +162,64 @@ export default async function workOrdersRoutes(fastify) {
       ]);
       return withUrls({
         ...wo,
+        assignee_name,
         incident_count: incidents.pageInfo?.totalRows ?? (incidents.list || []).length,
         photo_count: attachments.pageInfo?.totalRows ?? (attachments.list || []).length,
         timer_active: (timeEntries.list || []).length > 0,
       });
     }));
 
-    return { work_orders, total: result.pageInfo?.totalRows || work_orders.length };
+    return { work_orders, total: totalFiltered };
+  });
+
+  // GET /work-orders/assignees — org members eligible for assignment
+  fastify.get('/work-orders/assignees', {
+    preHandler: requireAuth,
+    schema: {
+      tags: ['Work Orders'],
+      summary: 'List assignable users for an org',
+      security: [{ apiKey: [] }],
+      querystring: {
+        type: 'object',
+        properties: {
+          org_id: { type: 'string' },
+          work_order_id: { type: 'string', description: 'Authorizes via can_manage on this work order' },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    let { org_id: orgId, work_order_id: woId } = req.query;
+    if (woId) {
+      const wo = await getAccessibleWorkOrder(woId, req.user);
+      if (!wo || !(await canManageWorkOrder(req.user, wo))) {
+        return reply.code(403).send({ error: 'Not authorized to assign this work order' });
+      }
+      orgId = wo.org_id || orgId;
+    } else if (orgId && !(await canManageWorkOrdersInOrg(req.user.Id, orgId))) {
+      return reply.code(403).send({ error: 'Not authorized to assign in this org' });
+    }
+    if (!orgId) {
+      return {
+        assignees: [{
+          id: String(req.user.Id),
+          name: req.user.name || req.user.email,
+          email: req.user.email,
+        }],
+      };
+    }
+    const membersResult = await db.find(tables.org_members, `(org_id,eq,${orgId})`, { limit: 200 });
+    const assignees = await Promise.all(
+      (membersResult.list || []).map(async (m) => {
+        const user = await db.get(tables.users, m.user_id);
+        if (!user) return null;
+        return {
+          id: String(user.Id ?? user.id),
+          name: user.name || user.email,
+          email: user.email,
+        };
+      })
+    );
+    return { assignees: assignees.filter(Boolean) };
   });
 
   // POST /work-orders
@@ -164,6 +245,7 @@ export default async function workOrdersRoutes(fastify) {
           customer_name: { type: 'string' },
           customer_email: { type: 'string' },
           org_id: { type: 'string' },
+          assignee_id: { type: 'string', nullable: true },
           lat: { type: 'number' },
           lng: { type: 'number' },
           location_name: { type: 'string' },
@@ -185,7 +267,7 @@ export default async function workOrdersRoutes(fastify) {
     const {
       title, description, site_address, site_notes, status = 'draft', priority = 'normal',
       scheduled_start, scheduled_end, booking_id, customer_name, customer_email, org_id,
-      lat, lng, location_name, checklist = [],
+      assignee_id, lat, lng, location_name, checklist = [],
     } = req.body;
 
     const uid = `wo_${nanoid(12)}`;
@@ -208,6 +290,7 @@ export default async function workOrdersRoutes(fastify) {
       customer_name: customer_name || null,
       customer_email: customer_email || null,
       customer_token,
+      assignee_id: assignee_id || null,
       lat: lat ?? null,
       lng: lng ?? null,
       location_name: location_name ?? null,
@@ -227,7 +310,7 @@ export default async function workOrdersRoutes(fastify) {
       });
     }
 
-    return reply.code(201).send(await enrichWorkOrder(wo));
+    return reply.code(201).send(await enrichWorkOrder(wo, req.user));
   });
 
   // GET /work-orders/:id
@@ -237,7 +320,7 @@ export default async function workOrdersRoutes(fastify) {
   }, async (req, reply) => {
     const wo = await getOwnedWorkOrder(req.params.id, req.user);
     if (!wo) return reply.code(404).send({ error: 'Work order not found' });
-    return enrichWorkOrder(wo);
+    return enrichWorkOrder(wo, req.user);
   });
 
   // PATCH /work-orders/:id
@@ -262,12 +345,18 @@ export default async function workOrdersRoutes(fastify) {
     for (const key of allowed) {
       if (req.body[key] !== undefined) patch[key] = req.body[key];
     }
+    if (req.body.assignee_id !== undefined) {
+      if (!(await canManageWorkOrder(req.user, wo))) {
+        return reply.code(403).send({ error: 'Only dispatchers can change assignee' });
+      }
+      patch.assignee_id = req.body.assignee_id || null;
+    }
     if (patch.status && !WO_STATUSES.includes(patch.status)) {
       return reply.code(400).send({ error: 'Invalid status' });
     }
 
     const updated = await db.update(tables.work_orders, rowId(wo), patch);
-    return enrichWorkOrder(updated);
+    return enrichWorkOrder(updated, req.user);
   });
 
   // DELETE /work-orders/:id
@@ -302,7 +391,7 @@ export default async function workOrdersRoutes(fastify) {
       started_at: now,
     });
     if (result.error) return reply.code(result.code).send({ error: result.error });
-    return enrichWorkOrder(result.wo);
+    return enrichWorkOrder(result.wo, req.user);
   });
 
   fastify.post('/work-orders/:id/pause', {
@@ -311,7 +400,7 @@ export default async function workOrdersRoutes(fastify) {
   }, async (req, reply) => {
     const result = await transitionStatus(req.params.id, req.user, 'on_hold');
     if (result.error) return reply.code(result.code).send({ error: result.error });
-    return enrichWorkOrder(result.wo);
+    return enrichWorkOrder(result.wo, req.user);
   });
 
   fastify.post('/work-orders/:id/complete', {
@@ -323,7 +412,63 @@ export default async function workOrdersRoutes(fastify) {
       completed_at: now,
     });
     if (result.error) return reply.code(result.code).send({ error: result.error });
-    return enrichWorkOrder(result.wo);
+    return enrichWorkOrder(result.wo, req.user);
+  });
+
+  fastify.post('/work-orders/:id/en-route', {
+    preHandler: requireAuth,
+    schema: {
+      tags: ['Work Orders'],
+      summary: 'Mark technician en route (shows on customer portal when beacon active)',
+      security: [{ apiKey: [] }],
+    },
+  }, async (req, reply) => {
+    const wo = await getOwnedWorkOrder(req.params.id, req.user);
+    if (!wo) return reply.code(404).send({ error: 'Work order not found' });
+    const isAssignee = wo.assignee_id && String(wo.assignee_id) === String(req.user.Id);
+    if (!isAssignee && !(await canManageWorkOrder(req.user, wo))) {
+      return reply.code(403).send({ error: 'Only the assignee or dispatch can mark en route' });
+    }
+    const now = new Date().toISOString();
+    const patch = { en_route_at: now, updated_at: now };
+    if (wo.status === 'scheduled' || wo.status === 'draft') patch.status = 'in_progress';
+    const updated = await db.update(tables.work_orders, rowId(wo), patch);
+    return enrichWorkOrder(updated, req.user);
+  });
+
+  fastify.post('/work-orders/:id/ack', {
+    preHandler: requireAuth,
+    schema: {
+      tags: ['Work Orders'],
+      summary: 'Radio/dispatch ack — assignee or dispatcher confirms receipt',
+      security: [{ apiKey: [] }],
+      body: {
+        type: 'object',
+        required: ['role'],
+        properties: {
+          role: { type: 'string', enum: ['assignee', 'dispatch'] },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const wo = await getOwnedWorkOrder(req.params.id, req.user);
+    if (!wo) return reply.code(404).send({ error: 'Work order not found' });
+    const now = new Date().toISOString();
+    const patch = { updated_at: now };
+    if (req.body.role === 'assignee') {
+      const isAssignee = wo.assignee_id && String(wo.assignee_id) === String(req.user.Id);
+      if (!isAssignee && !(await canManageWorkOrder(req.user, wo))) {
+        return reply.code(403).send({ error: 'Only the assignee can ack as field tech' });
+      }
+      patch.assignee_ack_at = now;
+    } else {
+      if (!(await canManageWorkOrder(req.user, wo))) {
+        return reply.code(403).send({ error: 'Only dispatch can ack assignment' });
+      }
+      patch.dispatch_ack_at = now;
+    }
+    const updated = await db.update(tables.work_orders, rowId(wo), patch);
+    return enrichWorkOrder(updated, req.user);
   });
 
   // Incident links
@@ -350,7 +495,7 @@ export default async function workOrdersRoutes(fastify) {
         ticket_id: String(req.body.ticket_id),
       });
     }
-    return enrichWorkOrder(wo);
+    return enrichWorkOrder(wo, req.user);
   });
 
   fastify.delete('/work-orders/:id/incidents/:ticketId', {
@@ -365,7 +510,7 @@ export default async function workOrdersRoutes(fastify) {
     for (const link of links.list || []) {
       await db.delete(tables.work_order_incidents, rowId(link));
     }
-    return enrichWorkOrder(wo);
+    return enrichWorkOrder(wo, req.user);
   });
 
   // Booking link
@@ -393,7 +538,7 @@ export default async function workOrdersRoutes(fastify) {
       booking_id: bookingId || null,
       updated_at: new Date().toISOString(),
     });
-    return enrichWorkOrder(updated);
+    return enrichWorkOrder(updated, req.user);
   });
 
   // Time entries
@@ -755,7 +900,55 @@ export default async function workOrdersRoutes(fastify) {
       category,
       uploaded_by: String(req.user.Id),
     });
-    return reply.code(201).send(att);
+    return reply.code(201).send({ ...att, annotations: [] });
+  });
+
+  fastify.patch('/work-orders/:id/attachments/:attId', {
+    preHandler: requireAuth,
+    schema: {
+      tags: ['Work Orders'],
+      summary: 'Update attachment caption or photo markup',
+      security: [{ apiKey: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          caption: { type: 'string' },
+          category: { type: 'string', enum: ATTACHMENT_CATEGORIES },
+          annotations: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                type: { type: 'string', enum: ['arrow', 'line'] },
+                x1: { type: 'number' },
+                y1: { type: 'number' },
+                x2: { type: 'number' },
+                y2: { type: 'number' },
+                color: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const wo = await getOwnedWorkOrder(req.params.id, req.user);
+    if (!wo) return reply.code(404).send({ error: 'Work order not found' });
+    const att = await db.get(tables.work_order_attachments, req.params.attId);
+    if (!att || String(att.work_order_id) !== String(rowId(wo))) {
+      return reply.code(404).send({ error: 'Attachment not found' });
+    }
+    const patch = {};
+    if (req.body.caption !== undefined) patch.caption = req.body.caption;
+    if (req.body.category !== undefined) {
+      patch.category = ATTACHMENT_CATEGORIES.includes(req.body.category) ? req.body.category : att.category;
+    }
+    if (req.body.annotations !== undefined) {
+      patch.annotations = JSON.stringify(req.body.annotations || []);
+    }
+    if (!Object.keys(patch).length) return reply.code(400).send({ error: 'No changes' });
+    const updated = await db.update(tables.work_order_attachments, rowId(att), patch);
+    return { ...updated, annotations: parseAnnotations(updated.annotations) };
   });
 
   fastify.delete('/work-orders/:id/attachments/:attId', {

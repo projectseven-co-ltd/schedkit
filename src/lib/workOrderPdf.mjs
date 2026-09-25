@@ -4,6 +4,7 @@ import PDFDocument from 'pdfkit';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { renderAttachmentWithMarkup, parseAnnotations as parseAnnotationsForPdf } from './workOrderPhotoMarkup.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '../../public');
@@ -137,11 +138,15 @@ export async function generateWorkOrderPdf(wo, baseUrl = 'https://schedkit.net')
       const photos = (wo.attachments || []).slice(0, MAX_PHOTOS);
       if (!photos.length) doc.text('No photos attached.');
       for (const att of photos) {
-        doc.text(`${att.category || 'other'}: ${att.caption || att.filename || att.url}`);
+        const hasMarkup = parseAnnotationsForPdf(att.annotations).length > 0;
+        doc.text(`${att.category || 'other'}: ${att.caption || att.filename || att.url}${hasMarkup ? ' (annotated)' : ''}`);
         doc.text(att.url.startsWith('http') ? att.url : `${baseUrl}${att.url}`, { link: att.url.startsWith('http') ? att.url : `${baseUrl}${att.url}`, underline: true });
-        const img = await loadImageBuffer(att.url, baseUrl);
+        let img = await loadImageBuffer(att.url, baseUrl);
         if (img) {
-          try { doc.image(img, { fit: [200, 150] }); } catch {}
+          try {
+            img = await renderAttachmentWithMarkup(img, att.annotations);
+            doc.image(img, { fit: [200, 150] });
+          } catch {}
         }
         doc.moveDown(0.5);
       }
