@@ -95,7 +95,10 @@ function ghostBtn(url, text) {
 
 async function send(to_email, to_name, subject, html, text, fromName) {
   const mj = mailjet();
-  if (!mj) return;
+  if (!mj) {
+    console.warn(`Email delivery disabled; missing Mailjet credentials for "${subject}" to ${to_email}`);
+    return;
+  }
   await mj.post('send', { version: 'v3.1' }).request({
     Messages: [{
       From: { Email: FROM_EMAIL, Name: fromName || FROM_NAME },

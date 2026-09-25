@@ -189,15 +189,23 @@ form.addEventListener('submit', async e => {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ email: emailInput.value, next: _isUpgrade ? _nextUrl : undefined }),
     });
-    if (!res.ok) throw new Error();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const message = res.status === 429
+        ? 'Too many login attempts. Wait a minute and try again.'
+        : data.error === 'email_delivery_failed'
+          ? 'Email delivery is temporarily unavailable. Try again later.'
+          : 'Something went wrong. Try again.';
+      throw new Error(message);
+    }
     ok.textContent = '✓ Check your email — use the magic link or enter the 6-digit code below.';
     ok.style.display = 'block';
     form.style.display = 'none';
     codeForm.style.display = 'block';
     introCopy.textContent = 'Magic link sent. If the link opens outside the app, enter the 6-digit code from the email here.';
     codeInput.focus();
-  } catch {
-    err.textContent = 'Something went wrong. Try again.';
+  } catch (e) {
+    err.textContent = e.message || 'Something went wrong. Try again.';
     err.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Send magic link →';
   }

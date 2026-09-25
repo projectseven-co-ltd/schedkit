@@ -1,6 +1,7 @@
 import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requirePlatformAdmin } from '../middleware/platformAdmin.mjs';
+import { applyUserEntitlements } from '../lib/entitlements.mjs';
 
 const PLANS = new Set(['free', 'starter', 'agency', 'enterprise']);
 
@@ -14,7 +15,7 @@ export default async function adminRoutes(fastify) {
     },
   }, async () => {
     const result = await db.list(tables.users, { limit: 500, sort: '-created_at' });
-    const users = (result.list || []).map(u => ({
+    const users = (result.list || []).map(u => applyUserEntitlements(u)).map(u => ({
       Id: u.Id,
       name: u.name || '',
       email: u.email || '',
@@ -71,7 +72,7 @@ export default async function adminRoutes(fastify) {
 
     if (!Object.keys(updates).length) return reply.code(400).send({ error: 'No updates' });
 
-    const updated = await db.update(tables.users, existing.Id, updates);
+    const updated = applyUserEntitlements(await db.update(tables.users, existing.Id, updates));
     return {
       Id: updated.Id,
       name: updated.name || '',

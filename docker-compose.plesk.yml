@@ -9,6 +9,8 @@
 #
 # Portainer: use a dedicated env block per stack. If you copy SF env vars into
 # SchedKit, CLIENT_PORT=3000 will hijack the bind and fail against SF.
+# Do not set DATABASE_URL to the local dev value (localhost:5433); use
+# SCHEDKIT_DATABASE_URL only when pointing at an external Postgres server.
 #
 # Plesk proxy schedkit.net → localhost:3002
 # Maintenance page (502/503 during restarts): deploy/plesk/README.md
@@ -51,10 +53,11 @@ services:
         required: false
     environment:
       PORT: 3000
-      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-schedkit}:${POSTGRES_PASSWORD:-change-me-strong}@postgres:5432/${POSTGRES_DB:-schedkit}?sslmode=disable}
+      DATABASE_URL: ${SCHEDKIT_DATABASE_URL:-postgres://${POSTGRES_USER:-schedkit}:${POSTGRES_PASSWORD:-change-me-strong}@postgres:5432/${POSTGRES_DB:-schedkit}?sslmode=disable}
       BASE_DOMAIN: ${BASE_DOMAIN:-schedkit.net}
       API_SECRET:
       PLATFORM_ADMIN_EMAILS:
+      ENTERPRISE_EMAILS:
       MJ_APIKEY_PUBLIC:
       MJ_APIKEY_PRIVATE:
       MJ_FROM_EMAIL:
