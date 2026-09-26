@@ -270,47 +270,59 @@ export default async function workOrdersRoutes(fastify) {
       assignee_id, lat, lng, location_name, checklist = [],
     } = req.body;
 
+    const userId = rowId(req.user);
+    if (!userId) return reply.code(401).send({ error: 'User not authenticated' });
+
     const uid = `wo_${nanoid(12)}`;
     const customer_token = nanoid(24);
     const now = new Date().toISOString();
 
-    const wo = await db.create(tables.work_orders, {
-      uid,
-      user_id: req.user.Id,
-      org_id: org_id || null,
-      title,
-      description: description || '',
-      site_address: site_address || '',
-      site_notes: site_notes || '',
-      status,
-      priority,
-      scheduled_start: scheduled_start || null,
-      scheduled_end: scheduled_end || null,
-      booking_id: booking_id || null,
-      customer_name: customer_name || null,
-      customer_email: customer_email || null,
-      customer_token,
-      assignee_id: assignee_id || null,
-      lat: lat ?? null,
-      lng: lng ?? null,
-      location_name: location_name ?? null,
-      created_at: now,
-      updated_at: now,
-    });
+    try {
+      const wo = await db.create(tables.work_orders, {
+        uid,
+        user_id: String(userId),
+        org_id: org_id || null,
+        title,
+        description: description || '',
+        site_address: site_address || '',
+        site_notes: site_notes || '',
+        status,
+        priority,
+        scheduled_start: scheduled_start || null,
+        scheduled_end: scheduled_end || null,
+        booking_id: booking_id || null,
+        customer_name: customer_name || null,
+        customer_email: customer_email || null,
+        customer_token,
+        assignee_id: assignee_id || null,
+        lat: lat ?? null,
+        lng: lng ?? null,
+        location_name: location_name ?? null,
+        created_at: now,
+        updated_at: now,
+      });
 
-    const woId = String(rowId(wo));
-    for (let i = 0; i < checklist.length; i++) {
-      const item = checklist[i];
-      if (!item?.label) continue;
-      await db.create(tables.work_order_checklist_items, {
-        work_order_id: woId,
-        label: item.label,
-        sort_order: item.sort_order ?? i,
-        required: !!item.required,
+      const woId = String(rowId(wo));
+      for (let i = 0; i < checklist.length; i++) {
+        const item = checklist[i];
+        if (!item?.label) continue;
+        await db.create(tables.work_order_checklist_items, {
+          work_order_id: woId,
+          label: item.label,
+          sort_order: item.sort_order ?? i,
+          required: !!item.required,
+        });
+      }
+
+      return reply.code(201).send(await enrichWorkOrder(wo, req.user));
+    } catch (err) {
+      req.log.error({ err }, 'work order create failed');
+      return reply.code(500).send({
+        error: 'Failed to create work order',
+        code: err.code || 'work_order_create_failed',
+        detail: err.message,
       });
     }
-
-    return reply.code(201).send(await enrichWorkOrder(wo, req.user));
   });
 
   // GET /work-orders/:id

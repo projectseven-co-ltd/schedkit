@@ -1753,6 +1753,15 @@ async function apiFetch(path, opts = {}) {
   return res;
 }
 
+async function apiErrorMessage(res, fallback) {
+  try {
+    const body = await res.clone().json();
+    return body.detail || body.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // Settings tab clones section HTML into #kit-tab-content — scope queries to the visible panel.
 function getKitRoot() {
   const kit = document.getElementById('section-kit');
@@ -5833,7 +5842,7 @@ async function saveWorkOrder() {
   if (bookingId) body.booking_id = bookingId;
   if (!body.title) return toast('Title required', 'err');
   const res = await apiFetch('/v1/work-orders', { method: 'POST', body: JSON.stringify(body) });
-  if (!res?.ok) return toast('Failed to create work order', 'err');
+  if (!res?.ok) return toast(await apiErrorMessage(res, 'Failed to create work order'), 'err');
   closeModal('wo-modal');
   toast('Work order created', 'ok');
   await loadWorkOrders();
