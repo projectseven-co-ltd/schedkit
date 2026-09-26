@@ -2,7 +2,7 @@
 // Magic link via customer_token. No auth required.
 // Tickets and incidents are the same object — this is the public view of a ticket/incident.
 
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { broadcastPublic } from './incidents.mjs';
 

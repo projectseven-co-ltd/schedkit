@@ -1,30 +1,16 @@
-import { db as nocoDb, meta as nocoMeta } from './nocoClient.mjs';
 import { db as pgDb, runMigrations as pgRunMigrations } from '../db/postgres.mjs';
-import { tables, initPostgresTables, loadNocoTableIds } from './tables.mjs';
-import { ensureSchema } from './schema.mjs';
+import { tables, initPostgresTables } from './tables.mjs';
 import { bootstrapPortal } from './portalBootstrap.mjs';
 
-export const usePostgres = Boolean(process.env.DATABASE_URL);
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is required. SchedKit uses Postgres only.');
+}
 
-export const db = usePostgres ? pgDb : nocoDb;
-
-export const meta = usePostgres
-  ? {
-      getTables: async () => ({ list: [] }),
-      createTable: async () => {},
-    }
-  : nocoMeta;
+export const db = pgDb;
 
 export async function initDb() {
-  if (usePostgres) {
-    initPostgresTables();
-    await pgRunMigrations();
-    await bootstrapPortal();
-    console.log('Postgres ready. Tables:', Object.keys(tables).join(', '));
-    return;
-  }
-
-  await ensureSchema();
-  await loadNocoTableIds();
-  console.log('NocoDB ready. Tables loaded:', Object.keys(tables).join(', '));
+  initPostgresTables();
+  await pgRunMigrations();
+  await bootstrapPortal();
+  console.log('Postgres ready. Tables:', Object.keys(tables).join(', '));
 }

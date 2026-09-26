@@ -1,6 +1,6 @@
 // src/routes/teamBookingPage.mjs — Team manifest page + assignment creation
 
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { nanoid } from 'nanoid';
 import { addMinutes, parseISO } from 'date-fns';

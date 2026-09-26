@@ -134,7 +134,7 @@ Interactive docs: `https://schedkit.net/docs`
 
 ## Tickets / Incidents
 
-Tickets and incidents are the **same object** — every record is accessible via both `/v1/tickets` (async/helpdesk) and the real-time `/v1/incidents` layer. Same NocoDB row, same ID, same fields.
+Tickets and incidents are the **same object** — every record is accessible via both `/v1/tickets` (async/helpdesk) and the real-time `/v1/incidents` layer. Same Postgres row, same ID, same fields.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|

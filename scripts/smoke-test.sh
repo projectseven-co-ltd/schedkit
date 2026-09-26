@@ -72,11 +72,8 @@ else
 fi
 
 # ── Auth/me with real session ──────────────────────
-# Get a fresh session token for jrj@p7n.net from NocoDB
-SESSION_TOKEN=$(curl -s \
-  "https://noco.app.p7n.net/api/v1/db/data/noco/pdrfbzgtno2cf9l/mv8osg9vdm7r13s?sort=-Id&limit=1&where=(user_id,eq,1)" \
-  -H "xc-token: fDhJb1s9aK8yQsj99iSt6DOe9o518yGAwAdwezn1" | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); print(d['list'][0]['token'])" 2>/dev/null)
+# Export SK_SESSION_TOKEN to run authenticated checks.
+SESSION_TOKEN=${SK_SESSION_TOKEN:-}
 
 if [[ -n "$SESSION_TOKEN" ]]; then
   info "Auth — /v1/auth/me (authenticated)"
@@ -126,7 +123,7 @@ if [[ -n "$SESSION_TOKEN" ]]; then
   fi
 
 else
-  fail "Could not get session token from NocoDB — skipping authenticated tests"
+  info "SK_SESSION_TOKEN not set — skipping authenticated tests"
 fi
 
 # ── Public booking page ──────────────────────────

@@ -2,7 +2,7 @@
 
 import { addMinutes, format, parseISO, getDay } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
-import { db } from './noco.mjs';
+import { db } from './db.mjs';
 import { tables } from './tables.mjs';
 import { getValidToken } from './googleCalendar.mjs';
 

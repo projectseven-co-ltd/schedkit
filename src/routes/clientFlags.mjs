@@ -4,7 +4,7 @@
 // POST   /v1/clients/:email/flag      create or update flag
 // DELETE /v1/clients/:email/flag      remove flag
 
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireSession as requireAuth } from '../middleware/session.mjs';
 

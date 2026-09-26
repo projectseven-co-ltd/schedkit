@@ -1,4 +1,4 @@
-import { db } from './noco.mjs';
+import { db } from './db.mjs';
 import { tables } from './tables.mjs';
 import { findContactByEmail } from '../middleware/portalClient.mjs';
 import { assignPublicCode } from './portalFormat.mjs';

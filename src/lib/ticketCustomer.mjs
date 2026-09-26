@@ -1,4 +1,4 @@
-import { db } from './noco.mjs';
+import { db } from './db.mjs';
 import { tables } from './tables.mjs';
 import { findContactByUserId } from '../middleware/portalClient.mjs';
 import { sendTicketReply, sendTicketStatusChanged } from './mailer.mjs';

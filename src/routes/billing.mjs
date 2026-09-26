@@ -1,6 +1,6 @@
 // src/routes/billing.mjs — Stripe billing: Subscribe, Customer Portal, Webhook
 import Stripe from 'stripe';
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireSession } from '../middleware/session.mjs';
 

@@ -4,7 +4,7 @@ import { requireSession } from '../middleware/session.mjs';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { canAccessWorkOrder } from '../lib/workOrderAuth.mjs';
 

@@ -1,6 +1,6 @@
 // src/routes/teamSlots.mjs — Slot availability for team event types
 
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 
 function addMins(date, mins) {

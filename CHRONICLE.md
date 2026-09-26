@@ -6,7 +6,7 @@
 
 ## Decisions
 
-- NocoDB is the database layer — all data stored in NocoDB tables at noco.app.p7n.net. No raw SQL, no ORM. _(trust: low 50)_
+- Postgres is the database layer. Schema changes are managed with SQL migrations. _(trust: high 90)_
 - GitOps is the only deploy method — git push origin main triggers Plesk webhook which runs deploy.sh. No scp, rsync, or manual pm2 ever. _(trust: low 50)_
 - Node.js + Fastify with ESM modules — all route files use .mjs extension. _(trust: low 50)_
 - pm2 restart (not reload) for deploys — restart re-reads .git-sha and env vars. reload does not. _(trust: low 50)_
@@ -18,7 +18,7 @@
 - Hardware layer: ESP32 devices with LED strip and relay GPIO, polling SchedKit alerts API directly. _(trust: low 50)_
 - feat: Alerts API (/v1/alerts) + Signals dashboard page
 
-- New NocoDB alerts table (m00769mnao3ujmr)
+- New Postgres alerts table
 - POST /v1/alerts — fire alert (info/warning/critical)
 - GET /v1/alerts — list with status/severity filters
 - GET /v1/alerts/:id — single alert
@@ -46,8 +46,8 @@
 - Today signals count fetches /v1/signals and filters by date client-side
 - Beacon label: handles meta as string or object, falls back to user_id
 - Beacon count tile updates live on beacon SSE events _(trust: low 50)_
-- CROSS firmware v4.0+ polls SchedKit GET /v1/alerts?status=firing every 30s. Each alert triggers LED pulse, then PATCHed to acked. No direct NocoDB queries dependency. _(trust: low 50)_
-- CROSS hardware: ESP32 devices, RGB LED strip (common anode or WS2812), GPIO 16/17/18 for R/G/B. Crosses table in NocoDB: mqbvkiidtv2xl99. OTA via GitHub releases (cross.bin). _(trust: low 50)_
+- CROSS firmware v4.0+ polls SchedKit GET /v1/alerts?status=firing every 30s. Each alert triggers LED pulse, then PATCHed to acked. No direct database queries dependency. _(trust: low 50)_
+- CROSS hardware: ESP32 devices, RGB LED strip (common anode or WS2812), GPIO 16/17/18 for R/G/B. Crosses are stored in Postgres. OTA via GitHub releases (cross.bin). _(trust: low 50)_
 - chore: add crosses table ID, lore spells for CROSS hardware _(trust: low 50)_
 - fix: lights IIFE missing closing })(); + add openSchedKitDemo function _(trust: low 50)_
 - fix: flip board race condition - cancel delay timers on flipTo, guard isConnected in scrambleSlot _(trust: low 50)_

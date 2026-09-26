@@ -14,7 +14,7 @@
 //   DELETE /v1/alerts/:id   — hard delete (admin / cleanup)
 //   GET  /v1/alerts/stream  — SSE stream of live alert events
 
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { userOwnsRow } from '../lib/ownership.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';

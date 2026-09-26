@@ -1,7 +1,7 @@
 // src/routes/workOrderStatus.mjs — Customer-facing work order portal
 
 import { createHash } from 'crypto';
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { getActiveBeaconForUser, getActiveBeaconForWorkOrder } from '../lib/activeBeacons.mjs';
 import { generateWorkOrderPdf } from '../lib/workOrderPdf.mjs';

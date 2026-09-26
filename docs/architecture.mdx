@@ -60,7 +60,7 @@ Beacons are the continuous-tracking variant of signals. An active beacon:
 2. Broadcasts live position to org SSE subscribers on every subsequent ping (no DB write)
 3. Writes `beacon_off` when stopped, clearing the operator from the live map
 
-The beacon fast-path was a deliberate design decision: GPS pings in field ops can be 1–5 second intervals. Writing every ping to NocoDB would crush performance.
+The beacon fast-path was a deliberate design decision: GPS pings in field ops can be 1–5 second intervals. Writing every ping to Postgres would add unnecessary load.
 
 ### Incidents / Tickets
 
@@ -116,8 +116,8 @@ All signals, incidents, and bookings are scoped to an org. SSE streams filter by
 | Layer | Technology |
 |-------|-----------|
 | API server | [Fastify](https://fastify.dev) (Node.js 22) — ESM, plugin-based |
-| Database | [NocoDB](https://nocodb.com) — REST meta-API over a SQL base |
-| Auth | Magic link + 6-digit code — no passwords, sessions in NocoDB |
+| Database | Postgres — SQL schema managed by migrations |
+| Auth | Magic link + 6-digit code — no passwords, sessions in Postgres |
 | Email | [Mailjet](https://mailjet.com) — transactional confirmation, invite, and SLA emails |
 | Push | Web Push API (VAPID) via `web-push` npm package |
 | Real-time | Server-Sent Events (SSE) — org-scoped, Nginx-buffered off |
@@ -190,7 +190,7 @@ Sensor / Alert System
 POST /v1/tickets
   { title, priority: "urgent", source: "alert", lat, lng }
        │
-       ├──→ Write to NocoDB (tickets table)
+       ├──→ Write to Postgres (tickets table)
        ├──→ SSE broadcast: incident.created → all war-room clients
        ├──→ Push notification → user's registered browsers
        └──→ ntfy.sh alert → user's phone

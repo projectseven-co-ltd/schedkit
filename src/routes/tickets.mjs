@@ -1,13 +1,13 @@
 // src/routes/tickets.mjs — Ticketing / Incident API
 //
-// Tickets and incidents are the SAME object in the same NocoDB table.
+// Tickets and incidents are the SAME object in the same Postgres table.
 // /v1/tickets and /v1/incidents operate on identical records — no separate table.
 // The "incidents" routes add a real-time layer (SSE, responders, replies) on top.
 // Use /v1/tickets for helpdesk/ITSM flows. Use /v1/incidents + SSE for dispatch/ops flows.
 // The `source` field (api/email/webhook/alert) and `priority` together imply context.
 // Neither endpoint enforces a use case on the caller.
 
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { userOwnsRow } from '../lib/ownership.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
@@ -55,7 +55,7 @@ async function tryNtfy(title, message, priority = 'default') {
 
 async function tryUserNtfy(userId, title, description, priority, source) {
   try {
-    const { db: ntfyDb } = await import('../lib/noco.mjs');
+    const { db: ntfyDb } = await import('../lib/db.mjs');
     const { tables: ntfyTables } = await import('../lib/tables.mjs');
     const user = await ntfyDb.get(ntfyTables.users, userId);
     const topic = user?.ntfy_topic?.trim();
@@ -75,7 +75,7 @@ async function tryUserNtfy(userId, title, description, priority, source) {
 }
 
 const UNIFIED_DESCRIPTION = `
-**Tickets and incidents are the same object.** Every record in this table is accessible via both \`/v1/tickets\` and the real-time \`/v1/incidents\` layer — same NocoDB row, same ID, same fields. No data is duplicated.
+**Tickets and incidents are the same object.** Every record in this table is accessible via both \`/v1/tickets\` and the real-time \`/v1/incidents\` layer — same Postgres row, same ID, same fields. No data is duplicated.
 
 - Use \`/v1/tickets\` for helpdesk, ITSM, or async workflows
 - Use \`/v1/incidents\` + SSE for real-time dispatch, ops war rooms, or alert routing

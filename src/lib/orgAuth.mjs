@@ -1,6 +1,6 @@
 // src/lib/orgAuth.mjs — Org API key middleware
 
-import { db } from './noco.mjs';
+import { db } from './db.mjs';
 import { tables } from './tables.mjs';
 import { getSessionUser } from '../middleware/session.mjs';
 

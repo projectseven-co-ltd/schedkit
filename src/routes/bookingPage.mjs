@@ -1,7 +1,7 @@
 // Serves the public manifest (assignment request) page UI
 // GET /assign/:username/:event_slug  (legacy /book/ redirects here)
 
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 
 export default async function bookingPageRoutes(fastify) {

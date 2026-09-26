@@ -1,4 +1,4 @@
--- SchedKit initial schema (Postgres migration off NocoDB)
+-- SchedKit initial Postgres schema
 
 CREATE TABLE IF NOT EXISTS schema_migrations (
   name TEXT PRIMARY KEY,

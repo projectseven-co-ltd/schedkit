@@ -12,7 +12,7 @@ SchedKit runs as a single Fastify service with opinionated dependencies. This pa
 | Layer | Tech | Notes |
 |------|------|-------|
 | HTTP/API | **Fastify** (Node.js 22, ESM) | All endpoints live in `src/routes`. Swagger + Mintlify docs stay in sync with runtime schemas. |
-| Data | **NocoDB** (REST over Postgres) | Every table (orgs, tickets, bookings, signals) is defined in `lib/tables.mjs`. No ORM — just NocoDB REST calls. |
+| Data | **Postgres** | SQL migrations define the schema; `lib/tables.mjs` maps logical names to table names. |
 | Messaging | **Mailjet** | Transactional email for bookings, tickets, invites. From name/subject are org-configurable. |
 | Push | **Web Push API** + **ntfy.sh** | Browsers get VAPID push; phones get ntfy alerts for urgent/alert-sourced tickets. |
 | Real-time | **Server-Sent Events** | `/v1/incidents/stream`, `/v1/signals/stream`, `/v1/war-room` broadcast org-scoped JSON frames. |
@@ -42,7 +42,7 @@ Ticket Created → mailer.mjs
    v
 POST /v1/signals or /v1/tickets
    |
-   ├─ Write row in NocoDB (signals or tickets table)
+      ├─ Write row in Postgres (signals or tickets table)
    ├─ Broadcast over SSE (org members only)
    ├─ Push + ntfy fan-out
    └─ Optional auto-booking:

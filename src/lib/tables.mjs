@@ -1,8 +1,8 @@
-// Table name registry — NocoDB IDs at runtime, or Postgres table names when DATABASE_URL is set.
+// Table name registry for the Postgres adapter.
 
 export const tables = {};
 
-const POSTGRES_TABLES = {
+const TABLES = {
   users: 'users',
   event_types: 'event_types',
   availability: 'availability',
@@ -38,33 +38,8 @@ const POSTGRES_TABLES = {
   work_order_signatures: 'work_order_signatures',
 };
 
-// NocoDB fallback IDs (used until DATABASE_URL cutover)
-const NOCO_FALLBACK_IDS = {
-  tickets: 'mh3shq07jve4boh',
-  ticket_responders: 'mvmka9czpxr135k',
-  ticket_replies: 'mrnbdc0zi78ki2l',
-  pushSubscriptions: 'mbvs3axseplv86g',
-  signals: 'm21ubw2908iz01s',
-  alerts: 'm00769mnao3ujmr',
-  crosses: 'mqbvkiidtv2xl99',
-  org_members: 'mga9c2ltkvdo2iz',
-  organizations: 'mdtcor4xjn6a11d',
-  leads: 'm7cck1nc79fliq7',
-};
-
 export function initPostgresTables() {
-  for (const [key, name] of Object.entries(POSTGRES_TABLES)) {
+  for (const [key, name] of Object.entries(TABLES)) {
     tables[key] = name;
-  }
-}
-
-export async function loadNocoTableIds() {
-  const { meta } = await import('./nocoClient.mjs');
-  const tableList = await meta.getTables();
-  for (const t of tableList.list) {
-    tables[t.title] = t.id;
-  }
-  for (const [key, id] of Object.entries(NOCO_FALLBACK_IDS)) {
-    if (!tables[key]) tables[key] = id;
   }
 }

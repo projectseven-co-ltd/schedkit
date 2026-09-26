@@ -1,11 +1,11 @@
 // src/routes/push.mjs — Web Push (VAPID) subscription management
 //
-// Stores push subscriptions per user in NocoDB.
+// Stores push subscriptions per user in Postgres.
 // On key events (assignment confirmed, incident created, SLA breach),
 // other routes call sendPushToUser() to deliver a native push notification.
 
 import webpush from 'web-push';
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireSession } from '../middleware/session.mjs';
 

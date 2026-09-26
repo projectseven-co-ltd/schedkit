@@ -1,6 +1,6 @@
 // Work order access: owner, assignee, org dispatchers (admin / can_manage_work_orders)
 
-import { db } from './noco.mjs';
+import { db } from './db.mjs';
 import { tables } from './tables.mjs';
 import { userOwnsRow } from './ownership.mjs';
 

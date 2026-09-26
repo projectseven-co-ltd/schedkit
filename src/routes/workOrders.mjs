@@ -1,7 +1,7 @@
 // src/routes/workOrders.mjs — Work Orders API (field job documentation)
 
 import { createHash } from 'crypto';
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { userOwnsRow } from '../lib/ownership.mjs';
 import {

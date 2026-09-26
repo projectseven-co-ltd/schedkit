@@ -1,4 +1,4 @@
-import { db } from './noco.mjs';
+import { db } from './db.mjs';
 import { tables } from './tables.mjs';
 import { nanoid } from 'nanoid';
 

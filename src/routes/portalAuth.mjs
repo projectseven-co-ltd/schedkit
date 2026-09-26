@@ -1,4 +1,4 @@
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { verifyPassword } from '../lib/password.mjs';
 import { findContactByEmail, resolvePortalIdentity } from '../middleware/portalClient.mjs';

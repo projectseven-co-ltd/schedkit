@@ -1150,6 +1150,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="form-row"><label>Description</label><textarea id="wo-description" placeholder="Scope of work, access notes…"></textarea></div>
     <input type="hidden" id="wo-booking-id">
+    <div id="wo-create-error" style="display:none;margin:12px 0;padding:10px 12px;border:1px solid rgba(239,68,68,0.45);background:rgba(239,68,68,0.12);color:#fecaca;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-word"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('wo-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveWorkOrder()">Create</button>
@@ -2480,7 +2481,7 @@ async function loadSignalStats() {
     // Beacon count from live tracker (same source as SITREP)
     if (be) be.textContent = Object.keys(window._liveBeacons || {}).length || '0';
 
-    // Today's signal count — filter in JS (NocoDB no datetime filter)
+    // Today's signal count — filter in JS for consistent date handling.
     if (te && signals?.signals) {
       const todayStart = new Date(); todayStart.setHours(0,0,0,0);
       const todayCount = signals.signals.filter(s => {
@@ -5806,6 +5807,7 @@ function renderWorkOrdersTable(list) {
 }
 
 function openWorkOrderModal(prefill = {}) {
+  setWorkOrderCreateError('');
   document.getElementById('wo-title').value = prefill.title || '';
   document.getElementById('wo-priority').value = prefill.priority || 'normal';
   document.getElementById('wo-status').value = prefill.status || 'draft';
@@ -5815,6 +5817,18 @@ function openWorkOrderModal(prefill = {}) {
   document.getElementById('wo-description').value = prefill.description || '';
   document.getElementById('wo-booking-id').value = prefill.booking_id || '';
   openModal('wo-modal');
+}
+
+function setWorkOrderCreateError(message) {
+  const el = document.getElementById('wo-create-error');
+  if (!el) return;
+  if (!message) {
+    el.style.display = 'none';
+    el.textContent = '';
+    return;
+  }
+  el.textContent = message;
+  el.style.display = 'block';
 }
 
 async function createWorkOrderFromAssignment(booking) {
@@ -5840,9 +5854,17 @@ async function saveWorkOrder() {
   };
   const bookingId = document.getElementById('wo-booking-id').value;
   if (bookingId) body.booking_id = bookingId;
-  if (!body.title) return toast('Title required', 'err');
+  if (!body.title) {
+    setWorkOrderCreateError('Title required');
+    return toast('Title required', 'err', 10000);
+  }
+  setWorkOrderCreateError('');
   const res = await apiFetch('/v1/work-orders', { method: 'POST', body: JSON.stringify(body) });
-  if (!res?.ok) return toast(await apiErrorMessage(res, 'Failed to create work order'), 'err');
+  if (!res?.ok) {
+    const message = await apiErrorMessage(res, 'Failed to create work order');
+    setWorkOrderCreateError(message);
+    return toast(message, 'err', 15000);
+  }
   closeModal('wo-modal');
   toast('Work order created', 'ok');
   await loadWorkOrders();

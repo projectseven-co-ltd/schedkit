@@ -1,6 +1,6 @@
 // src/middleware/auth.js — API key authentication
 
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { applyUserEntitlements } from '../lib/entitlements.mjs';
 

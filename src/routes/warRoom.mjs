@@ -1,6 +1,6 @@
 // src/routes/warRoom.mjs — ⚡ WAR ROOM — real-time incident command center
 
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireSession, getSessionUser } from '../middleware/session.mjs';
 

@@ -2,7 +2,7 @@
 
 import { isSlotBusy, createCalendarEvent, deleteCalendarEvent } from '../lib/googleCalendar.mjs';
 import { notifyNewBooking, notifyBookingCancelled } from '../lib/notify.mjs';
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { userOwnsRow } from '../lib/ownership.mjs';
 import { requireApiKey } from '../middleware/auth.mjs';
@@ -213,7 +213,7 @@ export default async function bookingsRoutes(fastify) {
       return reply.code(409).send({ error: 'Time slot no longer available' });
     }
 
-    // Conflict check — NocoDB doesn't support ISO datetimes in where filters, filter in JS
+    // Conflict check — filter in JS for consistent datetime handling.
     const existing = await db.find(tables.bookings, `(user_id,eq,${user.Id})~and(status,eq,confirmed)`);
     const startMs = start.getTime(), endMs = end.getTime();
     const conflict = (existing.list || []).some(b => {

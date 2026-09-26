@@ -1,6 +1,6 @@
 // src/routes/calendar.mjs — Google Calendar OAuth + connection management
 
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireSession } from '../middleware/session.mjs';
 import { getAuthUrl, exchangeCode } from '../lib/googleCalendar.mjs';

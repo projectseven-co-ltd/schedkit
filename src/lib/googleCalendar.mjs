@@ -1,6 +1,6 @@
 // src/lib/googleCalendar.mjs — Google Calendar integration
 
-import { db } from './noco.mjs';
+import { db } from './db.mjs';
 import { tables } from './tables.mjs';
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;

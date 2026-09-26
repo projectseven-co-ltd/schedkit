@@ -1,6 +1,6 @@
 // src/routes/users.js — User management (admin-only, secured by master secret)
 
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { nanoid } from 'nanoid';
 

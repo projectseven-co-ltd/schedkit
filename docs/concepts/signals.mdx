@@ -48,7 +48,7 @@ data: {"type":"signal.alert","payload":{"Id":7,"note":"Unit 3 unresponsive",...}
 
 ## Beacon fast-path
 
-`beacon` type signals bypass NocoDB writes entirely — they are constructed in memory and broadcast directly to all connected SSE clients. This supports high-frequency pinging (every 30s per device) at scale without DB bottlenecks.
+`beacon` type signals bypass database writes entirely — they are constructed in memory and broadcast directly to all connected SSE clients. This supports high-frequency pinging (every 30s per device) at scale without DB bottlenecks.
 
 <Card title="API Reference → Signals" icon="signal" href="/api-reference/signals">
   Full endpoint docs for POST, GET, DELETE, and SSE stream.

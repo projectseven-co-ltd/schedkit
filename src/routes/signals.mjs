@@ -15,7 +15,7 @@ import {
   clearActiveBeacon,
   hasActiveBeacon,
 } from '../lib/activeBeacons.mjs';
-import { db } from '../lib/noco.mjs';
+import { db } from '../lib/db.mjs';
 import { tables } from '../lib/tables.mjs';
 import { requireSession } from '../middleware/session.mjs';
 
@@ -243,13 +243,12 @@ export default async function signalsRoutes(fastify) {
     }
 
     if (type) where += `~and(type,eq,${type})`;
-    // Note: NocoDB v0.301.3 does not support datetime gt/lt filtering.
     // Fetch all and filter by date in JS below.
 
     const result = await db.list(tables.signals, { where, sort: '-created_at', limit });
     let signals = result.list || [];
 
-    // Apply since/before filtering in JS (NocoDB doesn't support datetime comparison)
+    // Apply since/before filtering in JS for consistent datetime comparison.
     if (since) {
       const sinceMs = new Date(since).getTime();
       signals = signals.filter(s => {
